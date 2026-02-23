@@ -1,20 +1,21 @@
 
 import React, { useState } from "react";
-import UserContextBar from "./UserContextBar";
 import DashboardHeader from "./DashboardHeader";
-
-
 import Sidebar from "./Sidebar";
 
 export default function DashboardLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
-    <div className="flex min-h-screen bg-[#F6F6F6]">
+    <div className="flex min-h-screen bg-[#F6F6F6] dark:bg-black">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
-      <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
+      <div
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${
+          sidebarCollapsed ? "lg:ml-0" : "lg:ml-0"
+        }`}
+      >
         <DashboardHeader />
-        <UserContextBar />
-        <main className="flex-1 p-8">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto bg-[#F6F6F6] dark:bg-black">{children}</main>
       </div>
     </div>
   );

@@ -1,10 +1,27 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider.jsx";
 
 export default function LogoutPage() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
   useEffect(() => {
-    // TODO: Call backend to log out, clear tokens, etc.
-    window.location.href = "/signin";
-  }, []);
+    let cancelled = false;
+
+    async function run() {
+      await logout();
+      if (!cancelled) {
+        navigate("/signin", { replace: true });
+      }
+    }
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [logout, navigate]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4">

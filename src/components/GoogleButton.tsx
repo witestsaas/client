@@ -3,16 +3,20 @@
 type GoogleButtonProps = {
   label?: string;
   disabled?: boolean;
+  onClick?: () => void;
 };
 
 
-export function GoogleButton({ label = "Continue with Google", disabled }: GoogleButtonProps) {
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/v1";
+
+export function GoogleButton({ label = "Continue with Google", disabled, onClick }: GoogleButtonProps) {
   function handleGoogleAuth() {
     if (disabled) return;
-    // Delegate to server-side route which reads GOOGLE_CLIENT_ID at runtime
-    // Works in all environments: local dev, local Docker, and AWS
-    // No build-time NEXT_PUBLIC_GOOGLE_CLIENT_ID needed
-    window.location.href = "/api/auth/google";
+    if (onClick) {
+      onClick();
+      return;
+    }
+    window.location.href = `${API_BASE_URL}/auth/google`;
   }
 
   return (

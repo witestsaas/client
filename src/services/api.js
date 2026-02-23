@@ -1,48 +1,65 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/v1"; //middleware server
+import { apiFetch, getApiBaseUrl } from './http';
 
-// Example: Fetch test execution stats
-export async function fetchTestExecutions() {
-  const res = await fetch(`${API_BASE_URL}/test-execution`);
-  if (!res.ok) throw new Error("Failed to fetch test executions");
-  return res.json();
+const API_BASE_URL = getApiBaseUrl();
+
+async function fetchRunsPayload() {
+  const response = await apiFetch('/test-execution');
+  if (!response.ok) {
+    throw new Error('Failed to fetch test executions');
+  }
+  return response.json();
 }
 
-// Example: Fetch health status
+export async function fetchTestExecutions() {
+  return fetchRunsPayload();
+}
+
 export async function fetchHealth() {
   const res = await fetch(`${API_BASE_URL}/health`);
-  if (!res.ok) throw new Error("Failed to fetch health status");
+  if (!res.ok) throw new Error('Failed to fetch health status');
   return res.json();
 }
 
-// Example: Fetch authenticated user info
 export async function fetchUser() {
-  const res = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
-  if (!res.ok) throw new Error("Failed to fetch user info");
+  const res = await apiFetch('/auth/me');
+  if (!res.ok) throw new Error('Failed to fetch user info');
   return res.json();
 }
 
-// Fetch stats from /test-execution endpoint
 export async function fetchStats() {
-  const response = await fetch(`${API_BASE_URL}/test-execution`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch stats');
-  }
-  return response.json();
+  const data = await fetchRunsPayload();
+  const runs = data.testRuns || [];
+  const total = runs.length;
+  const passed = runs.filter((r) => r.status === 'Completed').length;
+
+  return {
+    projects: total > 0 ? 1 : 0,
+    testCases: total,
+    successRate: total > 0 ? Math.round((passed / total) * 100) : 0,
+  };
 }
-// Add more API functions as needed
-// Fetch trends from /test-execution endpoint (adjust endpoint if needed)
-// Fetch activity from /test-execution endpoint (adjust endpoint if needed)
+
 export async function fetchActivity() {
-  const response = await fetch(`${API_BASE_URL}/test-execution`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch activity');
-  }
-  return response.json();
+  const data = await fetchRunsPayload();
+  const runs = data.testRuns || [];
+
+  return runs.slice(0, 8).map((run) => ({
+    id: run.id,
+    user: 'You',
+    action: `Test run ${run.status || 'updated'}`,
+    time: run.updatedAt ? new Date(run.updatedAt).toLocaleString() : '-',
+  }));
 }
+
 export async function fetchTrends() {
-  const response = await fetch(`${API_BASE_URL}/test-execution`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch trends');
-  }
-  return response.json();
+  const data = await fetchRunsPayload();
+  const runs = data.testRuns || [];
+  const total = runs.length || 1;
+  const byStatus = (status) => runs.filter((r) => r.status === status).length;
+
+  return [
+    { label: 'Completed', value: Math.round((byStatus('Completed') / total) * 100) },
+    { label: 'Running', value: Math.round((byStatus('Running') / total) * 100) },
+    { label: 'Failed', value: Math.round((byStatus('Failed') / total) * 100) },
+  ];
 }

@@ -2,10 +2,14 @@ import Dashboard from './pages/Dashboard.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
 import Platform from './pages/Platform.jsx';
-import Execution from './pages/Execution.jsx';
 import Analysis from './pages/Analysis.jsx';
+import ExecutionTests from './pages/ExecutionTests.jsx';
+import ExecutionProjectTests from './pages/ExecutionProjectTests.jsx';
+import ExecutionPlans from './pages/ExecutionPlans.jsx';
+import ExecutionRuns from './pages/ExecutionRuns.jsx';
+import ExecutionResults from './pages/ExecutionResults.jsx';
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Signin from './pages/Signin.jsx';
 import Signup from './pages/Signup.jsx';
@@ -15,7 +19,11 @@ import ResetPassword from './pages/ResetPassword.jsx';
 import ResetPasswordUpdate from './pages/ResetPasswordUpdate.jsx';
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm.jsx';
 import Logout from './pages/Logout.jsx';
+import AuthCallback from './pages/AuthCallback.jsx';
+import JoinOrganization from './pages/JoinOrganization.jsx';
+import NoOrganization from './pages/NoOrganization.jsx';
 import { RequireAuth } from './auth/RequireAuth.jsx';
+import { RequireOrgAccess } from './auth/RequireOrgAccess.jsx';
 
 function App() {
   return (
@@ -29,12 +37,23 @@ function App() {
       <Route path="/reset-password/update" element={<ResetPasswordUpdate />} />
       <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
       <Route path="/logout" element={<Logout />} />
-      <Route path="/dashboard/:orgSlug" element={<RequireAuth><Dashboard /></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/settings" element={<RequireAuth><Settings /></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/platform" element={<RequireAuth><Platform /></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/execution" element={<RequireAuth><Execution /></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/analysis" element={<RequireAuth><Analysis /></RequireAuth>} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/dashboard/join/:token" element={<JoinOrganization />} />
+      <Route path="/dashboard/no-org" element={<RequireAuth><NoOrganization /></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug" element={<RequireAuth><RequireOrgAccess section="dashboard"><Dashboard /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/profile" element={<RequireAuth><RequireOrgAccess section="profile"><Profile /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/settings" element={<RequireAuth><RequireOrgAccess section="settings"><Settings /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/platform" element={<RequireAuth><RequireOrgAccess section="platform"><Platform /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/platform/organizations" element={<RequireAuth><RequireOrgAccess section="platform"><Platform /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution" element={<Navigate to="../execution/tests" replace />} />
+      <Route path="/dashboard/:orgSlug/execution/tests" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionTests /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/tests/:projectId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionProjectTests /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/plans" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionPlans /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/runs" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionRuns /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/results" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionResults /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/analysis" element={<Navigate to="../analysis/insights" replace />} />
+      <Route path="/dashboard/:orgSlug/analysis/insights" element={<RequireAuth><RequireOrgAccess section="analysis"><Analysis /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/analysis/coverage" element={<RequireAuth><RequireOrgAccess section="analysis"><Analysis /></RequireOrgAccess></RequireAuth>} />
     </Routes>
   );
 }
