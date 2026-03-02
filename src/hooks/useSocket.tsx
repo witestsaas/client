@@ -10,6 +10,7 @@ import {
 	type ReactNode,
 } from "react";
 import { io, type Socket } from "socket.io-client";
+import { getAccessToken } from "../auth/token-manager.js";
 
 // ---------------------------------------------------------------------------
 // Types matching middleware gateway events
@@ -131,6 +132,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
 		const socket = io(url ? `${url}/test-execution` : "/test-execution", {
 			transports: ["polling", "websocket"],
+			auth: async (cb) => {
+				const token = await getAccessToken();
+				if (token) {
+					cb({ token });
+					return;
+				}
+				cb({});
+			},
 			autoConnect: true,
 			reconnection: true,
 			reconnectionAttempts: Infinity,

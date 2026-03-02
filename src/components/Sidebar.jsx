@@ -68,6 +68,16 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   const buildPath = (href) => `/dashboard/${orgSlug}${href ? `/${href}` : ""}`;
 
+  const buildNavPath = (href, label) => {
+    if (label === "Test Cases" && orgSlug && typeof window !== "undefined") {
+      const selectedProjectId = window.localStorage.getItem(`selectedProject_${orgSlug}`) || "";
+      if (selectedProjectId) {
+        return `/dashboard/${orgSlug}/execution/tests/${selectedProjectId}`;
+      }
+    }
+    return buildPath(href);
+  };
+
   const buildSwitchPath = (targetOrgSlug) => {
     const parts = location.pathname.split("/").filter(Boolean);
     const suffix = parts.slice(2).join("/");
@@ -91,11 +101,11 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   return (
     <aside
-      className={`h-screen bg-[#232323] dark:bg-black text-[#F6F6F6] border-r border-white/10 shadow-sm transition-all duration-300 flex flex-col ${
+      className={`h-[100dvh] bg-[#232323] dark:bg-[#232323] text-[#F6F6F6] border-r border-white/10 shadow-sm transition-all duration-300 flex flex-col overflow-hidden ${
         collapsed ? "w-16" : "w-[260px]"
       }`}
     >
-      <div className="flex items-center px-3 py-4 border-b border-white/10">
+      <div className="h-11 flex items-center px-3 border-b border-white/10 shrink-0">
         <span className="flex items-center justify-center h-9 w-9 rounded-full bg-[#232323] border border-[#FFAA00]/60 shadow-sm">
           <img src="/image.png" alt="Logo" className="h-7 w-7 object-contain" />
         </span>
@@ -107,13 +117,13 @@ export default function Sidebar({ collapsed, onToggle }) {
               letterSpacing: "0.05em",
             }}
           >
-            QUALION
+            QALION
           </span>
         )}
       </div>
 
       {!collapsed ? (
-        <div className="px-2 py-3 border-b border-white/10">
+        <div className="px-2 py-2 border-b border-white/10 shrink-0">
           <p className="px-1 mb-2 text-[10px] font-semibold text-white/50 uppercase tracking-wider">
             Organization
           </p>
@@ -127,7 +137,7 @@ export default function Sidebar({ collapsed, onToggle }) {
               <ChevronDown className="h-4 w-4 text-white/70" />
             </button>
             {switcherOpen ? (
-              <div className="absolute left-0 right-0 mt-2 z-20 rounded-lg border border-white/10 bg-[#232323] dark:bg-black shadow-2xl p-1 max-h-56 overflow-y-auto">
+              <div className="absolute left-0 right-0 mt-2 z-20 rounded-lg border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-1 max-h-56 overflow-y-auto">
                 {organizations.length === 0 ? (
                   <p className="px-2 py-2 text-xs text-white/60">No organizations</p>
                 ) : (
@@ -155,11 +165,11 @@ export default function Sidebar({ collapsed, onToggle }) {
         </div>
       ) : null}
 
-      <nav className="flex-1 px-2 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 min-h-0 px-2 py-2 space-y-3 overflow-hidden">
         {NAV_SECTIONS.map((section, idx) => (
           <div key={idx}>
             {!collapsed && section.title && (
-              <p className="px-3 mb-2 text-xs font-semibold text-white/50 uppercase tracking-wider">
+              <p className="px-3 mb-1 text-[10px] font-semibold text-white/50 uppercase tracking-wider">
                 {section.title}
               </p>
             )}
@@ -172,16 +182,16 @@ export default function Sidebar({ collapsed, onToggle }) {
               .map((item) => (
                 <Link
                   key={`${section.title || "main"}-${item.label}`}
-                  to={buildPath(item.href)}
+                  to={buildNavPath(item.href, item.label)}
                   title={collapsed ? item.label : undefined}
-                  className={`group w-full text-left flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                  className={`group w-full text-left flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all ${
                     isActive(item.href)
                       ? "bg-[#FFAA00] text-[#232323] border-l-4 border-[#FFAA00] shadow-sm"
                       : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <item.icon
-                    className={`h-5 w-5 shrink-0 ${isActive(item.href) ? "text-[#232323]" : "group-hover:text-[#FFAA00]"}`}
+                    className={`h-4.5 w-4.5 shrink-0 ${isActive(item.href) ? "text-[#232323]" : "group-hover:text-[#FFAA00]"}`}
                   />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
@@ -190,11 +200,11 @@ export default function Sidebar({ collapsed, onToggle }) {
         ))}
       </nav>
 
-      <div className="px-2 pb-2 space-y-2">
+      <div className="px-2 pb-1 space-y-1.5 shrink-0">
         {(role === "Owner" || role === "Admin") && (
           <Link
             to={`/dashboard/${orgSlug}/settings`}
-            className="w-full flex items-center gap-2 rounded-lg text-white hover:bg-white/10 font-semibold transition-colors px-3 py-2"
+            className="w-full flex items-center gap-2 rounded-lg text-white hover:bg-white/10 font-semibold transition-colors px-3 py-1.5"
           >
             <Settings className="h-5 w-5 text-[#FFAA00]" />
             {!collapsed && <span>Settings</span>}
@@ -203,7 +213,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
         <button
           onClick={onToggle}
-          className="w-full flex items-center gap-2 rounded-lg text-white hover:bg-white/10 font-semibold transition-colors px-3 py-2"
+          className="w-full flex items-center gap-2 rounded-lg text-white hover:bg-white/10 font-semibold transition-colors px-3 py-1.5"
           type="button"
         >
           {collapsed ? (
@@ -215,11 +225,11 @@ export default function Sidebar({ collapsed, onToggle }) {
         </button>
       </div>
 
-      <div className="px-2 py-3 flex justify-center">
+      <div className="px-2 py-2 flex justify-center shrink-0">
         <button
           onClick={toggleTheme}
           type="button"
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#232323] border border-white/15 text-white hover:bg-[#FFAA00] hover:text-[#232323] font-semibold shadow-md transition-colors duration-200 py-2"
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#232323] border border-white/15 text-white hover:bg-[#FFAA00] hover:text-[#232323] font-semibold shadow-md transition-colors duration-200 py-1.5"
           title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -227,12 +237,12 @@ export default function Sidebar({ collapsed, onToggle }) {
         </button>
       </div>
 
-      <div className="border-t border-white/10 px-2 py-2">
+      <div className="border-t border-white/10 px-2 py-1.5 shrink-0">
         <div className="relative">
           <button
             type="button"
             onClick={() => !collapsed && setProfileMenuOpen((open) => !open)}
-            className={`w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/10 ${collapsed ? "justify-center" : ""}`}
+            className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 ${collapsed ? "justify-center" : ""}`}
           >
             <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold">
               {getInitials(user)}
@@ -249,7 +259,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           </button>
 
           {!collapsed && profileMenuOpen ? (
-            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-white/10 bg-[#232323] dark:bg-black shadow-2xl p-1 z-20">
+            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-1 z-20">
               <button
                 type="button"
                 onClick={() => {
@@ -265,7 +275,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                 type="button"
                 onClick={() => {
                   setProfileMenuOpen(false);
-                  logout();
+                  navigate("/logout", { replace: true });
                 }}
                 className="w-full text-left rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white inline-flex items-center gap-2"
               >

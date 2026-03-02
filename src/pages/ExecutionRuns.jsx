@@ -1,15 +1,1040 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Image as ImageIcon, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
+import { fetchTestProjects } from "../services/testManagement";
+import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
+
+function formatRelativeTime(dateString) {
+  if (!dateString) return "just now";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+function formatDuration(ms) {
+  if (!ms) return "-";
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes > 0) return `${minutes}m ${remainingSeconds}s`;
+  return `${seconds}s`;
+}
+
+function statusBadge(status) {
+  const normalized = String(status || "Pending");
+  if (normalized === "Completed" || normalized === "Passed") {
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-green-100 text-green-700 text-xs font-semibold"><CheckCircle2 className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
+  }
+  if (normalized === "Failed") {
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-red-100 text-red-700 text-xs font-semibold"><XCircle className="h-3.5 w-3.5 mr-1" />Failed</span>;
+  }
+  if (normalized === "Running") {
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-blue-100 text-blue-700 text-xs font-semibold"><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Running</span>;
+  }
+  if (normalized === "Queued") {
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-amber-100 text-amber-700 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />Queued</span>;
+  }
+  return <span className="inline-flex items-center h-6 px-2 rounded-md bg-gray-100 text-gray-700 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
+}
+
+function resolveRunId(run) {
+  return run?.id || run?.runId || run?.testRunId || run?.test_run_id || "";
+}
+
+function normalizeLogLines(logs) {
+  const source = Array.isArray(logs)
+    ? logs
+    : Array.isArray(logs?.logs)
+      ? logs.logs
+      : [];
+  return source.map((entry) => {
+    if (typeof entry === "string") {
+      return { type: "log", message: entry, timestamp: "" };
+    }
+    return {
+      type: String(entry?.type || "log"),
+      message: String(entry?.message || entry?.text || JSON.stringify(entry)),
+      timestamp: String(entry?.timestamp || ""),
+    };
+  });
+}
+
+function toArtifactUrl(value) {
+  if (!value) return "";
+  const normalized = String(value);
+  if (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("/uploads/")) {
+    return normalized;
+  }
+  return `/uploads/${normalized.replace(/^\/+/, "")}`;
+}
+
+function buildMinioPublicUrl(value) {
+  const key = String(value || "").replace(/^\/+/, "");
+  if (!key) return "";
+  if (typeof window === "undefined") return "";
+  const protocol = window.location.protocol === "https:" ? "https" : "http";
+  const host = window.location.hostname || "localhost";
+  return `${protocol}://${host}:8000/test-artifacts/${key}`;
+}
+
+function buildArtifactUrlCandidates(value) {
+  if (!value) return [];
+  const normalized = String(value);
+  const candidates = [];
+
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    candidates.push(normalized);
+  } else if (normalized.startsWith("/uploads/")) {
+    candidates.push(normalized);
+    const asKey = normalized.replace(/^\/uploads\//, "");
+    const minio = buildMinioPublicUrl(asKey);
+    if (minio) candidates.push(minio);
+  } else {
+    candidates.push(`/uploads/${normalized.replace(/^\/+/, "")}`);
+    const minio = buildMinioPublicUrl(normalized);
+    if (minio) candidates.push(minio);
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean)));
+}
+
+function ArtifactImage({ candidates, alt, className, onResolved }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const activeUrl = Array.isArray(candidates) ? candidates[currentIndex] : "";
+
+  if (!activeUrl) {
+    return <div className="w-full h-full bg-muted text-xs text-[#232323]/55 dark:text-white/55 flex items-center justify-center">Image unavailable</div>;
+  }
+
+  return (
+    <img
+      src={activeUrl}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onLoad={() => {
+        if (typeof onResolved === "function" && activeUrl) {
+          onResolved(activeUrl);
+        }
+      }}
+      onError={() => {
+        setCurrentIndex((prev) => {
+          if (!Array.isArray(candidates)) return prev;
+          return prev < candidates.length - 1 ? prev + 1 : prev;
+        });
+      }}
+    />
+  );
+}
+
+export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId = "" }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [run, setRun] = useState(null);
+  const [activeResultId, setActiveResultId] = useState("");
+  const [activeTab, setActiveTab] = useState("steps");
+  const [logsByResult, setLogsByResult] = useState({});
+  const [resultPayloadById, setResultPayloadById] = useState({});
+  const [artifactsByResult, setArtifactsByResult] = useState({});
+  const [networkByResult, setNetworkByResult] = useState({});
+  const [resolvedScreenshotUrlByKey, setResolvedScreenshotUrlByKey] = useState({});
+  const [rerunModalOpen, setRerunModalOpen] = useState(false);
+  const [rerunMode, setRerunMode] = useState("all");
+  const [parallelSessions, setParallelSessions] = useState(1);
+  const [rerunning, setRerunning] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setRun(null);
+      setError("");
+      setLoading(false);
+      setActiveResultId("");
+      setActiveTab("steps");
+      setResolvedScreenshotUrlByKey({});
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !orgSlug || !runId) return;
+    let cancelled = false;
+
+    const load = async (first = false) => {
+      if (first) setLoading(true);
+      try {
+        const data = await getRun(orgSlug, runId);
+        if (cancelled) return;
+        setRun(data || null);
+        setActiveResultId((prev) => {
+          const currentId = String(prev || "");
+          const preferredId = String(initialResultId || "");
+          const resultIds = Array.isArray(data?.results)
+            ? data.results.map((result) => String(result?.id || "")).filter(Boolean)
+            : [];
+
+          if (preferredId && resultIds.includes(preferredId)) {
+            return preferredId;
+          }
+
+          if (currentId && resultIds.includes(currentId)) {
+            return currentId;
+          }
+
+          return resultIds[0] || currentId;
+        });
+        setError("");
+      } catch (err) {
+        if (!cancelled) setError(err?.message || "Failed to load run details");
+      } finally {
+        if (!cancelled && first) setLoading(false);
+      }
+    };
+
+    load(true);
+    const timer = window.setInterval(() => {
+      load(false);
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [open, orgSlug, runId, initialResultId]);
+
+  const results = Array.isArray(run?.results) ? run.results : [];
+  const selectedResult = results.find((result) => String(result?.id) === String(activeResultId)) || results[0] || null;
+
+  useEffect(() => {
+    if (!open || !selectedResult?.id || !orgSlug || !runId) return;
+    const resultId = String(selectedResult.id);
+
+    if (!logsByResult[resultId]) {
+      getRunResultLogs(orgSlug, runId, resultId)
+        .then((data) => {
+          const payload = data?.logs ?? data ?? null;
+          setResultPayloadById((prev) => ({ ...prev, [resultId]: payload }));
+          setLogsByResult((prev) => ({ ...prev, [resultId]: normalizeLogLines(payload) }));
+        })
+        .catch(() => {
+          setLogsByResult((prev) => ({ ...prev, [resultId]: [] }));
+        });
+    }
+
+    if (!artifactsByResult[resultId]) {
+      getResultArtifacts(resultId)
+        .then((data) => {
+          setArtifactsByResult((prev) => ({ ...prev, [resultId]: data?.artifacts || null }));
+        })
+        .catch(() => {
+          setArtifactsByResult((prev) => ({ ...prev, [resultId]: null }));
+        });
+    }
+  }, [open, selectedResult?.id, orgSlug, runId]);
+
+  useEffect(() => {
+    if (!open || !selectedResult?.id || !orgSlug || !runId) return;
+    const isActiveRun = ["Pending", "Queued", "Running"].includes(String(run?.status || ""));
+    if (!isActiveRun) return;
+
+    const resultId = String(selectedResult.id);
+    const timer = window.setInterval(() => {
+      getRunResultLogs(orgSlug, runId, resultId)
+        .then((data) => {
+          const payload = data?.logs ?? data ?? null;
+          setResultPayloadById((prev) => ({ ...prev, [resultId]: payload }));
+          setLogsByResult((prev) => ({ ...prev, [resultId]: normalizeLogLines(payload) }));
+        })
+        .catch(() => undefined);
+
+      getResultArtifacts(resultId)
+        .then((data) => {
+          setArtifactsByResult((prev) => ({ ...prev, [resultId]: data?.artifacts || null }));
+        })
+        .catch(() => undefined);
+    }, 2500);
+
+    return () => window.clearInterval(timer);
+  }, [open, selectedResult?.id, orgSlug, runId, run?.status]);
+
+  useEffect(() => {
+    if (!open || activeTab !== "network" || !selectedResult?.id) return;
+    const resultId = String(selectedResult.id);
+    const url = artifactsByResult[resultId]?.networkLogsUrl || toArtifactUrl(selectedResult?.networkLogsPath);
+    if (!url) {
+      return;
+    }
+    fetch(url, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.logs) ? payload.logs : [];
+        setNetworkByResult((prev) => ({ ...prev, [resultId]: rows }));
+      })
+      .catch(() => {
+        setNetworkByResult((prev) => ({ ...prev, [resultId]: [] }));
+      });
+  }, [open, activeTab, selectedResult?.id, artifactsByResult]);
+
+  useEffect(() => {
+    if (!open || activeTab !== "console" || !selectedResult?.id) return;
+    const resultId = String(selectedResult.id);
+    const existing = logsByResult[resultId] || [];
+    if (existing.length > 0) return;
+
+    const logsUrl = artifactsByResult[resultId]?.consoleLogsUrl || toArtifactUrl(selectedResult?.consoleLogsPath);
+    if (!logsUrl) return;
+
+    fetch(logsUrl, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.logs) ? payload.logs : [];
+        setLogsByResult((prev) => ({ ...prev, [resultId]: normalizeLogLines(rows) }));
+      })
+      .catch(() => undefined);
+  }, [open, activeTab, selectedResult?.id, artifactsByResult, logsByResult]);
+
+  if (!open) return null;
+
+  const selectedResultId = String(selectedResult?.id || "");
+  const selectedArtifacts = selectedResultId ? artifactsByResult[selectedResultId] : null;
+  const selectedLogs = selectedResultId ? logsByResult[selectedResultId] || [] : [];
+  const selectedNetworkLogs = selectedResultId ? networkByResult[selectedResultId] || [] : [];
+  const selectedVideoUrl = selectedArtifacts?.videoUrl || toArtifactUrl(selectedResult?.videoPath);
+  const structuredOutput = selectedResult?.structuredOutput || {};
+  const runtimePayload = selectedResultId ? resultPayloadById[selectedResultId] : null;
+  const screenshotItems = (
+    Array.isArray(selectedArtifacts?.screenshotsUrls)
+      ? selectedArtifacts.screenshotsUrls
+      : Array.isArray(runtimePayload?.artifacts?.screenshotsPath)
+        ? runtimePayload.artifacts.screenshotsPath
+        : Array.isArray(structuredOutput?.artifacts?.screenshotsPath)
+          ? structuredOutput.artifacts.screenshotsPath
+          : Array.isArray(structuredOutput?.screenshots)
+            ? structuredOutput.screenshots
+            : Array.isArray(selectedResult?.screenshotsPath)
+              ? selectedResult.screenshotsPath
+              : []
+  ).map((item, index) => ({
+    key: `${String(item || "")}-${index}`,
+    candidates: buildArtifactUrlCandidates(item),
+  })).filter((item) => item.candidates.length > 0);
+
+  const structuredSteps = Array.isArray(structuredOutput?.steps)
+    ? structuredOutput.steps
+    : Array.isArray(structuredOutput?.rawOutput?.results?.steps)
+      ? structuredOutput.rawOutput.results.steps
+      : Array.isArray(runtimePayload?.steps)
+        ? runtimePayload.steps
+        : Array.isArray(runtimePayload?.results?.steps)
+          ? runtimePayload.results.steps
+          : Array.isArray(runtimePayload?.rawOutput?.results?.steps)
+            ? runtimePayload.rawOutput.results.steps
+            : [];
+
+  const normalizedRuntimeSteps = structuredSteps.map((step, index) => ({
+    ...step,
+    name: step?.name || step?.action || `Step ${index + 1}`,
+    observed: step?.observed || step?.message || step?.expectedResult || "",
+    status: step?.status || "pending",
+    error: step?.error || null,
+  }));
+
+  const fallbackSteps = Array.isArray(selectedResult?.testCase?.steps)
+    ? [...selectedResult.testCase.steps].sort((a, b) => Number(a?.stepOrder || 0) - Number(b?.stepOrder || 0)).map((step) => ({
+        name: step?.action || "Step",
+        observed: step?.expectedResult || "",
+        status: "pending",
+      }))
+    : [];
+
+  const steps = normalizedRuntimeSteps.length ? normalizedRuntimeSteps : fallbackSteps;
+
+  const runRerun = async () => {
+    if (!orgSlug || !runId) return;
+    if (rerunMode === "single" && !selectedResultId) return;
+    setRerunning(true);
+    try {
+      if (rerunMode === "single") {
+        await rerunRunResult(orgSlug, runId, selectedResultId);
+      } else {
+        await rerunRun(orgSlug, runId, { parallelSessions });
+      }
+      const refreshed = await getRun(orgSlug, runId);
+      setRun(refreshed || null);
+      setRerunModalOpen(false);
+    } catch (err) {
+      setError(err?.message || "Failed to rerun");
+    } finally {
+      setRerunning(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-[95vw] max-w-[1320px] h-[90vh] rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden" onClick={(event) => event.stopPropagation()}>
+        <div className="h-14 px-5 border-b border-black/10 dark:border-white/10 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-base font-semibold text-[#232323] dark:text-white truncate">{run?.testPlan?.name || "Run details"}</p>
+            <div className="inline-flex items-center gap-2 text-xs text-[#232323]/60 dark:text-white/60">
+              {statusBadge(run?.status)}
+              <span>{run?.passedTests || 0}/{run?.totalTests || 0} passed</span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="h-[calc(90vh-56px)] flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">
+            <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#FFAA00]" />
+            Loading run details...
+          </div>
+        ) : error ? (
+          <div className="h-[calc(90vh-56px)] flex items-center justify-center">
+            <div className="rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          </div>
+        ) : (
+          <div className="h-[calc(90vh-56px)] grid grid-cols-12">
+            <div className="col-span-4 border-r border-black/10 dark:border-white/10 min-h-0 overflow-auto">
+              <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 text-xs text-[#232323]/60 dark:text-white/60 font-semibold">Test case results ({results.length})</div>
+              <div className="p-2 space-y-2">
+                {results.map((result) => {
+                  const selected = String(result?.id) === selectedResultId;
+                  return (
+                    <button
+                      key={result.id}
+                      type="button"
+                      onClick={() => setActiveResultId(String(result.id))}
+                      className={`w-full text-left rounded-lg border px-3 py-2.5 transition ${selected ? "border-[#FFAA00]/60 bg-[#FFAA00]/8" : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{result?.testCase?.title || "Test case"}</p>
+                          <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-[#232323]/60 dark:text-white/60">
+                            <Folder className="h-3 w-3" />
+                            <span className="truncate">{result?.testCase?.folder?.path || "No folder"}</span>
+                          </div>
+                        </div>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-background/80 border border-black/10 dark:border-white/15 text-[#232323]/75 dark:text-white/75">{result?.browser || "desktop-chrome"}</span>
+                      </div>
+                      <div className="mt-2 inline-flex">{statusBadge(result?.status)}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="col-span-8 min-h-0 flex flex-col">
+              {!selectedResult ? (
+                <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">No test result selected.</div>
+              ) : (
+                <>
+                  <div className="px-5 py-3 border-b border-black/10 dark:border-white/10">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold text-[#232323] dark:text-white truncate">{selectedResult?.testCase?.title || "Test case"}</p>
+                        <p className="text-xs text-[#232323]/55 dark:text-white/55 mt-0.5">Duration: {formatDuration(selectedResult?.duration)} • Browser: {selectedResult?.browser || "desktop-chrome"}</p>
+                      </div>
+                      <div className="inline-flex items-center gap-2">
+                        {statusBadge(selectedResult?.status)}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRerunMode("single");
+                            setParallelSessions(1);
+                            setRerunModalOpen(true);
+                          }}
+                          className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold"
+                        >
+                          Re-run This
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRerunMode("all");
+                            setRerunModalOpen(true);
+                          }}
+                          className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold"
+                        >
+                          Re-run All
+                        </button>
+                      </div>
+                    </div>
+                    {selectedResult?.errorMessage ? (
+                      <div className="mt-2 rounded-md border border-red-300/40 bg-red-500/10 px-2.5 py-2 text-xs text-red-600 dark:text-red-300 inline-flex items-start gap-2">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
+                        <span>{selectedResult.errorMessage}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 flex items-center gap-2">
+                    <button type="button" onClick={() => setActiveTab("steps")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "steps" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><FileText className="h-3.5 w-3.5" />Steps</button>
+                    <button type="button" onClick={() => setActiveTab("video")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "video" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Video className="h-3.5 w-3.5" />Video</button>
+                    <button type="button" onClick={() => setActiveTab("screenshots")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "screenshots" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><ImageIcon className="h-3.5 w-3.5" />Screenshots</button>
+                    <button type="button" onClick={() => setActiveTab("console")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "console" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><TerminalSquare className="h-3.5 w-3.5" />Console</button>
+                    <button type="button" onClick={() => setActiveTab("network")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "network" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Globe2 className="h-3.5 w-3.5" />Network</button>
+
+                    <div className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-[#232323]/55 dark:text-white/55">
+                      <Eye className="h-3.5 w-3.5" />
+                      Realtime
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-h-0 overflow-auto p-4">
+                    {activeTab === "steps" ? (
+                      <div className="space-y-2">
+                        {steps.length === 0 ? (
+                          <p className="text-sm text-[#232323]/60 dark:text-white/60">No steps available yet.</p>
+                        ) : (
+                          steps.map((step, index) => (
+                            <div key={`${index}-${step?.name || "step"}`} className="rounded-lg border border-black/10 dark:border-white/10 bg-background/70 px-3 py-2.5">
+                              {(() => {
+                                const stepStatus = String(step?.status || "pending").toLowerCase();
+                                const isPassed = stepStatus === "passed" || stepStatus === "completed";
+                                const isFailed = stepStatus === "failed" || stepStatus === "error";
+                                const statusClasses = isPassed
+                                  ? "border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                                  : isFailed
+                                    ? "border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                                    : "border-black/10 dark:border-white/15 bg-card text-[#232323]/75 dark:text-white/75";
+
+                                return (
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-semibold text-[#232323] dark:text-white">{step?.name || `Step ${index + 1}`}</p>
+                                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
+                                  {isPassed ? <CheckCircle2 className="h-3 w-3" /> : null}
+                                  {isFailed ? <XCircle className="h-3 w-3" /> : null}
+                                  {String(step?.status || "pending")}
+                                </span>
+                              </div>
+                                );
+                              })()}
+                              {step?.observed ? <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{step.observed}</p> : null}
+                              {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1">{step.error}</p> : null}
+                              {(() => {
+                                const stepScreenshot = step?.screenshotUrl || step?.screenshotPath || step?.screenshot || "";
+                                const stepCandidates = buildArtifactUrlCandidates(stepScreenshot);
+                                if (!stepCandidates.length) return null;
+                                return (
+                                  <div className="mt-2 overflow-hidden rounded-lg border border-black/10 dark:border-white/10 bg-card">
+                                    <ArtifactImage
+                                      candidates={stepCandidates}
+                                      alt={`Step ${index + 1} screenshot`}
+                                      className="w-full h-44 object-cover bg-muted"
+                                    />
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+
+                    {activeTab === "video" ? (
+                      selectedVideoUrl ? (
+                        <video controls src={selectedVideoUrl} className="w-full max-h-[55vh] rounded-xl border border-black/10 dark:border-white/10 bg-[#1e1e1e] dark:bg-[#232323]" />
+                      ) : (
+                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Video not available yet.</p>
+                      )
+                    ) : null}
+
+                    {activeTab === "screenshots" ? (
+                      screenshotItems.length ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {screenshotItems.map((item, index) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => window.open(resolvedScreenshotUrlByKey[item.key] || item.candidates[0], "_blank", "noopener,noreferrer")}
+                              className="group rounded-xl border border-black/10 dark:border-white/10 bg-background/70 overflow-hidden text-left"
+                            >
+                              <ArtifactImage
+                                candidates={item.candidates}
+                                alt={`Screenshot ${index + 1}`}
+                                className="w-full h-52 object-cover bg-muted"
+                                onResolved={(url) => {
+                                  setResolvedScreenshotUrlByKey((prev) =>
+                                    prev[item.key] === url ? prev : { ...prev, [item.key]: url },
+                                  );
+                                }}
+                              />
+                              <div className="px-2.5 py-2 text-[11px] text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-1.5">
+                                <ExternalLink className="h-3 w-3" />
+                                Screenshot {index + 1}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Screenshots not available yet.</p>
+                      )
+                    ) : null}
+
+                    {activeTab === "console" ? (
+                      selectedLogs.length ? (
+                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#1e1e1e] dark:bg-[#232323] text-white p-3 font-mono text-xs space-y-1.5 max-h-[55vh] overflow-auto">
+                          {selectedLogs.map((entry, index) => (
+                            <div key={`${index}-${entry.timestamp || ""}`}>
+                              <span className="text-[#FFAA00]">[{entry.type}]</span>
+                              {entry.timestamp ? <span className="text-white/50"> {entry.timestamp}</span> : null}
+                              <span className="text-white"> {entry.message}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Console logs not available yet.</p>
+                      )
+                    ) : null}
+
+                    {activeTab === "network" ? (
+                      selectedNetworkLogs.length ? (
+                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-background/70 divide-y divide-black/10 dark:divide-white/10 overflow-hidden">
+                          {selectedNetworkLogs.map((entry, index) => (
+                            <div key={`${index}-${entry?.url || ""}`} className="px-3 py-2 text-xs">
+                              <div className="inline-flex items-center gap-2">
+                                <span className="font-semibold text-[#232323] dark:text-white">{entry?.method || "GET"}</span>
+                                <span className="text-[#232323]/70 dark:text-white/70">{entry?.status || "-"}</span>
+                              </div>
+                              <p className="text-[#232323]/60 dark:text-white/60 mt-0.5 break-all">{entry?.url || "-"}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Network logs not available yet.</p>
+                      )
+                    ) : null}
+                  </div>
+
+                  <div className="h-12 px-4 border-t border-black/10 dark:border-white/10 flex items-center justify-between">
+                    <p className="text-xs text-[#232323]/60 dark:text-white/60">Result {Math.max(1, results.findIndex((result) => String(result.id) === selectedResultId) + 1)} of {Math.max(1, results.length)}</p>
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const index = results.findIndex((result) => String(result.id) === selectedResultId);
+                          if (index > 0) setActiveResultId(String(results[index - 1].id));
+                        }}
+                        className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const index = results.findIndex((result) => String(result.id) === selectedResultId);
+                          if (index < results.length - 1) setActiveResultId(String(results[index + 1].id));
+                        }}
+                        className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5"
+                      >
+                        Next
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {rerunModalOpen ? (
+        <div className="fixed inset-0 z-[60] bg-black/55 flex items-center justify-center p-4" onClick={() => !rerunning && setRerunModalOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <p className="text-lg font-semibold text-[#232323] dark:text-white">{rerunMode === "single" ? "Re-run this test" : "Re-run all tests"}</p>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{rerunMode === "single" ? "This will queue the selected test case again." : "This will queue all test cases in this run."}</p>
+
+            {rerunMode === "all" ? (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
+                  <span>Parallel sessions</span>
+                  <span className="font-semibold">{parallelSessions}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={4}
+                  value={parallelSessions}
+                  onChange={(event) => setParallelSessions(Number(event.target.value))}
+                  className="w-full accent-[#FFAA00]"
+                />
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRerunModalOpen(false)}
+                disabled={rerunning}
+                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={runRerun}
+                disabled={rerunning}
+                className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+              >
+                {rerunning ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Run
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function ExecutionRuns() {
+  const { orgSlug } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [runs, setRuns] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [openMenuId, setOpenMenuId] = useState("");
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedRunId, setSelectedRunId] = useState("");
+
+  const loadData = async (initial = false) => {
+    if (!orgSlug) return;
+    if (initial) setLoading(true);
+    setError("");
+    try {
+      const projectRows = await fetchTestProjects(orgSlug);
+      setProjects(projectRows);
+      const savedProjectId =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem(`selectedProject_${orgSlug}`) || ""
+          : "";
+      const effectiveProjectId = projectId || projectRows[0]?.id || "";
+      const syncedProjectId =
+        savedProjectId && projectRows.some((project) => project.id === savedProjectId)
+          ? savedProjectId
+          : effectiveProjectId;
+      if (!projectId && syncedProjectId) {
+        setProjectId(syncedProjectId);
+      }
+      const rows = await listRuns(orgSlug, {
+        projectId: syncedProjectId || undefined,
+        status: status || undefined,
+      });
+      setRuns(rows);
+    } catch (err) {
+      setError(err?.message || "Failed to load test runs");
+    } finally {
+      if (initial) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData(true);
+  }, [orgSlug]);
+
+  useEffect(() => {
+    if (!orgSlug) return;
+    if (projectId && typeof window !== "undefined") {
+      window.localStorage.setItem(`selectedProject_${orgSlug}`, projectId);
+    }
+    listRuns(orgSlug, {
+      projectId: projectId || undefined,
+      status: status || undefined,
+    })
+      .then((rows) => setRuns(rows))
+      .catch((err) => setError(err?.message || "Failed to load test runs"));
+  }, [orgSlug, projectId, status]);
+
+  useEffect(() => {
+    const onProjectChange = (event) => {
+      const nextOrgSlug = event?.detail?.orgSlug;
+      const nextProjectId = event?.detail?.projectId;
+      if (nextOrgSlug === orgSlug && nextProjectId) {
+        setProjectId(nextProjectId);
+      }
+    };
+    window.addEventListener("selectedProjectChanged", onProjectChange);
+    return () => window.removeEventListener("selectedProjectChanged", onProjectChange);
+  }, [orgSlug]);
+
+  const filteredRuns = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return runs;
+    return runs.filter((run) => {
+      const planName = String(run?.testPlan?.name || "").toLowerCase();
+      const environment = String(run?.environment || "").toLowerCase();
+      const runStatus = String(run?.status || "").toLowerCase();
+      return planName.includes(term) || environment.includes(term) || runStatus.includes(term);
+    });
+  }, [runs, search]);
+
+  const handleCancelRun = async (runId) => {
+    setSaving(true);
+    setError("");
+    try {
+      await cancelRun(orgSlug, runId);
+      setRuns(await listRuns(orgSlug, { projectId: projectId || undefined, status: status || undefined }));
+    } catch (err) {
+      setError(err?.message || "Failed to cancel run");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRun = async (runId) => {
+    setSaving(true);
+    setError("");
+    try {
+      await deleteRun(orgSlug, runId);
+      setRuns(await listRuns(orgSlug, { projectId: projectId || undefined, status: status || undefined }));
+    } catch (err) {
+      setError(err?.message || "Failed to delete run");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openRunDetail = (runId) => {
+    if (!orgSlug || !runId) return;
+    setSelectedRunId(runId);
+    setDetailsModalOpen(true);
+  };
+
+  const openRunPage = (runId) => {
+    if (!orgSlug || !runId) return;
+    navigate(`/dashboard/${orgSlug}/execution/runs/${runId}`);
+  };
+
   return (
     <DashboardLayout>
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Runs</h2>
-        <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-2">
-          Test runs view aligned with sidebar navigation.
-        </p>
+      <div className="space-y-0 bg-transparent overflow-hidden">
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Runs</h2>
+              <span className="text-sm text-[#232323]/50 dark:text-white/50">({runs.length})</span>
+            </div>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60">View and manage test execution history</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
+            className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+          >
+            <Play className="h-3.5 w-3.5" />
+            Run a Plan
+          </button>
+        </div>
+
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3">
+          <select
+            value={projectId}
+            onChange={(event) => setProjectId(event.target.value)}
+            className="h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm min-w-[160px]"
+          >
+            {!projects.length ? <option value="">No projects</option> : null}
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
+
+          <div className="relative flex-1">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#232323]/40 dark:text-white/40" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search runs..."
+              className="w-full h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 pl-9 pr-3 text-sm"
+            />
+          </div>
+
+          <div className="relative">
+            <button type="button" className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5" />
+              {status || "Status"}
+            </button>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            >
+              <option value="">All statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Queued">Queued</option>
+              <option value="Running">Running</option>
+              <option value="Completed">Completed</option>
+              <option value="Failed">Failed</option>
+              <option value="Aborted">Aborted</option>
+              <option value="Error">Error</option>
+            </select>
+          </div>
+        </div>
+
+        {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</div> : null}
+
+        <div className="p-4 space-y-3">
+          {loading ? (
+            <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card p-6 text-center text-sm text-[#232323]/60 dark:text-white/60">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#FFAA00]" />
+              Loading runs...
+            </div>
+          ) : !filteredRuns.length ? (
+            <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card p-8 text-center">
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">No runs found.</p>
+            </div>
+          ) : (
+            filteredRuns.map((run) => {
+              const runId = resolveRunId(run);
+              const canCancel = ["Pending", "Queued", "Running"].includes(String(run.status || ""));
+              return (
+                <div
+                  key={runId || `${run.testPlan?.name || "run"}-${run.createdAt || "now"}`}
+                  className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-sm hover:shadow-md hover:border-black/20 dark:hover:border-white/20 transition-all p-4 cursor-pointer"
+                  onClick={() => openRunDetail(runId)}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-[#232323] dark:text-white truncate">{run.testPlan?.name || "Plan"}</p>
+                        {statusBadge(run.status)}
+                      </div>
+                      <p className="text-xs text-[#232323]/50 dark:text-white/50 mt-1">{formatRelativeTime(run.createdAt)}</p>
+                    </div>
+
+                    <div className="relative inline-flex items-center gap-2">
+                      {canCancel ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleCancelRun(runId);
+                          }}
+                          disabled={saving || !runId}
+                          className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                        >
+                          <Square className="h-3.5 w-3.5" />
+                          Stop
+                        </button>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMenuId((prev) => (prev === runId ? "" : runId));
+                        }}
+                        className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {openMenuId === runId ? (
+                        <div className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setOpenMenuId("");
+                              openRunDetail(runId);
+                            }}
+                            disabled={!runId}
+                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Open Popup
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setOpenMenuId("");
+                              openRunPage(runId);
+                            }}
+                            disabled={!runId}
+                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Open Page
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setOpenMenuId("");
+                              handleDeleteRun(runId);
+                            }}
+                            disabled={!runId}
+                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-sm mb-3">
+                    <div className="flex items-center gap-1"><span className="text-green-600 font-semibold">{run.passedTests || 0}</span><span className="text-[#232323]/55 dark:text-white/55">passed</span></div>
+                    {!!run.failedTests && <div className="flex items-center gap-1"><span className="text-red-600 font-semibold">{run.failedTests}</span><span className="text-[#232323]/55 dark:text-white/55">failed</span></div>}
+                    {!!run.skippedTests && <div className="flex items-center gap-1"><span className="text-[#232323]/70 dark:text-white/70 font-semibold">{run.skippedTests}</span><span className="text-[#232323]/55 dark:text-white/55">skipped</span></div>}
+                    <span className="text-[#232323]/35 dark:text-white/35">•</span>
+                    <span className="text-[#232323]/70 dark:text-white/70">{run.totalTests || 0} total</span>
+                    {!!run.duration && (
+                      <>
+                        <span className="text-[#232323]/35 dark:text-white/35">•</span>
+                        <span className="text-[#232323]/70 dark:text-white/70">{formatDuration(run.duration)}</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-[#232323]/55 dark:text-white/55">
+                    <span className="h-6 px-2 rounded-md border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center">{run.environment || "staging"}</span>
+                    {run.triggeredBy?.name ? (
+                      <span className="inline-flex items-center gap-1.5 ml-auto">
+                        <span className="w-5 h-5 rounded-full bg-[#FFAA00]/20 text-[10px] font-semibold text-[#232323] dark:text-white inline-flex items-center justify-center">{String(run.triggeredBy.name).charAt(0).toUpperCase()}</span>
+                        {run.triggeredBy.name}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
+
+      <RunDetailsModal
+        open={detailsModalOpen}
+        orgSlug={orgSlug}
+        runId={selectedRunId}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedRunId("");
+        }}
+      />
     </DashboardLayout>
   );
 }

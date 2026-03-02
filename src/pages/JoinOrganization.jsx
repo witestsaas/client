@@ -35,7 +35,7 @@ export default function JoinOrganization() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#F6F6F6] dark:bg-black p-4">
+    <main className="min-h-screen flex items-center justify-center bg-[#F6F6F6] dark:bg-[#232323] p-4">
       <div className="w-full max-w-lg rounded-2xl border border-white/20 bg-white dark:bg-[#232323] shadow-2xl p-7">
         <h1 className="text-2xl font-bold text-[#232323] dark:text-white">Organization Invitation</h1>
         <p className="mt-3 text-sm text-[#232323]/70 dark:text-white/70">

@@ -5,13 +5,15 @@ type MicrosoftButtonProps = {
   disabled?: boolean;
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/v1";
+
 export function MicrosoftButton({
   label = "Continue with Microsoft",
   disabled,
 }: MicrosoftButtonProps) {
   function handleMicrosoftAuth() {
     if (disabled) return;
-    window.location.href = "/api/auth/microsoft";
+    window.location.href = `${API_BASE_URL}/auth/microsoft`;
   }
 
   return (

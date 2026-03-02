@@ -97,7 +97,7 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '' }: V
       </div>
       
       {/* Video element - flexible container that fills available space */}
-      <div className="relative flex-1 min-h-0 bg-black flex items-center justify-center">
+      <div className="relative flex-1 min-h-0 bg-[#1e1e1e] dark:bg-[#232323] flex items-center justify-center">
         <video
           id="artifact-video"
           src={src}
@@ -114,7 +114,7 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '' }: V
         {/* Play button overlay when paused */}
         {!isPlaying && (
           <div 
-            className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
+            className="absolute inset-0 flex items-center justify-center bg-[#232323]/45 cursor-pointer"
             onClick={handlePlayPause}
           >
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">

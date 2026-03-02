@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users } from "lucide-react";
+import { apiFetch } from "../services/http";
+
+function cn(...inputs: Array<string | false | null | undefined>) {
+  return inputs.filter(Boolean).join(" ");
+}
 
 interface MentionUser {
   id: string;
@@ -52,7 +55,7 @@ export function MentionInput({
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/${organizationSlug}/members`);
+        const res = await apiFetch(`/organizations/${organizationSlug}/members?excludeSelf=true`);
         if (res.ok) {
           const data = await res.json();
           const members = Array.isArray(data) ? data : (data.members || []);
@@ -285,12 +288,9 @@ export function MentionInput({
                     <Users className="w-4 h-4 text-[#FFAA00]" />
                   </div>
                 ) : (
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-[#FFAA00] text-black text-xs font-semibold">
-                      {getInitials(user.firstName, user.lastName)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="w-8 h-8 rounded-full bg-[#FFAA00] text-black text-xs font-semibold inline-flex items-center justify-center">
+                    {getInitials(user.firstName, user.lastName)}
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm text-foreground truncate">

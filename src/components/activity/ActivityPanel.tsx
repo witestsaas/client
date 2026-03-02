@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ActivityItem, ActivityItemSkeleton, ActivityData } from "./ActivityItem";
 import { MentionInput } from "@/components/MentionInput";
+import { apiFetch } from "@/services/http";
 
 export type ActivityEntityType = "TestPlan" | "TestRun" | "TestRunResult";
 
@@ -48,7 +49,7 @@ export function ActivityPanel({
         type: filter,
       });
 
-      const response = await fetch(`/api/${orgSlug}/activities?${params}`);
+      const response = await apiFetch(`/organizations/${orgSlug}/activities?${params}`);
       
       if (!response.ok) {
         throw new Error("Failed to fetch activities");
@@ -85,7 +86,7 @@ export function ActivityPanel({
       setSubmitting(true);
       setError(null);
 
-      const response = await fetch(`/api/${orgSlug}/activities`, {
+      const response = await apiFetch(`/organizations/${orgSlug}/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

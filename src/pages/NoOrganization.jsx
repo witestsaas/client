@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createOrganization, fetchUserOrganizations, joinOrganizationByCode } from "../services/organizations";
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function NoOrganizationPage() {
   const navigate = useNavigate();
   const [orgName, setOrgName] = useState("");
@@ -10,13 +14,27 @@ export default function NoOrganizationPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchUserOrganizations()
-      .then((data) => {
-        if (data.organizations?.length > 0) {
-          navigate(`/dashboard/${data.organizations[0].slug}`, { replace: true });
+    let cancelled = false;
+
+    async function bootstrapUserOrg() {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const data = await fetchUserOrganizations();
+          if (!cancelled && data.organizations?.length > 0) {
+            navigate(`/dashboard/${data.organizations[0].slug}`, { replace: true });
+          }
+          return;
+        } catch {
+          await sleep(250);
         }
-      })
-      .catch(() => {});
+      }
+    }
+
+    bootstrapUserOrg();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   async function handleCreate(e) {
@@ -48,7 +66,7 @@ export default function NoOrganizationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F6F6F6] dark:bg-black flex items-center justify-center p-4">
+    <main className="min-h-screen bg-[#F6F6F6] dark:bg-[#232323] flex items-center justify-center p-4">
       <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-[#232323] rounded-xl border border-border p-6">
           <h2 className="text-xl font-bold mb-2 text-[#232323] dark:text-white">Create Organization</h2>

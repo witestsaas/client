@@ -6,7 +6,9 @@ import Analysis from './pages/Analysis.jsx';
 import ExecutionTests from './pages/ExecutionTests.jsx';
 import ExecutionProjectTests from './pages/ExecutionProjectTests.jsx';
 import ExecutionPlans from './pages/ExecutionPlans.jsx';
+import ExecutionPlanDetail from './pages/ExecutionPlanDetail.jsx';
 import ExecutionRuns from './pages/ExecutionRuns.jsx';
+import ExecutionRunDetail from './pages/ExecutionRunDetail.jsx';
 import ExecutionResults from './pages/ExecutionResults.jsx';
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -48,8 +50,11 @@ function App() {
       <Route path="/dashboard/:orgSlug/execution" element={<Navigate to="../execution/tests" replace />} />
       <Route path="/dashboard/:orgSlug/execution/tests" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionTests /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/execution/tests/:projectId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionProjectTests /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/tests/:projectId/test-case/:testCaseId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionProjectTests /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/execution/plans" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionPlans /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/plans/:planId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionPlanDetail /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/execution/runs" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionRuns /></RequireOrgAccess></RequireAuth>} />
+      <Route path="/dashboard/:orgSlug/execution/runs/:runId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionRunDetail /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/execution/results" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionResults /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/analysis" element={<Navigate to="../analysis/insights" replace />} />
       <Route path="/dashboard/:orgSlug/analysis/insights" element={<RequireAuth><RequireOrgAccess section="analysis"><Analysis /></RequireOrgAccess></RequireAuth>} />

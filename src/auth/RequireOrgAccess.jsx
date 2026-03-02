@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
-import { fetchOrganization } from "../services/organizations";
+import { fetchOrganization, fetchUserOrganizations } from "../services/organizations";
 import { useAuth } from "./AuthProvider.jsx";
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const ROLE_PERMISSIONS = {
   Owner: ["dashboard", "execution", "analysis", "platform", "profile", "settings"],
@@ -13,40 +17,94 @@ const ROLE_PERMISSIONS = {
 export function RequireOrgAccess({ section = "dashboard", children }) {
   const { orgSlug } = useParams();
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [role, setRole] = useState(null);
+  const [fallbackOrgSlug, setFallbackOrgSlug] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionRecovered, setSessionRecovered] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
-      if (!isAuthenticated || !orgSlug || orgSlug === "no-org") {
+      let authenticated = isAuthenticated;
+
+      if (!authenticated) {
+        try {
+          const profile = await refreshProfile();
+          authenticated = Boolean(profile?.userId);
+          if (!cancelled) {
+            setSessionRecovered(authenticated);
+          }
+        } catch {
+          authenticated = false;
+          if (!cancelled) {
+            setSessionRecovered(false);
+          }
+        }
+      } else if (!cancelled) {
+        setSessionRecovered(true);
+      }
+
+      if (!cancelled) {
+        setSessionChecked(true);
+      }
+
+      if (!authenticated || !orgSlug || orgSlug === "no-org") {
+        if (!cancelled) {
+          setFallbackOrgSlug(null);
+        }
         if (!cancelled) setChecking(false);
         return;
       }
-      try {
-        const org = await fetchOrganization(orgSlug);
-        if (!cancelled) setRole(org.currentUserRole || "Viewer");
-      } catch {
-        if (!cancelled) setRole(null);
-      } finally {
-        if (!cancelled) setChecking(false);
+
+      let resolvedRole = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const org = await fetchOrganization(orgSlug);
+          resolvedRole = org.currentUserRole || "Viewer";
+          break;
+        } catch {
+          await sleep(250);
+        }
+      }
+
+      let resolvedFallbackOrgSlug = null;
+      if (!resolvedRole) {
+        try {
+          const data = await fetchUserOrganizations();
+          const organizations = Array.isArray(data?.organizations) ? data.organizations : [];
+          const firstOrg = organizations[0]?.slug;
+          if (firstOrg && firstOrg !== orgSlug) {
+            resolvedFallbackOrgSlug = firstOrg;
+          }
+        } catch {
+          resolvedFallbackOrgSlug = null;
+        }
+      }
+
+      if (!cancelled) {
+        setRole(resolvedRole);
+        setFallbackOrgSlug(resolvedFallbackOrgSlug);
+        setChecking(false);
       }
     }
 
     setChecking(true);
+    setSessionChecked(false);
+    setSessionRecovered(false);
     run();
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, orgSlug]);
+  }, [isAuthenticated, orgSlug, refreshProfile]);
 
-  if (isLoading || checking) {
+  if (isLoading || checking || !sessionChecked) {
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !sessionRecovered) {
     return <Navigate to="/signin" replace />;
   }
 
@@ -55,6 +113,9 @@ export function RequireOrgAccess({ section = "dashboard", children }) {
   }
 
   if (!role) {
+    if (fallbackOrgSlug) {
+      return <Navigate to={`/dashboard/${fallbackOrgSlug}`} replace state={{ from: location }} />;
+    }
     return <Navigate to="/dashboard/no-org" replace />;
   }
 

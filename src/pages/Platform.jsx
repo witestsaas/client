@@ -1,21 +1,61 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
-import { useParams } from "react-router-dom";
-import { Mail, Trash2, Users } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Mail, Settings, ShieldAlert, Trash2, UserPlus, Users } from "lucide-react";
 import { apiFetch } from "../services/http";
+import { fetchUserOrganizations } from "../services/organizations";
 
 function roleBadgeClass(role) {
   const map = {
-    Owner: "bg-yellow-500 text-black border-yellow-400",
+    Owner: "bg-[#F4B400] text-[#232323] border-[#E5A400]",
     Admin: "bg-blue-500 text-white border-blue-400",
-    Tester: "bg-green-500 text-white border-green-400",
-    Viewer: "bg-gray-500 text-white border-gray-400",
+    Tester: "bg-emerald-500 text-white border-emerald-400",
+    Viewer: "bg-slate-500 text-white border-slate-400",
   };
   return map[role] || map.Viewer;
 }
 
+function availabilityBadgeClass(status) {
+  if (status === "Active") {
+    return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40";
+  }
+  if (status === "Idle") {
+    return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700/40";
+  }
+  return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900/40 dark:text-slate-300 dark:border-slate-700/40";
+}
+
+function normalizePresenceStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "online") return "online";
+  if (value === "idle") return "idle";
+  return "offline";
+}
+
+function presenceLabel(status) {
+  if (status === "online") return "Active";
+  if (status === "idle") return "Idle";
+  return "Offline";
+}
+
+function presenceDotClass(status) {
+  if (status === "online") return "bg-emerald-500 ring-emerald-500/30";
+  if (status === "idle") return "bg-red-500 ring-red-500/30";
+  return "bg-slate-400 ring-slate-400/30";
+}
+
+function getMemberInitials(member) {
+  const first = String(member?.user?.firstName || "").trim();
+  const last = String(member?.user?.lastName || "").trim();
+  const firstChar = first ? first.charAt(0).toUpperCase() : "?";
+  const lastChar = last ? last.charAt(0).toUpperCase() : "";
+  return `${firstChar}${lastChar}`;
+}
+
 export default function Platform() {
   const { orgSlug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,30 +64,154 @@ export default function Platform() {
   const [inviteRole, setInviteRole] = useState("Viewer");
   const [submittingInvite, setSubmittingInvite] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [presenceByUserId, setPresenceByUserId] = useState({});
 
   const isOwner = org?.currentUserRole === "Owner";
-  const canManage = ["Owner", "Admin"].includes(org?.currentUserRole || "");
+  const canManage = isOwner;
 
-  async function fetchOrg() {
-    setLoading(true);
+  const orgId = org?.id || "";
+
+  const fetchPresenceStatuses = async () => {
+    if (!orgId) return;
+    try {
+      const response = await apiFetch(`/presence/status?organizationId=${encodeURIComponent(orgId)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to fetch presence statuses");
+      }
+
+      const rows = Array.isArray(data?.presenceStatuses) ? data.presenceStatuses : [];
+      const map = {};
+      rows.forEach((item) => {
+        map[String(item?.userId || "")] = normalizePresenceStatus(item?.status);
+      });
+      setPresenceByUserId(map);
+    } catch {
+      // Presence should fail silently and not block page usage
+    }
+  };
+
+  async function fetchOrg(options = {}) {
+    const { silent = false } = options;
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
     try {
-      const safeResponse = await apiFetch(`/organizations/${orgSlug}`);
+      const safeResponse = await apiFetch(`/organizations/${orgSlug}?_t=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await safeResponse.json();
       if (!safeResponse.ok) {
         throw new Error(data?.message || "Failed to load organization");
       }
       setOrg(data);
     } catch (e) {
-      setError(e.message || "Failed to load organization");
+      const message = e.message || "Failed to load organization";
+
+      if (/Organization not found|Forbidden|Unauthorized/i.test(message)) {
+        try {
+          const orgs = await fetchUserOrganizations();
+          const firstOrgSlug = orgs?.organizations?.[0]?.slug;
+          if (firstOrgSlug && firstOrgSlug !== orgSlug) {
+            navigate(`/dashboard/${firstOrgSlug}/platform/organizations`, { replace: true });
+            return;
+          }
+        } catch {
+          // no-op
+        }
+      }
+
+      setError(message);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
     fetchOrg();
   }, [orgSlug]);
+
+  useEffect(() => {
+    if (!orgSlug) return;
+
+    const intervalId = setInterval(() => {
+      fetchOrg({ silent: true });
+    }, 5000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrg({ silent: true });
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [orgSlug]);
+
+  useEffect(() => {
+    if (!orgId) return;
+
+    fetchPresenceStatuses();
+    const intervalId = window.setInterval(() => {
+      fetchPresenceStatuses();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [orgId]);
+
+  useEffect(() => {
+    let lastActivityAt = Date.now();
+    const idleTimeoutMs = 120000;
+
+    const markActive = () => {
+      lastActivityAt = Date.now();
+    };
+
+    const sendHeartbeat = async () => {
+      if (!orgId) return;
+      const isActive = Date.now() - lastActivityAt < idleTimeoutMs;
+      try {
+        await apiFetch("/presence/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentPage: location?.pathname || window.location.pathname,
+            isActive,
+          }),
+        });
+      } catch {
+        // Heartbeat is best-effort only
+      }
+    };
+
+    if (orgId) {
+      sendHeartbeat();
+    }
+
+    const heartbeatIntervalId = window.setInterval(sendHeartbeat, 10000);
+
+    window.addEventListener("mousemove", markActive, { passive: true });
+    window.addEventListener("keydown", markActive, { passive: true });
+    window.addEventListener("click", markActive, { passive: true });
+    window.addEventListener("scroll", markActive, { passive: true });
+
+    return () => {
+      window.clearInterval(heartbeatIntervalId);
+      window.removeEventListener("mousemove", markActive);
+      window.removeEventListener("keydown", markActive);
+      window.removeEventListener("click", markActive);
+      window.removeEventListener("scroll", markActive);
+    };
+  }, [orgId, location?.pathname]);
 
   async function inviteMember(e) {
     e.preventDefault();
@@ -87,26 +251,6 @@ export default function Platform() {
     }
   }
 
-  async function updateRole(memberId, role) {
-    const response = await apiFetch(`/organizations/${orgSlug}/members`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId, role }),
-    });
-    if (response.ok) {
-      await fetchOrg();
-    }
-  }
-
-  async function cancelInvite(inviteId) {
-    const response = await apiFetch(`/organizations/${orgSlug}/invitations/${inviteId}`, {
-      method: "DELETE",
-    });
-    if (response.ok) {
-      await fetchOrg();
-    }
-  }
-
   if (loading) {
     return (
       <DashboardLayout>
@@ -117,22 +261,22 @@ export default function Platform() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-3 md:px-5 py-4 md:py-6 space-y-5">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-[#232323] dark:text-white">{org?.name || "Organization"}</h2>
-            <p className="text-[#232323]/70 dark:text-white/70">Manage members, roles, and invitations.</p>
+            <h2 className="text-[2rem] leading-tight font-bold text-[#232323] dark:text-white">{org?.name || "Organization"}</h2>
+            <p className="text-[#232323]/60 dark:text-white/60 mt-1">Manage your organization members and settings</p>
           </div>
           {canManage && (
-          <button
+            <button
               type="button"
               onClick={() => {
                 setInviteError("");
                 setInviteOpen(true);
               }}
-              className="bg-white dark:bg-[#232323] border border-[#E5E7EB] dark:border-[#232323] text-[#232323] dark:text-white font-semibold rounded-lg px-4 py-2 shadow-sm hover:bg-[#F3F4F6] dark:hover:bg-[#232323]/80 transition inline-flex items-center gap-2"
+              className="h-10 px-4 rounded-xl border border-black/10 dark:border-white/10 bg-card/90 text-[#232323] dark:text-white text-sm font-semibold inline-flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-[#232323]/5 dark:hover:bg-white/5"
             >
-              <Users className="h-4 w-4" />
+              <UserPlus className="h-4 w-4" />
               Invite Member
             </button>
           )}
@@ -145,58 +289,81 @@ export default function Platform() {
         ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Total Members</p>
-            <p className="text-3xl font-bold text-[#232323] dark:text-white mt-1">{org?.members?.length || 0}</p>
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">Total Members</p>
+                <p className="text-[2rem] font-bold leading-tight text-[#232323] dark:text-white mt-2">{org?.members?.length || 0}</p>
+              </div>
+              <Users className="h-8 w-8 text-[#232323]/45 dark:text-white/45" />
+            </div>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Your Role</p>
-            <span className={`inline-flex mt-2 px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(org?.currentUserRole)}`}>
-              {org?.currentUserRole || "Viewer"}
-            </span>
+
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">Your Role</p>
+                <span className={`inline-flex mt-3 px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(org?.currentUserRole)}`}>
+                  {org?.currentUserRole || "Viewer"}
+                </span>
+              </div>
+              <Settings className="h-8 w-8 text-[#232323]/45 dark:text-white/45" />
+            </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold text-[#232323] dark:text-white">Team Members</h3>
-            <span className="text-xs text-[#232323]/60 dark:text-white/60">{org?.members?.length || 0} members</span>
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+            <h3 className="font-semibold text-[#232323] dark:text-white inline-flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Members
+            </h3>
+            <span className="text-xs px-2.5 py-1 rounded-full border border-black/10 dark:border-white/10 text-[#232323]/60 dark:text-white/60">
+              {org?.members?.length || 0} members
+            </span>
           </div>
-          <div className="divide-y divide-border">
+
+          <div className="divide-y divide-black/10 dark:divide-white/10">
             {(org?.members || []).map((member) => {
               const isSelf = member.user.id === org.currentUserId;
               const canDelete = canManage && member.role !== "Owner" && !isSelf;
-              const canEditRole = isOwner && !isSelf;
+              const userPresenceStatus = normalizePresenceStatus(presenceByUserId[String(member?.user?.id || "")]);
+              const availability = presenceLabel(userPresenceStatus);
+              const avatar = member?.user?.avatar || null;
+
               return (
-                <div key={member.id} className="px-5 py-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-[#232323] dark:text-white">
-                      {member.user.firstName} {member.user.lastName} {isSelf ? "(You)" : ""}
-                    </p>
-                    <p className="text-sm text-[#232323]/60 dark:text-white/60">{member.user.email}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {canEditRole ? (
-                      <select
-                        value={member.role}
-                        onChange={(e) => updateRole(member.id, e.target.value)}
-                        className="rounded-md border border-border bg-white dark:bg-[#232323] text-sm px-2 py-1"
-                      >
-                        <option value="Owner">Owner</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Tester">Tester</option>
-                        <option value="Viewer">Viewer</option>
-                      </select>
-                    ) : (
-                      <span className={`inline-flex px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(member.role)}`}>
-                        {member.role}
+                <div key={member.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="relative h-11 w-11 flex-shrink-0">
+                      <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#0f766e] to-[#115e59] text-white inline-flex items-center justify-center overflow-hidden">
+                        {avatar ? (
+                          <img src={avatar} alt={`${member.user.firstName} ${member.user.lastName}`} className="h-11 w-11 object-cover" />
+                        ) : (
+                          <span className="text-lg font-semibold">{getMemberInitials(member)}</span>
+                        )}
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#18181b] bg-background/95 inline-flex items-center justify-center z-10">
+                        <span className={`h-2.5 w-2.5 rounded-full ring-2 ${presenceDotClass(userPresenceStatus)} ${userPresenceStatus === "online" ? "animate-pulse" : ""}`} />
                       </span>
-                    )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#232323] dark:text-white truncate inline-flex items-center gap-2">
+                        {member.user.firstName} {member.user.lastName}
+                        {isSelf ? <span className="text-xs text-[#232323]/55 dark:text-white/55">You</span> : null}
+                      </p>
+                      <p className="text-sm text-[#232323]/60 dark:text-white/60 truncate">{member.user.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(member.role)}`}>{member.role}</span>
+                    <span className={`inline-flex px-3 py-1 text-xs font-medium border rounded-full ${availabilityBadgeClass(availability)}`}>{availability}</span>
                     {canDelete && (
                       <button
                         onClick={() => deleteMember(member.id)}
                         type="button"
-                        className="h-9 px-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-red-500 hover:bg-red-500/10"
                         title="Remove member"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -209,44 +376,44 @@ export default function Platform() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-            <Mail className="h-4 w-4 text-[#FFAA00]" />
-            <h3 className="font-semibold text-[#232323] dark:text-white">Pending Invitations</h3>
+        {isOwner ? (
+          <div className="rounded-2xl border border-red-300/70 dark:border-red-700/40 bg-red-50/20 dark:bg-red-950/15 p-5">
+            <p className="font-semibold text-red-600 dark:text-red-300 inline-flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" />
+              Danger Zone
+            </p>
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-medium text-[#232323] dark:text-white">Delete Organization</p>
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">Permanently delete this organization and all its data</p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm(`Delete organization \"${org?.name || "this organization"}\" permanently?`)) return;
+                  const response = await apiFetch(`/organizations/${orgSlug}`, { method: "DELETE" });
+                  if (response.ok) {
+                    navigate("/dashboard/no-org", { replace: true });
+                  }
+                }}
+                className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Organization
+              </button>
+            </div>
           </div>
-          <div className="divide-y divide-border">
-            {(org?.invitations || []).length === 0 ? (
-              <p className="px-5 py-4 text-sm text-[#232323]/60 dark:text-white/60">No pending invitations.</p>
-            ) : (
-              (org?.invitations || []).map((invitation) => (
-                <div key={invitation.id} className="px-5 py-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-[#232323] dark:text-white">{invitation.email}</p>
-                    <p className="text-sm text-[#232323]/60 dark:text-white/60">
-                      Role: {invitation.role} • Expires: {new Date(invitation.expiresAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={() => cancelInvite(invitation.id)}
-                      className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md px-3 py-1 text-sm"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        ) : null}
       </div>
 
       {inviteOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-white dark:bg-[#232323] p-5">
-            <h3 className="text-lg font-semibold text-[#232323] dark:text-white">Invite Team Member</h3>
-            <p className="text-sm text-[#232323]/60 dark:text-white/60 mb-4">
+          <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-[#232323] dark:text-white inline-flex items-center gap-2">
+              <Mail className="h-4 w-4 text-[#FFAA00]" />
+              Invite Team Member
+            </h3>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1 mb-4">
               Send an invitation by email. Only existing users can be invited.
             </p>
             <form onSubmit={inviteMember} className="space-y-3">
@@ -256,12 +423,12 @@ export default function Platform() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="user@example.com"
                 required
-                className="w-full rounded-md border border-border px-3 py-2 bg-white dark:bg-[#181818]"
+                className="w-full h-10 rounded-lg border border-black/15 dark:border-white/15 px-3 bg-background/80"
               />
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
-                className="w-full rounded-md border border-border px-3 py-2 bg-white dark:bg-[#181818]"
+                className="w-full h-10 rounded-lg border border-black/15 dark:border-white/15 px-3 bg-background/80"
               >
                 <option value="Admin">Admin</option>
                 <option value="Tester">Tester</option>
@@ -274,14 +441,14 @@ export default function Platform() {
                     setInviteError("");
                     setInviteOpen(false);
                   }}
-                  className="px-3 py-2 rounded-md border border-border"
+                  className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/10"
                 >
-                  Cancel
+                  Close
                 </button>
                 <button
                   type="submit"
                   disabled={submittingInvite}
-                  className="px-3 py-2 rounded-md bg-[#FFAA00] text-[#232323] font-semibold"
+                  className="h-9 px-3 rounded-lg bg-[#FFAA00] text-[#232323] font-semibold disabled:opacity-60"
                 >
                   {submittingInvite ? "Sending..." : "Send Invite"}
                 </button>

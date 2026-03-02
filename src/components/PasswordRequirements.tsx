@@ -33,8 +33,8 @@ export function PasswordRequirements({
   }
 
   return (
-    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-      <div className="text-xs font-semibold text-blue-900 mb-2">
+    <div className="mt-3 p-3 bg-blue-50 dark:bg-[#232323] border border-blue-200 dark:border-white/10 rounded-lg space-y-2">
+      <div className="text-xs font-semibold text-blue-900 dark:text-white mb-2">
         Password Requirements:
       </div>
       <div className="space-y-1.5">
@@ -51,8 +51,8 @@ export function PasswordRequirements({
             <span
               className={
                 req.met
-                  ? "text-green-700"
-                  : "text-red-700"
+                  ? "text-green-700 dark:text-green-400"
+                  : "text-red-700 dark:text-red-400"
               }
             >
               {req.label}
@@ -61,8 +61,8 @@ export function PasswordRequirements({
         ))}
       </div>
       {allMet && (
-        <div className="mt-2 pt-2 border-t border-blue-200">
-          <p className="text-xs font-semibold text-green-700">
+        <div className="mt-2 pt-2 border-t border-blue-200 dark:border-white/10">
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">
             ✓ Password meets all requirements
           </p>
         </div>

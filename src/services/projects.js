@@ -9,12 +9,16 @@ async function parseJson(response) {
 }
 
 export async function fetchProjects(orgSlug) {
-  const response = await apiFetch(`/projects?orgSlug=${encodeURIComponent(orgSlug)}`);
+  const response = await apiFetch(
+    `/projects?orgSlug=${encodeURIComponent(orgSlug)}&_t=${Date.now()}`,
+  );
   return parseJson(response);
 }
 
 export async function fetchProject(orgSlug, projectId) {
-  const response = await apiFetch(`/projects/${projectId}?orgSlug=${encodeURIComponent(orgSlug)}`);
+  const response = await apiFetch(
+    `/projects/${projectId}?orgSlug=${encodeURIComponent(orgSlug)}&_t=${Date.now()}`,
+  );
   return parseJson(response);
 }
 

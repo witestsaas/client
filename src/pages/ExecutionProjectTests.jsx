@@ -1,103 +1,3726 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, FolderTree } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BookOpenText,
+  Brain,
+  Sparkles,
+  CheckCircle,
+  CheckSquare,
+  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Filter,
+  Folder,
+  FolderPlus,
+  FileText,
+  GripVertical,
+  Loader2,
+  ListChecks,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Upload,
+  Square,
+  Trash2,
+  X,
+  XCircle,
+} from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import { fetchProject } from "../services/projects";
+import { useRequestLiveReplay, useTestRunSocket } from "../hooks/useSocket";
+import { useAuth } from "../auth/AuthProvider.jsx";
+import {
+  createFolder,
+  createProjectEnvironment,
+  createProjectSharedStep,
+  createProjectVariable,
+  createTestCase,
+  cancelFunctionalGeneration,
+  cloneTestCase,
+  deleteFolder,
+  deleteProjectEnvironment,
+  deleteProjectSharedStep,
+  deleteProjectVariable,
+  deleteTestCase,
+  fetchProjectDocumentation,
+  fetchProjectSettings,
+  fetchProjectSharedSteps,
+  fetchProjectTree,
+  fetchProjectVariables,
+  generateFunctionalTests,
+  moveProjectItem,
+  renameFolder,
+  updateTestCase,
+  updateProjectDocumentation,
+  updateProjectSettings,
+} from "../services/testManagement";
+
+const TABS = [
+  { key: "repository", label: "Repository" },
+  { key: "shared-steps", label: "Shared Steps" },
+  { key: "variables", label: "Variables" },
+  { key: "documentation", label: "Documentation" },
+  { key: "configuration", label: "Configuration" },
+];
+
+const INITIAL_FOLDER_FORM = { id: "", name: "", parentId: "" };
+const INITIAL_VARIABLE_FORM = { name: "", value: "", description: "" };
+const INITIAL_SHARED_STEP_FORM = { name: "", action: "", expectedResult: "", description: "" };
+const INITIAL_ENV_FORM = { name: "", slug: "", baseUrl: "" };
+const INITIAL_SETTINGS_FORM = { name: "", description: "", baseUrl: "" };
+const createDraftStep = () => ({
+  id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  action: "",
+  expectedResult: "",
+  isSharedStep: false,
+  sharedStepName: "",
+});
+const INITIAL_TEST_CASE_FORM = {
+  title: "",
+  description: "",
+  priority: "Medium",
+  testCaseType: "Functional",
+  automationStatus: "Not Automated",
+  tagsInput: "",
+  steps: [createDraftStep()],
+};
+
+const PRIORITY_TO_INT = {
+  Low: 0,
+  Medium: 1,
+  High: 2,
+  Critical: 3,
+};
+
+const STATUS_OPTIONS = ["all", "Active", "Draft", "InReview", "Outdated", "Rejected"];
+const PRIORITY_LABELS = { 0: "Low", 1: "Medium", 2: "High", 3: "Critical" };
+const DOC_FORM_MARKER_START = "<!-- WITEST_DOC_FORM_STATE";
+const DOC_FORM_MARKER_END = "WITEST_DOC_FORM_STATE -->";
+const DOCUMENTATION_TEMPLATE = `# Project Documentation Template
+
+## 1. Project Overview
+- Project Name:
+- Product Owner:
+- QA Owner:
+- Primary Domain / Module:
+- Target Environment(s):
+
+## 2. Business Scope
+- Core business goals:
+- In-scope features:
+- Out-of-scope features:
+
+## 3. Architecture & Integrations
+- Frontend:
+- Backend:
+- Database:
+- External APIs / Services:
+
+## 4. Component Localization Map
+Use one block per component/area so AI can generate context-accurate tests.
+
+### Component: [Name]
+- Location (Page / Route / Module):
+- Entry Point / Navigation Path:
+- Dependencies:
+- User Roles Allowed:
+- Validation Rules:
+- Success Criteria:
+- Error Cases:
+`;
+const SUPPORTED_DOC_UPLOAD_EXTENSIONS = ["txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "html", "htm", "log"];
+
+function createInitialDocumentationForm() {
+  return {
+    projectName: "",
+    productOwner: "",
+    qaOwner: "",
+    primaryDomain: "",
+    targetEnvironments: "",
+    coreBusinessGoals: "",
+    inScopeFeatures: "",
+    outOfScopeFeatures: "",
+    frontendStack: "",
+    backendStack: "",
+    database: "",
+    externalApis: "",
+    componentsMap: "",
+    uploadedFilesData: "",
+  };
+}
+
+function normalizeDocumentationForm(value) {
+  const base = createInitialDocumentationForm();
+  const input = value && typeof value === "object" ? value : {};
+  return Object.keys(base).reduce((acc, key) => {
+    acc[key] = String(input[key] || "").trim();
+    return acc;
+  }, {});
+}
+
+function parseDocumentationFormFromPayload(rawDocumentation) {
+  const raw = String(rawDocumentation || "");
+  const startIndex = raw.indexOf(DOC_FORM_MARKER_START);
+  const endIndex = raw.indexOf(DOC_FORM_MARKER_END);
+
+  if (startIndex >= 0 && endIndex > startIndex) {
+    const jsonPart = raw
+      .slice(startIndex + DOC_FORM_MARKER_START.length, endIndex)
+      .trim();
+    try {
+      const parsed = JSON.parse(jsonPart);
+      return normalizeDocumentationForm(parsed);
+    } catch {
+    }
+  }
+
+  return createInitialDocumentationForm();
+}
+
+function buildDocumentationPayloadFromForm(formValue) {
+  const form = normalizeDocumentationForm(formValue);
+  const line = (value) => (value ? value : "Not provided");
+  const markdown = `# Project Documentation
+
+## 1. Project Overview
+- Project Name: ${line(form.projectName)}
+- Product Owner: ${line(form.productOwner)}
+- QA Owner: ${line(form.qaOwner)}
+- Primary Domain / Module: ${line(form.primaryDomain)}
+- Target Environment(s): ${line(form.targetEnvironments)}
+
+## 2. Business Scope
+- Core business goals: ${line(form.coreBusinessGoals)}
+- In-scope features: ${line(form.inScopeFeatures)}
+- Out-of-scope features: ${line(form.outOfScopeFeatures)}
+
+## 3. Architecture & Integrations
+- Frontend: ${line(form.frontendStack)}
+- Backend: ${line(form.backendStack)}
+- Database: ${line(form.database)}
+- External APIs / Services: ${line(form.externalApis)}
+
+## 4. Component Localization Map
+${line(form.componentsMap)}
+
+## Reference Files Data
+${line(form.uploadedFilesData)}
+`;
+
+  const encodedState = `${DOC_FORM_MARKER_START}\n${JSON.stringify(form)}\n${DOC_FORM_MARKER_END}`;
+  return `${markdown.trim()}\n\n${encodedState}`;
+}
+
+function extractUploadedFileNames(uploadedFilesData) {
+  const source = String(uploadedFilesData || "");
+  const matches = [...source.matchAll(/###\s+File:\s+(.+)/gim)];
+  const names = matches
+    .map((entry) => String(entry?.[1] || "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(names));
+}
+
+function formatAiTime(ts) {
+  try {
+    return new Date(ts).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "";
+  }
+}
+
+function getVariableTrigger(value, caretPosition) {
+  const safeValue = String(value || "");
+  const safeCaret = Number.isFinite(caretPosition) ? caretPosition : safeValue.length;
+  const before = safeValue.slice(0, safeCaret);
+  const match = before.match(/(^|[\s([{,;:=])\$([a-zA-Z0-9_]*)$/);
+  if (!match) return null;
+  const query = match[2] || "";
+  const start = safeCaret - query.length - 1;
+  return {
+    query,
+    start,
+    end: safeCaret,
+  };
+}
+
+function VariableValuePreview({ value }) {
+  const text = String(value || "");
+  if (!text.includes("$")) return null;
+  const parts = text.split(/(\$[a-zA-Z_][a-zA-Z0-9_]*)/g);
+  return (
+    <div className="mt-1 text-[11px] leading-relaxed rounded-md border border-blue-500/20 bg-blue-500/5 px-2 py-1">
+      {parts.map((part, index) =>
+        /^\$[a-zA-Z_][a-zA-Z0-9_]*$/.test(part) ? (
+          <span key={`var-${index}`} className="text-blue-600 dark:text-blue-300 font-semibold">
+            {part}
+          </span>
+        ) : (
+          <span key={`txt-${index}`} className="text-[#232323]/65 dark:text-white/65">
+            {part}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+function normalizeFolders(rawFolders) {
+  if (!Array.isArray(rawFolders)) return [];
+
+  const normalized = [];
+
+  const walk = (nodes, parentId = null) => {
+    if (!Array.isArray(nodes)) return;
+    nodes.forEach((node) => {
+      if (!node?.id) return;
+      const currentId = String(node.id);
+      const explicitParent = node.parentId ?? node.parentFolderId ?? null;
+      const resolvedParent = explicitParent != null ? String(explicitParent) : parentId;
+
+      normalized.push({
+        ...node,
+        id: currentId,
+        parentId: resolvedParent,
+      });
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children, currentId);
+      }
+    });
+  };
+
+  walk(rawFolders, null);
+  return normalized;
+}
+
+function buildFolderTree(rawFolders) {
+  if (!Array.isArray(rawFolders)) return [];
+
+  const map = new Map();
+  rawFolders.forEach((folder) => {
+    if (!folder?.id) return;
+    map.set(String(folder.id), {
+      ...folder,
+      id: String(folder.id),
+      parentId:
+        folder.parentId !== null && folder.parentId !== undefined
+          ? String(folder.parentId)
+          : folder.parentFolderId
+            ? String(folder.parentFolderId)
+            : null,
+      children: [],
+    });
+  });
+
+  const roots = [];
+  map.forEach((folder) => {
+    if (folder.parentId && map.has(folder.parentId)) {
+      map.get(folder.parentId).children.push(folder);
+    } else {
+      roots.push(folder);
+    }
+  });
+
+  const sort = (nodes) => {
+    nodes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    nodes.forEach((node) => sort(node.children));
+    return nodes;
+  };
+
+  return sort(roots);
+}
+
+function collectFolderMap(nodes, out = new Map()) {
+  nodes.forEach((node) => {
+    out.set(String(node.id), node);
+    collectFolderMap(node.children || [], out);
+  });
+  return out;
+}
+
+function FolderNode({
+  node,
+  level,
+  selectedFolderId,
+  onSelect,
+  onCreateChild,
+  onEdit,
+  onDelete,
+  onDropMoveFolder,
+  onDropMoveTestCase,
+  onDragStart,
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [hovered, setHovered] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const isActive = selectedFolderId === node.id;
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+
+  return (
+    <div
+      onDragEnter={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDropTarget(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isDropTarget) {
+          setIsDropTarget(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDropTarget(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDropTarget(false);
+        const sourceId = event.dataTransfer.getData("text/folder-id");
+        const testCaseId = event.dataTransfer.getData("text/test-case-id");
+        if (sourceId) {
+          onDropMoveFolder(sourceId, node.id);
+        }
+        if (testCaseId) {
+          onDropMoveTestCase(testCaseId, node.id);
+        }
+      }}
+    >
+      <button
+        type="button"
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/folder-id", node.id);
+          onDragStart(node.id);
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => onSelect(node.id)}
+        className={`w-full flex items-center rounded px-2 py-1.5 text-left text-sm transition-all duration-150 ${
+          isDropTarget
+            ? "ring-1 ring-[#FFAA00] bg-[#FFAA00]/10 dark:bg-[#FFAA00]/15 translate-x-0.5"
+            : ""
+        } ${
+          isActive
+            ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white font-medium"
+            : "hover:bg-[#232323]/5 dark:hover:bg-white/10 text-[#232323]/75 dark:text-white/75"
+        }`}
+        style={{ paddingLeft: `${8 + level * 16}px` }}
+      >
+        {hasChildren ? (
+          <span
+            className="mr-1 inline-flex items-center"
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded((prev) => !prev);
+            }}
+          >
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </span>
+        ) : (
+          <span className="mr-1 w-3.5" />
+        )}
+        <GripVertical className="h-3.5 w-3.5 mr-1.5 text-[#232323]/35 dark:text-white/35" />
+        <Folder className="h-3.5 w-3.5 mr-2 text-[#FFAA00] shrink-0" />
+        <span className="truncate flex-1">{node.name || node.path || "Folder"}</span>
+        <span className={`ml-2 inline-flex items-center gap-1 transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
+          <span
+            className="h-5 w-5 rounded inline-flex items-center justify-center hover:bg-[#232323]/10 dark:hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCreateChild(node);
+            }}
+          >
+            <Plus className="h-3 w-3" />
+          </span>
+          <span
+            className="h-5 w-5 rounded inline-flex items-center justify-center hover:bg-[#232323]/10 dark:hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(node);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </span>
+          <span
+            className="h-5 w-5 rounded inline-flex items-center justify-center text-red-500 hover:bg-red-500/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(node);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </span>
+        </span>
+      </button>
+
+      {expanded
+        ? (node.children || []).map((child) => (
+            <FolderNode
+              key={child.id}
+              node={child}
+              level={level + 1}
+              selectedFolderId={selectedFolderId}
+              onSelect={onSelect}
+              onCreateChild={onCreateChild}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDropMoveFolder={onDropMoveFolder}
+              onDropMoveTestCase={onDropMoveTestCase}
+              onDragStart={onDragStart}
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+
+function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerLeading = null, headerActions = null }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 lg:p-4">
+      <div
+        className={`w-full ${maxWidth} max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-[0_20px_60px_rgba(0,0,0,0.28)] ring-1 ring-black/5 dark:ring-white/10 transition-all duration-200`}
+      >
+        <div className="sticky top-0 z-10 border-b border-black/10 dark:border-white/10 px-6 py-4 bg-gradient-to-r from-card via-card to-card/95 flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 min-w-0">
+            {headerLeading}
+            <p className="text-lg font-semibold text-[#232323] dark:text-white truncate">{title}</p>
+          </div>
+          <div className="inline-flex items-center gap-2">
+            {headerActions}
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="overflow-y-auto max-h-[calc(100dvh-6.25rem)] sm:max-h-[calc(100dvh-6.75rem)] lg:max-h-[calc(100dvh-7rem)] p-4 sm:p-5 lg:p-6 transition-all duration-200 [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function ExecutionProjectTests() {
   const { orgSlug, projectId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [project, setProject] = useState(null);
-  const [error, setError] = useState("");
+  const [folders, setFolders] = useState([]);
+  const [testCases, setTestCases] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState(null);
+  const [folderSearch, setFolderSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("repository");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [documentation, setDocumentation] = useState("");
+  const [documentationForm, setDocumentationForm] = useState(() => createInitialDocumentationForm());
+  const [documentationDirty, setDocumentationDirty] = useState(false);
+  const [docUploadBusy, setDocUploadBusy] = useState(false);
+  const [variables, setVariables] = useState([]);
+  const [sharedSteps, setSharedSteps] = useState([]);
+  const [settings, setSettings] = useState(null);
+
+  const [folderForm, setFolderForm] = useState(INITIAL_FOLDER_FORM);
+  const [folderModalMode, setFolderModalMode] = useState("create");
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState(null);
+
+  const [variableForm, setVariableForm] = useState(INITIAL_VARIABLE_FORM);
+  const [sharedStepForm, setSharedStepForm] = useState(INITIAL_SHARED_STEP_FORM);
+  const [envForm, setEnvForm] = useState(INITIAL_ENV_FORM);
+  const [settingsForm, setSettingsForm] = useState(INITIAL_SETTINGS_FORM);
+
+  const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+  const [isSharedStepModalOpen, setIsSharedStepModalOpen] = useState(false);
+  const [isEnvironmentModalOpen, setIsEnvironmentModalOpen] = useState(false);
+  const [isCreateTestCaseModalOpen, setIsCreateTestCaseModalOpen] = useState(false);
+  const [testCaseForm, setTestCaseForm] = useState(INITIAL_TEST_CASE_FORM);
+  const [createMode, setCreateMode] = useState("advanced");
+  const [isCreateSharedStepsPickerOpen, setIsCreateSharedStepsPickerOpen] = useState(false);
+  const [createSharedStepsSearch, setCreateSharedStepsSearch] = useState("");
+  const [sharedStepPickerMode, setSharedStepPickerMode] = useState("create");
+  const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(false);
+  const [variableSearch, setVariableSearch] = useState("");
+  const [activeVariableTarget, setActiveVariableTarget] = useState({ mode: "create", stepKey: "", field: "action" });
+  const [newlyInsertedStepId, setNewlyInsertedStepId] = useState("");
+  const [testCaseSearch, setTestCaseSearch] = useState("");
+  const [testCaseStatusFilter, setTestCaseStatusFilter] = useState("all");
+  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState([]);
+  const [editingTestCase, setEditingTestCase] = useState(null);
+  const [deletingTestCase, setDeletingTestCase] = useState(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [testCaseSort, setTestCaseSort] = useState("updated");
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [aiDraftPrompt, setAiDraftPrompt] = useState("");
+  const [aiGenerationId, setAiGenerationId] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiConversations, setAiConversations] = useState([]);
+  const [selectedAiConversationId, setSelectedAiConversationId] = useState("");
+  const [activeAiConversationId, setActiveAiConversationId] = useState("");
+  const aiStorageKey = useMemo(
+    () => `witest-ai-conversations:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
+    [user?.userId, orgSlug, projectId],
+  );
+  const [variableAutocomplete, setVariableAutocomplete] = useState({
+    open: false,
+    mode: "create",
+    stepKey: "",
+    field: "action",
+    query: "",
+    start: 0,
+    end: 0,
+  });
+  const [isRootDropActive, setIsRootDropActive] = useState(false);
+  const [hierarchyWidth, setHierarchyWidth] = useState(340);
+  const [isHierarchyResizing, setIsHierarchyResizing] = useState(false);
+  const hierarchyResizeStateRef = useRef({ startX: 0, startWidth: 340 });
+  const [moveDialog, setMoveDialog] = useState({
+    isOpen: false,
+    itemType: "",
+    itemId: "",
+    targetFolderId: null,
+    itemName: "",
+    targetName: "",
+  });
+  const uploadedFileNames = useMemo(
+    () => extractUploadedFileNames(documentationForm.uploadedFilesData),
+    [documentationForm.uploadedFilesData],
+  );
+
+  const loadRepositoryData = useCallback(
+    async (initial = false) => {
+      if (!orgSlug || !projectId) return;
+      if (initial) setLoading(true);
+
+      try {
+        if (initial) setError("");
+        const data = await fetchProjectTree(orgSlug, projectId);
+        setProject(data.project || null);
+        setFolders(normalizeFolders(data.folders));
+        setTestCases(
+          (Array.isArray(data.testCases) ? data.testCases : []).map((item) => ({
+            ...item,
+            folderId: item.folderId || item.folder?.id || null,
+            title: item.title || item.name || "",
+          })),
+        );
+      } catch (err) {
+        setError(err?.message || "Failed to load repository");
+      } finally {
+        if (initial) setLoading(false);
+      }
+    },
+    [orgSlug, projectId],
+  );
+
+  const loadTabData = useCallback(async () => {
+    if (!orgSlug || !projectId) return;
+
+    try {
+      if (activeTab === "documentation") {
+        const doc = await fetchProjectDocumentation(orgSlug, projectId);
+        const rawDocumentation = doc?.documentation || "";
+        setDocumentation(rawDocumentation);
+        setDocumentationForm(parseDocumentationFormFromPayload(rawDocumentation));
+        setDocumentationDirty(false);
+      }
+
+      if (activeTab === "variables") {
+        const rows = await fetchProjectVariables(orgSlug, projectId);
+        setVariables(rows);
+      }
+
+      if (activeTab === "shared-steps") {
+        const rows = await fetchProjectSharedSteps(orgSlug, projectId);
+        setSharedSteps(rows);
+      }
+
+      if (activeTab === "configuration") {
+        const conf = await fetchProjectSettings(orgSlug, projectId);
+        setSettings(conf || null);
+        setSettingsForm({
+          name: conf?.name || "",
+          description: conf?.description || "",
+          baseUrl: conf?.baseUrl || "",
+        });
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to load tab data");
+    }
+  }, [activeTab, orgSlug, projectId]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function run() {
-      if (!orgSlug || !projectId) return;
+    const run = async () => {
+      if (cancelled) return;
+      await loadRepositoryData(true);
+    };
+
+    run();
+
+    const interval = window.setInterval(() => {
+      if (!cancelled && document.visibilityState === "visible") {
+        loadRepositoryData(false);
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [loadRepositoryData]);
+
+  useEffect(() => {
+    loadTabData();
+  }, [loadTabData]);
+
+  useEffect(() => {
+    if (!isHierarchyResizing) return;
+
+    const handleMouseMove = (event) => {
+      const deltaX = event.clientX - hierarchyResizeStateRef.current.startX;
+      const maxWidth = Math.min(720, Math.round(window.innerWidth * 0.6));
+      const nextWidth = Math.max(240, Math.min(maxWidth, hierarchyResizeStateRef.current.startWidth + deltaX));
+      setHierarchyWidth(nextWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsHierarchyResizing(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isHierarchyResizing]);
+
+  const startHierarchyResize = (event) => {
+    event.preventDefault();
+    hierarchyResizeStateRef.current = {
+      startX: event.clientX,
+      startWidth: hierarchyWidth,
+    };
+    setIsHierarchyResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isCreateTestCaseModalOpen || !orgSlug || !projectId) return;
+
+    setCreateMode("advanced");
+
+    const loadCreateModalData = async () => {
       try {
-        setLoading(true);
-        setError("");
-        const data = await fetchProject(orgSlug, projectId);
-        if (!cancelled) setProject(data);
+        const [variablesRows, sharedRows] = await Promise.all([
+          fetchProjectVariables(orgSlug, projectId),
+          fetchProjectSharedSteps(orgSlug, projectId),
+        ]);
+        setVariables(Array.isArray(variablesRows) ? variablesRows : []);
+        setSharedSteps(Array.isArray(sharedRows) ? sharedRows : []);
       } catch (err) {
-        if (!cancelled) {
-          setProject(null);
-          setError(err?.message || "Failed to load project");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        setError(err?.message || "Failed to load modal data");
+      }
+    };
+
+    loadCreateModalData();
+  }, [isCreateTestCaseModalOpen, orgSlug, projectId]);
+
+  const fullFolderTree = useMemo(() => buildFolderTree(folders), [folders]);
+
+  const folderTree = useMemo(() => {
+    const tree = fullFolderTree;
+    const term = folderSearch.trim().toLowerCase();
+    if (!term) return tree;
+
+    const filterNode = (node) => {
+      const selfMatch = (node.name || node.path || "").toLowerCase().includes(term);
+      const children = (node.children || []).map(filterNode).filter(Boolean);
+      if (selfMatch || children.length) return { ...node, children };
+      return null;
+    };
+
+    return tree.map(filterNode).filter(Boolean);
+  }, [fullFolderTree, folderSearch]);
+
+  const folderMap = useMemo(() => collectFolderMap(fullFolderTree), [fullFolderTree]);
+
+  const selectedFolder = useMemo(
+    () => folders.find((folder) => String(folder.id) === String(selectedFolderId)) || null,
+    [folders, selectedFolderId],
+  );
+
+  const selectedFolderCases = useMemo(
+    () =>
+      (Array.isArray(testCases) ? testCases : []).filter(
+        (testCase) => selectedFolderId && String(testCase.folderId || "") === String(selectedFolderId),
+      ),
+    [selectedFolderId, testCases],
+  );
+
+  const filteredFolderCases = useMemo(() => {
+    const term = testCaseSearch.trim().toLowerCase();
+    const filtered = selectedFolderCases.filter((item) => {
+      const status = item?.status || "";
+      const matchesStatus = testCaseStatusFilter === "all" || status === testCaseStatusFilter;
+      if (!matchesStatus) return false;
+      if (!term) return true;
+      return (
+        (item?.title || item?.name || "").toLowerCase().includes(term) ||
+        (item?.description || "").toLowerCase().includes(term)
+      );
+    });
+
+    const sorted = [...filtered];
+    if (testCaseSort === "title") {
+      sorted.sort((a, b) => (a.title || a.name || "").localeCompare(b.title || b.name || ""));
+    } else if (testCaseSort === "priority") {
+      sorted.sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0));
+    } else {
+      sorted.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+    }
+
+    return sorted;
+  }, [selectedFolderCases, testCaseSearch, testCaseStatusFilter, testCaseSort]);
+
+  const allSelected = useMemo(
+    () => filteredFolderCases.length > 0 && filteredFolderCases.every((row) => selectedTestCaseIds.includes(String(row.id))),
+    [filteredFolderCases, selectedTestCaseIds],
+  );
+
+  const findFolderNameById = useCallback(
+    (folderId) => {
+      if (!folderId) return "Root Level";
+      const folder = folderMap.get(String(folderId));
+      return folder?.name || folder?.path || "Folder";
+    },
+    [folderMap],
+  );
+
+  const openMoveDialog = useCallback(
+    ({ itemType, itemId, targetFolderId, itemName }) => {
+      const targetName = findFolderNameById(targetFolderId);
+      setMoveDialog({
+        isOpen: true,
+        itemType,
+        itemId,
+        targetFolderId,
+        itemName: itemName || "Item",
+        targetName,
+      });
+    },
+    [findFolderNameById],
+  );
+
+  const openCreateFolderModal = (parentId = "") => {
+    setFolderModalMode("create");
+    setFolderForm({ ...INITIAL_FOLDER_FORM, parentId });
+    setIsFolderModalOpen(true);
+  };
+
+  const openEditFolderModal = (folder) => {
+    setFolderModalMode("edit");
+    setFolderForm({ id: folder.id, name: folder.name || "", parentId: folder.parentId || "" });
+    setIsFolderModalOpen(true);
+  };
+
+  const submitFolderModal = async () => {
+    if (!folderForm.name.trim()) {
+      setError("Folder name is required");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      if (folderModalMode === "create") {
+        await createFolder(orgSlug, projectId, {
+          name: folderForm.name.trim(),
+          parentId: folderForm.parentId || null,
+        });
+      } else {
+        await renameFolder(orgSlug, projectId, folderForm.id, {
+          name: folderForm.name.trim(),
+          parentId: folderForm.parentId || null,
+        });
+      }
+      setIsFolderModalOpen(false);
+      setFolderForm(INITIAL_FOLDER_FORM);
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to save folder");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    setSaving(true);
+    setError("");
+    try {
+      await deleteFolder(orgSlug, projectId, folderToDelete.id);
+      if (String(selectedFolderId) === String(folderToDelete.id)) {
+        setSelectedFolderId(null);
+      }
+      setFolderToDelete(null);
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to delete folder");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleMoveFolder = (sourceFolderId, targetFolderId) => {
+    if (!sourceFolderId) return;
+    if (String(sourceFolderId) === String(targetFolderId || "")) return;
+    const folder = folderMap.get(String(sourceFolderId));
+    openMoveDialog({
+      itemType: "folder",
+      itemId: sourceFolderId,
+      targetFolderId: targetFolderId || null,
+      itemName: folder?.name || folder?.path || "Folder",
+    });
+  };
+
+  const handleMoveTestCase = (testCaseId, targetFolderId) => {
+    if (!testCaseId) return;
+    const testCase = (testCases || []).find((row) => String(row.id) === String(testCaseId));
+    openMoveDialog({
+      itemType: "testCase",
+      itemId: testCaseId,
+      targetFolderId: targetFolderId || null,
+      itemName: testCase?.title || testCase?.name || "Test Case",
+    });
+  };
+
+  const confirmMoveItem = async () => {
+    if (!moveDialog.itemId || !moveDialog.itemType) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      await moveProjectItem(orgSlug, {
+        itemType: moveDialog.itemType,
+        itemId: moveDialog.itemId,
+        targetFolderId: moveDialog.targetFolderId,
+        projectId,
+      });
+      setMoveDialog({
+        isOpen: false,
+        itemType: "",
+        itemId: "",
+        targetFolderId: null,
+        itemName: "",
+        targetName: "",
+      });
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to move item");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateStep = (index, field, value) => {
+    setTestCaseForm((prev) => {
+      const next = [...prev.steps];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, steps: next };
+    });
+  };
+
+  const addStep = () => {
+    setTestCaseForm((prev) => ({
+      ...prev,
+      steps: [...prev.steps, createDraftStep()],
+    }));
+  };
+
+  const insertStepAfter = (index) => {
+    const created = createDraftStep();
+    setTestCaseForm((prev) => {
+      const next = [...prev.steps];
+      next.splice(index + 1, 0, created);
+      return { ...prev, steps: next };
+    });
+    setNewlyInsertedStepId(created.id);
+    window.setTimeout(() => setNewlyInsertedStepId(""), 700);
+  };
+
+  const removeStep = (index) => {
+    setTestCaseForm((prev) => {
+      if (prev.steps.length === 1) return prev;
+      return { ...prev, steps: prev.steps.filter((_, itemIndex) => itemIndex !== index) };
+    });
+  };
+
+  const addSharedStepToCreateForm = (sharedStep) => {
+    const created = {
+      id: `shared-${sharedStep.id}-${Date.now()}`,
+      action: sharedStep.action || "",
+      expectedResult: sharedStep.expectedResult || "",
+      isSharedStep: true,
+      sharedStepName: sharedStep.name || "Shared Step",
+    };
+
+    setTestCaseForm((prev) => ({
+      ...prev,
+      steps: [...prev.steps, created],
+    }));
+    setNewlyInsertedStepId(created.id);
+    setIsCreateSharedStepsPickerOpen(false);
+    window.setTimeout(() => setNewlyInsertedStepId(""), 700);
+  };
+
+  const addSharedStepToEditForm = (sharedStep) => {
+    const created = {
+      id: `shared-${sharedStep.id}-${Date.now()}`,
+      action: sharedStep.action || "",
+      expectedResult: sharedStep.expectedResult || "",
+      isSharedStep: true,
+      sharedStepName: sharedStep.name || "Shared Step",
+    };
+
+    setEditingTestCase((prev) => ({
+      ...(prev || {}),
+      steps: [...(prev?.steps || []), created],
+    }));
+    setNewlyInsertedStepId(created.id);
+    setIsCreateSharedStepsPickerOpen(false);
+    window.setTimeout(() => setNewlyInsertedStepId(""), 700);
+  };
+
+  const openVariablePicker = (mode, stepKey, field) => {
+    setActiveVariableTarget({ mode, stepKey: String(stepKey), field });
+    setVariableSearch("");
+    setIsVariablePickerOpen(true);
+  };
+
+  const insertVariableIntoStep = (variableName) => {
+    const token = `$${variableName}`;
+    if (activeVariableTarget.mode === "edit") {
+      setEditingTestCase((prev) => {
+        if (!prev) return prev;
+        const stepIndex = Number(activeVariableTarget.stepKey);
+        const source = prev.steps || [];
+        if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= source.length) return prev;
+        const current = String(source[stepIndex]?.[activeVariableTarget.field] || "");
+        const nextValue = `${current}${current ? " " : ""}${token}`;
+        const nextSteps = source.map((item, index) =>
+          index === stepIndex ? { ...item, [activeVariableTarget.field]: nextValue } : item,
+        );
+        return { ...prev, steps: nextSteps };
+      });
+    } else {
+      setTestCaseForm((prev) => ({
+        ...prev,
+        steps: prev.steps.map((step) => {
+          if (String(step.id) !== String(activeVariableTarget.stepKey)) return step;
+          const current = String(step[activeVariableTarget.field] || "");
+          return {
+            ...step,
+            [activeVariableTarget.field]: `${current}${current ? " " : ""}${token}`,
+          };
+        }),
+      }));
+    }
+    setIsVariablePickerOpen(false);
+  };
+
+  const closeVariableAutocomplete = () => {
+    setVariableAutocomplete((prev) => ({ ...prev, open: false }));
+  };
+
+  const filteredVariableSuggestions = useMemo(() => {
+    const term = variableAutocomplete.query.trim().toLowerCase();
+    return (variables || []).filter((item) => {
+      const name = String(item?.name || "").toLowerCase();
+      if (!term) return true;
+      return name.includes(term);
+    });
+  }, [variables, variableAutocomplete.query]);
+
+  const handleVariableAutocompleteInput = (mode, stepKey, field, value, caretPosition) => {
+    const trigger = getVariableTrigger(value, caretPosition);
+    if (!trigger) {
+      closeVariableAutocomplete();
+      return;
+    }
+    setVariableAutocomplete({
+      open: true,
+      mode,
+      stepKey: String(stepKey),
+      field,
+      query: trigger.query,
+      start: trigger.start,
+      end: trigger.end,
+    });
+  };
+
+  const applyVariableAutocomplete = (variableName) => {
+    const token = `$${variableName}`;
+    const { mode, stepKey, field, start, end } = variableAutocomplete;
+    const targetSelector = `textarea[data-var-target="${mode}-${stepKey}-${field}"]`;
+
+    if (mode === "create") {
+      setTestCaseForm((prev) => {
+        const stepIndex = prev.steps.findIndex((step) => String(step.id) === String(stepKey));
+        if (stepIndex === -1) return prev;
+        const step = prev.steps[stepIndex];
+        const current = String(step[field] || "");
+        const nextValue = `${current.slice(0, start)}${token}${current.slice(end)}`;
+        const nextSteps = [...prev.steps];
+        nextSteps[stepIndex] = { ...step, [field]: nextValue };
+        return { ...prev, steps: nextSteps };
+      });
+    } else {
+      setEditingTestCase((prev) => {
+        if (!prev) return prev;
+        const stepIndex = Number(stepKey);
+        const source = prev.steps || [];
+        if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= source.length) return prev;
+        const current = String(source[stepIndex]?.[field] || "");
+        const nextValue = `${current.slice(0, start)}${token}${current.slice(end)}`;
+        const nextSteps = source.map((item, index) => (index === stepIndex ? { ...item, [field]: nextValue } : item));
+        return { ...prev, steps: nextSteps };
+      });
+    }
+
+    closeVariableAutocomplete();
+    window.setTimeout(() => {
+      const textarea = document.querySelector(targetSelector);
+      if (textarea && typeof textarea.setSelectionRange === "function") {
+        const cursor = start + token.length;
+        textarea.focus();
+        textarea.setSelectionRange(cursor, cursor);
+      }
+    }, 0);
+  };
+
+  const openCreateTestCaseModal = () => {
+    if (!selectedFolderId) {
+      setError("Select a folder first");
+      return;
+    }
+    setTestCaseForm({ ...INITIAL_TEST_CASE_FORM, steps: [createDraftStep()] });
+    closeVariableAutocomplete();
+    setIsCreateTestCaseModalOpen(true);
+  };
+
+  const submitCreateTestCase = async () => {
+    if (!testCaseForm.title.trim()) {
+      setError("Test case title is required");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      await createTestCase(orgSlug, projectId, {
+        title: testCaseForm.title.trim(),
+        description: testCaseForm.description,
+        folderId: selectedFolderId,
+        priority: PRIORITY_TO_INT[testCaseForm.priority] ?? 1,
+        testCaseType: testCaseForm.testCaseType,
+        automationStatus: testCaseForm.automationStatus,
+        tags: testCaseForm.tagsInput
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        steps: testCaseForm.steps
+          .map((step) => ({
+            action: step.action.trim(),
+            expectedResult: step.expectedResult.trim(),
+          }))
+          .filter((step) => step.action || step.expectedResult),
+      });
+      setIsCreateTestCaseModalOpen(false);
+      closeVariableAutocomplete();
+      setTestCaseForm({ ...INITIAL_TEST_CASE_FORM, steps: [createDraftStep()] });
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to create test case");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleSelectAllTestCases = () => {
+    if (allSelected) {
+      setSelectedTestCaseIds([]);
+      return;
+    }
+    setSelectedTestCaseIds(filteredFolderCases.map((item) => String(item.id)));
+  };
+
+  const toggleSelectOneTestCase = (id) => {
+    setSelectedTestCaseIds((prev) => {
+      const key = String(id);
+      if (prev.includes(key)) {
+        return prev.filter((item) => item !== key);
+      }
+      return [...prev, key];
+    });
+  };
+
+  const openEditTestCase = (item) => {
+    setEditingTestCase({
+      id: item.id,
+      title: item.title || item.name || "",
+      description: item.description || "",
+      status: item.status || "Active",
+      priority: Number(item.priority ?? 1),
+      testCaseType: item.testCaseType || "Functional",
+      automationStatus: item.automationStatus || "Not Automated",
+      tagsInput: Array.isArray(item.tags) ? item.tags.join(", ") : "",
+      steps:
+        Array.isArray(item.steps) && item.steps.length
+          ? item.steps.map((step) => ({
+              action: step.action || "",
+              expectedResult: step.expectedResult || "",
+            }))
+          : [{ action: "", expectedResult: "" }],
+    });
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const openTestCaseId = params.get("openTestCaseId");
+    if (!openTestCaseId) return;
+
+    const found = (testCases || []).find((item) => String(item?.id) === String(openTestCaseId));
+    if (!found) return;
+
+    openEditTestCase(found);
+
+    params.delete("openTestCaseId");
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : "",
+      },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate, testCases]);
+
+  const activeEditingIndex = useMemo(() => {
+    if (!editingTestCase?.id) return -1;
+    return filteredFolderCases.findIndex((item) => String(item.id) === String(editingTestCase.id));
+  }, [editingTestCase?.id, filteredFolderCases]);
+
+  const navigateEditingTestCase = (direction) => {
+    if (!editingTestCase?.id) return;
+    if (activeEditingIndex < 0) return;
+    const targetIndex = activeEditingIndex + direction;
+    if (targetIndex < 0 || targetIndex >= filteredFolderCases.length) return;
+    const target = filteredFolderCases[targetIndex];
+    if (!target) return;
+    openEditTestCase(target);
+  };
+
+  const submitEditTestCase = async () => {
+    if (!editingTestCase?.id || !editingTestCase?.title?.trim()) {
+      setError("Test case title is required");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      await updateTestCase(orgSlug, projectId, editingTestCase.id, {
+        title: editingTestCase.title.trim(),
+        description: editingTestCase.description,
+        status: editingTestCase.status,
+        priority: Number(editingTestCase.priority ?? 1),
+        testCaseType: editingTestCase.testCaseType,
+        automationStatus: editingTestCase.automationStatus,
+        tags: String(editingTestCase.tagsInput || "")
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        steps: (editingTestCase.steps || [])
+          .map((step) => ({
+            action: String(step.action || "").trim(),
+            expectedResult: String(step.expectedResult || "").trim(),
+          }))
+          .filter((step) => step.action || step.expectedResult),
+      });
+      closeVariableAutocomplete();
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to update test case");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDeleteTestCase = async () => {
+    if (!deletingTestCase?.id) return;
+    setSaving(true);
+    setError("");
+    try {
+      await deleteTestCase(orgSlug, projectId, deletingTestCase.id);
+      setDeletingTestCase(null);
+      setSelectedTestCaseIds((prev) => prev.filter((id) => id !== String(deletingTestCase.id)));
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to delete test case");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!selectedTestCaseIds.length) return;
+    setSaving(true);
+    setError("");
+    try {
+      await Promise.all(selectedTestCaseIds.map((id) => deleteTestCase(orgSlug, projectId, id)));
+      setBulkDeleteOpen(false);
+      setSelectedTestCaseIds([]);
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to delete selected test cases");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloneTestCase = async (item) => {
+    setSaving(true);
+    setError("");
+    try {
+      await cloneTestCase(orgSlug, projectId, item.id, {
+        folderId: selectedFolderId,
+      });
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to clone test case");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedAiConversation = useMemo(
+    () => aiConversations.find((item) => item.id === selectedAiConversationId) || null,
+    [aiConversations, selectedAiConversationId],
+  );
+
+  const isAiGenerating = selectedAiConversation?.phase === "generating";
+
+  const updateAiConversation = useCallback((conversationId, updater) => {
+    setAiConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              ...updater(conversation),
+              updatedAt: new Date().toISOString(),
+            }
+          : conversation,
+      ),
+    );
+  }, []);
+
+  const createConversationTitle = useCallback((prompt) => {
+    const clean = String(prompt || "").trim();
+    if (!clean) return "New Generation";
+    return clean.length > 54 ? `${clean.slice(0, 54)}...` : clean;
+  }, []);
+
+  const upsertConversationStep = useCallback((conversationId, id, type, label, status, detail) => {
+    updateAiConversation(conversationId, (conversation) => {
+      const steps = Array.isArray(conversation.steps) ? conversation.steps : [];
+      const existingIndex = steps.findIndex((item) => item.id === id);
+      if (existingIndex === -1) {
+        return {
+          steps: [
+            ...steps,
+            {
+              id,
+              type,
+              label,
+              status,
+              detail,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        };
+      }
+      return {
+        steps: steps.map((item, index) =>
+          index === existingIndex
+            ? {
+                ...item,
+                status: status || item.status,
+                detail: detail || item.detail,
+              }
+            : item,
+        ),
+      };
+    });
+  }, [updateAiConversation]);
+
+  useEffect(() => {
+    if (!aiStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(aiStorageKey);
+      if (!raw) {
+        setAiConversations([]);
+        setSelectedAiConversationId("");
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const rows = Array.isArray(parsed?.conversations) ? parsed.conversations : [];
+      setAiConversations(rows);
+      const lastSelected = String(parsed?.lastSelectedId || "");
+      if (lastSelected && rows.some((item) => item.id === lastSelected)) {
+        setSelectedAiConversationId(lastSelected);
+      } else {
+        setSelectedAiConversationId(rows[0]?.id || "");
+      }
+    } catch {
+      setAiConversations([]);
+      setSelectedAiConversationId("");
+    }
+  }, [aiStorageKey]);
+
+  useEffect(() => {
+    if (!aiStorageKey) return;
+    try {
+      window.localStorage.setItem(
+        aiStorageKey,
+        JSON.stringify({
+          conversations: aiConversations,
+          lastSelectedId: selectedAiConversationId,
+        }),
+      );
+    } catch {
+    }
+  }, [aiConversations, selectedAiConversationId, aiStorageKey]);
+
+  const requestLiveReplay = useRequestLiveReplay();
+
+  const handleAiLiveEvent = useCallback(
+    (event) => {
+      if (!activeAiConversationId) return;
+      const { type, data } = event || {};
+      if (!type) return;
+
+      if (type === "generation:started") {
+        updateAiConversation(activeAiConversationId, (conversation) => {
+          const isTerminal = ["completed", "error", "cancelled"].includes(conversation?.phase);
+          return isTerminal ? {} : { phase: "generating" };
+        });
+        upsertConversationStep(activeAiConversationId, "gen-start", type, "Starting generation...", "done", data?.message);
+      }
+
+      if (type === "phase:reading-docs") {
+        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "active", data?.message);
+      }
+      if (type === "phase:docs-loaded") {
+        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "done", data?.message || "Documentation loaded");
+      }
+      if (type === "phase:no-docs") {
+        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "done", data?.message || "No documentation available");
+      }
+
+      if (type === "phase:analyzing") {
+        upsertConversationStep(activeAiConversationId, "analyze", type, "Analyzing project context...", "active", data?.message);
+      }
+      if (type === "phase:analyzed") {
+        upsertConversationStep(activeAiConversationId, "analyze", type, "Analyzing project context...", "done", data?.message || "Context analyzed");
+      }
+
+      if (type === "phase:checking") {
+        upsertConversationStep(activeAiConversationId, "check", type, "Checking existing test cases...", "active", data?.message);
+      }
+      if (type === "phase:checked") {
+        upsertConversationStep(activeAiConversationId, "check", type, "Checking existing test cases...", "done", data?.message || "Existing tests checked");
+      }
+
+      if (type === "browser:analyzing") {
+        upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "active", data?.message);
+      }
+      if (type === "browser:analyzed") {
+        upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "done", data?.message || "Planning complete");
+      }
+
+      if (type === "folder:found" || type === "folder:created") {
+        const folderName = data?.folderName || data?.path || "Folder";
+        upsertConversationStep(
+          activeAiConversationId,
+          `folder-${data?.folderId || folderName}`,
+          type,
+          `${type === "folder:created" ? "Created" : "Using"} folder: ${folderName}`,
+          "done",
+        );
+      }
+
+      if (type === "test:creating") {
+        upsertConversationStep(
+          activeAiConversationId,
+          `test-${data?.title || Date.now()}`,
+          type,
+          `Creating test: ${data?.title || "Test case"}`,
+          "active",
+        );
+      }
+      if (type === "test:created") {
+        const testId = `test-${data?.title || data?.testCaseId || Date.now()}`;
+        upsertConversationStep(activeAiConversationId, testId, type, `Created test: ${data?.title || "Test case"}`, "done", `${data?.stepsCount || "?"} steps`);
+      }
+
+      if (type === "test:updating") {
+        upsertConversationStep(
+          activeAiConversationId,
+          `update-${data?.testCaseId || data?.title || Date.now()}`,
+          type,
+          `Updating test: ${data?.title || "Test case"}`,
+          "active",
+        );
+      }
+      if (type === "test:updated") {
+        const testId = `update-${data?.testCaseId || data?.title || Date.now()}`;
+        upsertConversationStep(activeAiConversationId, testId, type, `Updated test: ${data?.title || "Test case"}`, "done", `${data?.stepsCount || "?"} steps`);
+      }
+
+      if (type === "test:error") {
+        upsertConversationStep(
+          activeAiConversationId,
+          `error-${data?.title || Date.now()}`,
+          type,
+          `Failed: ${data?.title || "Test case"}`,
+          "error",
+          data?.error || data?.message,
+        );
+      }
+
+      if (type === "generation:completed") {
+        updateAiConversation(activeAiConversationId, (conversation) => ({
+          phase: "completed",
+          reasoning: data?.reasoning || conversation.reasoning || "",
+          suggestions: Array.isArray(data?.suggestions) ? data.suggestions : conversation.suggestions || [],
+        }));
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-done",
+          type,
+          `Generation completed (${data?.testCasesCount ?? data?.testCount ?? 0} tests)` ,
+          "done",
+        );
+      }
+
+      if (type === "generation:error") {
+        const message = data?.error || data?.message || "Generation failed";
+        updateAiConversation(activeAiConversationId, () => ({ phase: "error", error: message }));
+        upsertConversationStep(activeAiConversationId, "gen-error", type, "Generation failed", "error", message);
+      }
+
+      if (type === "generation:cancelled") {
+        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+        upsertConversationStep(activeAiConversationId, "gen-cancel", type, "Generation cancelled", "error", data?.message);
+      }
+    },
+    [activeAiConversationId, upsertConversationStep, updateAiConversation],
+  );
+
+  useTestRunSocket(aiGenerationId || null, {
+    onLiveEvent: handleAiLiveEvent,
+  });
+
+  useEffect(() => {
+    if (aiGenerationId && isAiGenerating) {
+      const timeout = window.setTimeout(() => requestLiveReplay(aiGenerationId), 350);
+      return () => window.clearTimeout(timeout);
+    }
+    return undefined;
+  }, [aiGenerationId, isAiGenerating, requestLiveReplay]);
+
+  const openGenerateModal = () => {
+    setAiError("");
+    setAiDraftPrompt("");
+    setIsGenerateModalOpen(true);
+  };
+
+  const createNewGenerationDraft = () => {
+    setAiError("");
+    setAiDraftPrompt("");
+    setSelectedAiConversationId("");
+  };
+
+  const closeGenerateModal = async () => {
+    if (isAiGenerating && aiGenerationId) {
+      try {
+        await cancelFunctionalGeneration(orgSlug, {
+          generationId: aiGenerationId,
+          reason: "Modal closed",
+        });
+      } catch {
+      }
+    }
+    setIsGenerateModalOpen(false);
+    setAiGenerationId("");
+    setActiveAiConversationId("");
+  };
+
+  const submitGenerateTests = async () => {
+    const trimmed = aiDraftPrompt.trim();
+    if (!trimmed) {
+      setAiError("Please enter what you want AI to generate");
+      return;
+    }
+
+    if (documentationDirty) {
+      try {
+        const payloadDocumentation = buildDocumentationPayloadFromForm(documentationForm);
+        const updated = await updateProjectDocumentation(orgSlug, projectId, payloadDocumentation);
+        const storedDocumentation = updated?.documentation || payloadDocumentation;
+        setDocumentation(storedDocumentation);
+        setDocumentationForm(parseDocumentationFormFromPayload(storedDocumentation));
+        setDocumentationDirty(false);
+      } catch (err) {
+        setAiError(err?.message || "Failed to save documentation before generation");
+        return;
       }
     }
 
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [orgSlug, projectId]);
+    const existingConversation = selectedAiConversationId
+      ? aiConversations.find((item) => item.id === selectedAiConversationId) || null
+      : null;
 
-  return (
-    <DashboardLayout>
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="border-b border-border px-5 py-4 flex items-center justify-between gap-3">
-          <div>
-            <button
-              type="button"
-              onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
-              className="inline-flex items-center gap-1 text-xs text-[#232323]/60 dark:text-white/60 hover:text-[#232323] dark:hover:text-white"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to projects
-            </button>
-            <h2 className="mt-2 text-lg font-semibold text-[#232323] dark:text-white">
-              {loading ? "Loading project..." : project?.name || "Project"}
-            </h2>
-            <p className="text-xs text-[#232323]/60 dark:text-white/60">
-              {project?.description || "Project test cases and folders"}
-            </p>
+    const conversationId = existingConversation?.id || `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setAiGenerationId(generationId);
+    setActiveAiConversationId(conversationId);
+    setSelectedAiConversationId(conversationId);
+    setAiError("");
+    setAiDraftPrompt("");
+
+    setAiConversations((prev) => {
+      const alreadyExists = prev.some((item) => item.id === conversationId);
+      if (!alreadyExists) {
+        return [
+          {
+            id: conversationId,
+            title: createConversationTitle(trimmed),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            phase: "generating",
+            error: "",
+            generationId,
+            messages: [{ id: messageId, role: "user", content: trimmed, timestamp: new Date().toISOString() }],
+            steps: [],
+            generatedTests: [],
+            reasoning: "",
+            suggestions: [],
+          },
+          ...prev,
+        ];
+      }
+
+      return prev.map((item) =>
+        item.id === conversationId
+          ? {
+              ...item,
+              title: item.title || createConversationTitle(trimmed),
+              phase: "generating",
+              error: "",
+              generationId,
+              messages: [
+                ...(Array.isArray(item.messages) ? item.messages : []),
+                { id: messageId, role: "user", content: trimmed, timestamp: new Date().toISOString() },
+              ],
+              steps: [],
+              generatedTests: [],
+              reasoning: "",
+              suggestions: [],
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      );
+    });
+
+    upsertConversationStep(conversationId, "gen-start", "generation:started", "Starting generation...", "active");
+
+    try {
+      const response = await generateFunctionalTests(orgSlug, {
+        projectId,
+        userPrompt: trimmed,
+        generationId,
+      });
+
+      const result = response?.result || response;
+      const testCases = Array.isArray(result?.testCases) ? result.testCases : [];
+      updateAiConversation(conversationId, (conversation) => ({
+        phase: "completed",
+        generatedTests: testCases,
+        reasoning: result?.reasoning || "",
+        suggestions: Array.isArray(result?.suggestions) ? result.suggestions : [],
+        messages: Array.isArray(conversation.messages) ? conversation.messages : [],
+      }));
+      upsertConversationStep(
+        conversationId,
+        "gen-start",
+        "generation:started",
+        "Starting generation...",
+        "done",
+        `Generated ${testCases.length} test case${testCases.length !== 1 ? "s" : ""}`,
+      );
+      await loadRepositoryData(false);
+    } catch (err) {
+      const message = err?.message || "Failed to generate test cases";
+      setAiError(message);
+      updateAiConversation(conversationId, (conversation) => ({
+        phase: "error",
+        error: message,
+        messages: [
+          ...(Array.isArray(conversation.messages) ? conversation.messages : []),
+          {
+            id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            role: "assistant",
+            content: message,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }));
+    } finally {
+      setAiGenerationId("");
+      setActiveAiConversationId("");
+    }
+  };
+
+  const cancelGenerateTests = async () => {
+    if (!aiGenerationId) return;
+    try {
+      await cancelFunctionalGeneration(orgSlug, {
+        generationId: aiGenerationId,
+        reason: "User cancelled",
+      });
+    } catch {
+    } finally {
+      if (activeAiConversationId) {
+        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+      }
+      setAiGenerationId("");
+      setActiveAiConversationId("");
+    }
+  };
+
+  const exportSelectedTestCases = () => {
+    const rows = filteredFolderCases.filter((item) => selectedTestCaseIds.includes(String(item.id)));
+    if (!rows.length) return;
+    const csv = [
+      ["ID", "Title", "Status", "Priority", "Type", "Automation", "Tags", "Description"],
+      ...rows.map((item) => [
+        item.id,
+        `"${String(item.title || item.name || "").replace(/"/g, '""')}"`,
+        item.status || "",
+        PRIORITY_LABELS[Number(item.priority ?? 1)] || "Medium",
+        item.testCaseType || "",
+        item.automationStatus || "",
+        Array.isArray(item.tags) ? item.tags.join(";") : "",
+        `"${String(item.description || "").replace(/"/g, '""')}"`,
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\r\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `test-cases-${selectedFolder?.name || "folder"}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCreateVariable = async () => {
+    if (!variableForm.name.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      await createProjectVariable(orgSlug, projectId, variableForm);
+      setVariableForm(INITIAL_VARIABLE_FORM);
+      setIsVariableModalOpen(false);
+      setVariables(await fetchProjectVariables(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to create variable");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteVariable = async (id) => {
+    setSaving(true);
+    setError("");
+    try {
+      await deleteProjectVariable(orgSlug, projectId, id);
+      setVariables(await fetchProjectVariables(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to delete variable");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateSharedStep = async () => {
+    if (!sharedStepForm.name.trim() || !sharedStepForm.action.trim() || !sharedStepForm.expectedResult.trim()) {
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await createProjectSharedStep(orgSlug, projectId, sharedStepForm);
+      setSharedStepForm(INITIAL_SHARED_STEP_FORM);
+      setIsSharedStepModalOpen(false);
+      setSharedSteps(await fetchProjectSharedSteps(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to create shared step");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSharedStep = async (id) => {
+    setSaving(true);
+    setError("");
+    try {
+      await deleteProjectSharedStep(orgSlug, projectId, id);
+      setSharedSteps(await fetchProjectSharedSteps(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to delete shared step");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveDocumentation = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const payloadDocumentation = buildDocumentationPayloadFromForm(documentationForm);
+      const updated = await updateProjectDocumentation(orgSlug, projectId, payloadDocumentation);
+      const storedDocumentation = updated?.documentation || payloadDocumentation;
+      setDocumentation(storedDocumentation);
+      setDocumentationForm(parseDocumentationFormFromPayload(storedDocumentation));
+      setDocumentationDirty(false);
+    } catch (err) {
+      setError(err?.message || "Failed to save documentation");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDocumentationFieldChange = (field, value) => {
+    setDocumentationForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setDocumentationDirty(true);
+  };
+
+  const applyDocumentationTemplate = (mode = "replace") => {
+    if (mode === "append") {
+      setDocumentationForm((prev) => ({
+        ...prev,
+        additionalNotes: prev.additionalNotes
+          ? `${prev.additionalNotes}\n\n${DOCUMENTATION_TEMPLATE}`
+          : DOCUMENTATION_TEMPLATE,
+      }));
+    } else {
+      setDocumentationForm(createInitialDocumentationForm());
+    }
+    setDocumentationDirty(true);
+  };
+
+  const appendUploadedFilesToDocumentation = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    setDocUploadBusy(true);
+    setError("");
+    try {
+      const unsupported = [];
+      const importedBlocks = [];
+
+      for (const file of files) {
+        const extension = String(file?.name || "").split(".").pop()?.toLowerCase() || "";
+        if (!SUPPORTED_DOC_UPLOAD_EXTENSIONS.includes(extension)) {
+          unsupported.push(file.name);
+          continue;
+        }
+
+        const text = await file.text();
+        const normalized = String(text || "").trim();
+        if (!normalized) continue;
+
+        const clipped = normalized.slice(0, 20000);
+        importedBlocks.push(
+          [
+            `### File: ${file.name}`,
+            "```",
+            clipped,
+            "```",
+          ].join("\n"),
+        );
+      }
+
+      if (!importedBlocks.length) {
+        if (unsupported.length) {
+          setError(`Unsupported file type: ${unsupported.join(", ")}`);
+        }
+        return;
+      }
+
+      const merged = importedBlocks.join("\n\n");
+      setDocumentationForm((prev) => ({
+        ...prev,
+        uploadedFilesData: prev.uploadedFilesData
+          ? `${prev.uploadedFilesData}\n\n${merged}`
+          : merged,
+      }));
+      setDocumentationDirty(true);
+
+      if (unsupported.length) {
+        setError(`Some files were skipped (unsupported type): ${unsupported.join(", ")}`);
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to read uploaded files");
+    } finally {
+      setDocUploadBusy(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateProjectSettings(orgSlug, projectId, settingsForm);
+      setSettings((prev) => ({ ...(prev || {}), ...updated }));
+    } catch (err) {
+      setError(err?.message || "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateEnvironment = async () => {
+    if (!envForm.name.trim() || !envForm.slug.trim() || !envForm.baseUrl.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      await createProjectEnvironment(orgSlug, projectId, {
+        ...envForm,
+        isDefault: false,
+      });
+      setEnvForm(INITIAL_ENV_FORM);
+      setIsEnvironmentModalOpen(false);
+      setSettings(await fetchProjectSettings(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to create environment");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteEnvironment = async (id) => {
+    setSaving(true);
+    setError("");
+    try {
+      await deleteProjectEnvironment(orgSlug, projectId, id);
+      setSettings(await fetchProjectSettings(orgSlug, projectId));
+    } catch (err) {
+      setError(err?.message || "Failed to delete environment");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderRepository = () => (
+    <div className="flex min-h-[calc(100dvh-13rem)] h-full bg-[#F6F6F6] dark:bg-[#0f0f0f]">
+      <div
+        className="min-w-[240px] max-w-[60vw] bg-card/95 backdrop-blur-sm flex flex-col"
+        style={{ width: `${hierarchyWidth}px` }}
+      >
+        <div className="px-3 py-3 border-b border-black/10 dark:border-white/10">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-semibold text-sm text-[#232323] dark:text-white inline-flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-[#FFAA00] text-[#232323] inline-flex items-center justify-center">
+                  <Folder className="h-3.5 w-3.5" />
+                </span>
+                Test Folders
+              </p>
+              <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-0.5">{folders.length} folders</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => openCreateFolderModal(selectedFolderId || "")}
+                disabled={saving}
+                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60"
+                title="Create folder"
+              >
+                <FolderPlus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => loadRepositoryData(false)}
+                disabled={saving}
+                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${saving ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-2 relative">
+            <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#232323]/35 dark:text-white/35" />
+            <input
+              value={folderSearch}
+              onChange={(event) => setFolderSearch(event.target.value)}
+              placeholder="Search folders..."
+              className="w-full h-8 rounded-md border border-border bg-background pl-8 pr-2 text-xs"
+            />
           </div>
         </div>
 
-        <div className="p-5">
+        <div
+          className="px-2 py-2 flex-1 min-h-0 overflow-auto"
+        >
+          <div
+            className={`mb-2 rounded-md border border-dashed px-2 py-1.5 text-[11px] transition-all duration-150 ${
+              isRootDropActive
+                ? "border-[#FFAA00] bg-[#FFAA00]/15 text-[#232323] dark:text-white scale-[1.01]"
+                : "border-border bg-background/70 text-[#232323]/55 dark:text-white/55"
+            }`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsRootDropActive(true);
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!isRootDropActive) {
+                setIsRootDropActive(true);
+              }
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsRootDropActive(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsRootDropActive(false);
+              const sourceId = event.dataTransfer.getData("text/folder-id");
+              const testCaseId = event.dataTransfer.getData("text/test-case-id");
+              if (sourceId) {
+                handleMoveFolder(sourceId, null);
+              }
+              if (testCaseId) {
+                handleMoveTestCase(testCaseId, null);
+              }
+            }}
+          >
+            Drop here to move to root level
+          </div>
           {loading ? (
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Loading...</p>
-          ) : error ? (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-xs px-2 py-2 text-[#232323]/50 dark:text-white/50">Loading folders...</p>
+          ) : !folderTree.length ? (
+            <div className="h-[320px] flex flex-col items-center justify-center text-center px-4">
+              <Folder className="h-10 w-10 text-[#232323]/20 dark:text-white/20" />
+              <p className="mt-3 text-xl font-semibold text-[#232323]/35 dark:text-white/35">No folders yet</p>
+              <p className="mt-2 text-xs text-[#232323]/50 dark:text-white/50">
+                Click the + button to create your first root folder.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-sm text-[#232323] dark:text-white font-medium">
-                  Project ID: <span className="font-mono text-xs">{project?.id}</span>
-                </p>
-                <p className="mt-2 text-sm text-[#232323]/70 dark:text-white/70">
-                  Folders: {Array.isArray(project?.folders) ? project.folders.length : 0}
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="font-semibold text-[#232323] dark:text-white mb-3 inline-flex items-center gap-2">
-                  <FolderTree className="h-4 w-4 text-[#FFAA00]" />
-                  Folder Structure
-                </p>
-                {!project?.folders?.length ? (
-                  <p className="text-sm text-[#232323]/60 dark:text-white/60">
-                    No folders yet for this project.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {project.folders.map((folder) => (
-                      <div key={folder.id} className="text-sm text-[#232323]/80 dark:text-white/80">
-                        {folder.path}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="space-y-0.5">
+              {folderTree.map((node) => (
+                <FolderNode
+                  key={node.id}
+                  node={node}
+                  level={0}
+                  selectedFolderId={selectedFolderId}
+                  onSelect={setSelectedFolderId}
+                  onCreateChild={(folder) => openCreateFolderModal(folder.id)}
+                  onEdit={openEditFolderModal}
+                  onDelete={setFolderToDelete}
+                  onDropMoveFolder={handleMoveFolder}
+                  onDropMoveTestCase={handleMoveTestCase}
+                  onDragStart={() => {}}
+                />
+              ))}
             </div>
           )}
         </div>
       </div>
+
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        onMouseDown={startHierarchyResize}
+        className={`relative w-2 cursor-col-resize group ${isHierarchyResizing ? "bg-[#FFAA00]/20" : "bg-transparent hover:bg-[#FFAA00]/10"}`}
+      >
+        <div
+          className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${
+            isHierarchyResizing
+              ? "bg-[#FFAA00]"
+              : "bg-black/10 dark:bg-white/15 group-hover:bg-[#FFAA00]/70"
+          }`}
+        />
+      </div>
+
+      <div className="flex-1 min-w-0 relative bg-white dark:bg-slate-950">
+        {!selectedFolder ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+            <div className="h-14 w-14 rounded-xl bg-[#232323]/5 dark:bg-white/5 inline-flex items-center justify-center">
+              <Folder className="h-8 w-8 text-[#232323]/25 dark:text-white/25" />
+            </div>
+            <p className="mt-6 text-3xl font-semibold text-[#232323] dark:text-white">Select a Folder</p>
+            <p className="mt-2 text-sm text-[#232323]/45 dark:text-white/45 max-w-xl">
+              Choose a folder from the left panel to view and manage its test cases
+            </p>
+            <button
+              type="button"
+              onClick={openGenerateModal}
+              className="mt-5 h-9 px-4 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-sm font-semibold"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Assistant AI
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className="h-full flex flex-col">
+            <div className="border-b border-border px-5 py-4 bg-card">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-base font-semibold text-[#232323] dark:text-white">
+                    {selectedFolder.name || selectedFolder.path || "Folder"}
+                  </p>
+                  <p className="text-xs text-[#232323]/50 dark:text-white/50">
+                    {selectedFolderCases.length} test case{selectedFolderCases.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedTestCaseIds.length > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={exportSelectedTestCases}
+                        className="h-8 px-3 rounded-md border border-border text-xs font-semibold"
+                      >
+                        Export ({selectedTestCaseIds.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBulkDeleteOpen(true)}
+                        className="h-8 px-3 rounded-md bg-red-500/90 text-white text-xs font-semibold"
+                      >
+                        Delete Selected
+                      </button>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={openGenerateModal}
+                    className="h-8 px-3 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-xs font-semibold"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Assistant AI
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openCreateTestCaseModal}
+                    disabled={saving}
+                    className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-xs font-semibold disabled:opacity-60"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Plus className="h-3.5 w-3.5" />
+                      Create Test Case
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-64">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#232323]/35 dark:text-white/35" />
+                  <input
+                    value={testCaseSearch}
+                    onChange={(event) => setTestCaseSearch(event.target.value)}
+                    placeholder="Search test cases"
+                    className="w-full h-8 rounded-md border border-border bg-background pl-8 pr-2 text-xs"
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background p-1">
+                  <Filter className="h-3.5 w-3.5 text-[#232323]/45 dark:text-white/45 mx-1" />
+                  {STATUS_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setTestCaseStatusFilter(option)}
+                      className={`h-6 px-2 rounded text-[11px] font-medium ${
+                        testCaseStatusFilter === option
+                          ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white"
+                          : "text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                      }`}
+                    >
+                      {option === "all" ? "All" : option.replace("InReview", "In Review")}
+                    </button>
+                  ))}
+                </div>
+
+                <select
+                  value={testCaseSort}
+                  onChange={(event) => setTestCaseSort(event.target.value)}
+                  className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                >
+                  <option value="updated">Sort: Last Updated</option>
+                  <option value="title">Sort: Title</option>
+                  <option value="priority">Sort: Priority</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              {!filteredFolderCases.length ? (
+                <div className="h-full flex items-center justify-center text-sm text-[#232323]/55 dark:text-white/55">
+                  No test cases match your filters in this folder.
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-[#F8F8F8] dark:bg-slate-900 sticky top-0 z-10">
+                    <tr className="border-b border-border">
+                      <th className="w-10 px-2 py-2 text-left">
+                        <button
+                          type="button"
+                          onClick={toggleSelectAllTestCases}
+                          className="inline-flex items-center justify-center"
+                        >
+                          {allSelected ? (
+                            <CheckSquare className="h-4 w-4 text-[#FFAA00]" />
+                          ) : (
+                            <Square className="h-4 w-4 text-[#232323]/40 dark:text-white/40" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Title</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">State</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Priority</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Type</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-[#232323]/60 dark:text-white/60">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFolderCases.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b border-border hover:bg-[#FFFAE6] dark:hover:bg-slate-900/70 transition-colors"
+                        onClick={() => openEditTestCase(item)}
+                      >
+                        <td className="px-2 py-2 align-top">
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectOneTestCase(item.id)}
+                            className="inline-flex items-center justify-center"
+                          >
+                            {selectedTestCaseIds.includes(String(item.id)) ? (
+                              <CheckSquare className="h-4 w-4 text-[#FFAA00]" />
+                            ) : (
+                              <Square className="h-4 w-4 text-[#232323]/40 dark:text-white/40" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.setData("text/test-case-id", String(item.id));
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openEditTestCase(item);
+                            }}
+                            className="w-full text-left"
+                          >
+                            <p className="font-medium text-[#232323] dark:text-white truncate">{item.title || item.name}</p>
+                            <p className="text-xs text-[#232323]/50 dark:text-white/50 truncate">{item.description || "No description"}</p>
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            {(item.status || "Active").replace("InReview", "In Review")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs text-[#232323]/70 dark:text-white/70">
+                          {PRIORITY_LABELS[Number(item.priority ?? 1)] || "Medium"}
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs text-[#232323]/70 dark:text-white/70">
+                          {item.testCaseType || "Functional"}
+                        </td>
+                        <td className="px-3 py-2 align-top text-right">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openEditTestCase(item);
+                              }}
+                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleCloneTestCase(item);
+                              }}
+                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center"
+                              title="Clone"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setDeletingTestCase(item);
+                              }}
+                              className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderVariables = () => (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Variables</p>
+        <button
+          type="button"
+          onClick={() => setIsVariableModalOpen(true)}
+          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
+        >
+          Add Variable
+        </button>
+      </div>
+      <div className="rounded-md border border-border bg-card divide-y divide-border">
+        {variables.length === 0 ? (
+          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">No variables yet.</p>
+        ) : (
+          variables.map((item) => (
+            <div key={item.id} className="p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{item.name}</p>
+                <p className="text-xs text-[#232323]/60 dark:text-white/60 truncate">{item.value}</p>
+                {item.description ? (
+                  <p className="text-xs text-[#232323]/45 dark:text-white/45 truncate">{item.description}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteVariable(item.id)}
+                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSharedSteps = () => (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-[#232323] dark:text-white">Shared Steps</p>
+        <button
+          type="button"
+          onClick={() => setIsSharedStepModalOpen(true)}
+          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
+        >
+          Add Shared Step
+        </button>
+      </div>
+      <div className="rounded-md border border-border bg-card divide-y divide-border">
+        {sharedSteps.length === 0 ? (
+          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">No shared steps yet.</p>
+        ) : (
+          sharedSteps.map((step) => (
+            <div key={step.id} className="p-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#232323] dark:text-white">{step.name}</p>
+                <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{step.action}</p>
+                <p className="text-xs text-[#232323]/60 dark:text-white/60">Expected: {step.expectedResult}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteSharedStep(step.id)}
+                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDocumentation = () => (
+    <div className="p-3 h-[calc(100dvh-12.75rem)] min-h-[520px] overflow-hidden space-y-3">
+      <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Documentation</p>
+          <p className="text-xs text-[#232323]/60 dark:text-white/60">Fill all fields to provide exact business context for AI test generation.</p>
+        </div>
+        <div className="inline-flex items-center gap-2">
+          <span className={`text-[11px] ${documentationDirty ? "text-[#FFAA00]" : "text-[#232323]/55 dark:text-white/55"}`}>
+            {documentationDirty ? "Unsaved changes" : "Saved"}
+          </span>
+          <button
+            type="button"
+            onClick={() => applyDocumentationTemplate("replace")}
+            disabled={saving || docUploadBusy}
+            className="h-9 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white disabled:opacity-60"
+          >
+            Reset Template
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveDocumentation}
+            disabled={saving || docUploadBusy}
+            className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            Save Documentation
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 h-[calc(100%-4.2rem)]">
+        <div className="xl:col-span-9 space-y-3 overflow-auto pr-1">
+          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+            <p className="text-sm font-semibold text-[#232323] dark:text-white">1. Project Overview</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input value={documentationForm.projectName} onChange={(event) => handleDocumentationFieldChange("projectName", event.target.value)} placeholder="Project name" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
+              <input value={documentationForm.primaryDomain} onChange={(event) => handleDocumentationFieldChange("primaryDomain", event.target.value)} placeholder="Primary domain / module" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
+              <input value={documentationForm.productOwner} onChange={(event) => handleDocumentationFieldChange("productOwner", event.target.value)} placeholder="Product owner" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
+              <input value={documentationForm.qaOwner} onChange={(event) => handleDocumentationFieldChange("qaOwner", event.target.value)} placeholder="QA owner" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
+            </div>
+            <textarea value={documentationForm.targetEnvironments} onChange={(event) => handleDocumentationFieldChange("targetEnvironments", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Target environments (dev, staging, prod URLs)" />
+          </section>
+
+          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+            <p className="text-sm font-semibold text-[#232323] dark:text-white">2. Business Scope</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <textarea value={documentationForm.coreBusinessGoals} onChange={(event) => handleDocumentationFieldChange("coreBusinessGoals", event.target.value)} rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Core business goals" />
+              <textarea value={documentationForm.inScopeFeatures} onChange={(event) => handleDocumentationFieldChange("inScopeFeatures", event.target.value)} rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="In-scope features" />
+              <textarea value={documentationForm.outOfScopeFeatures} onChange={(event) => handleDocumentationFieldChange("outOfScopeFeatures", event.target.value)} rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Out-of-scope features" />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+            <p className="text-sm font-semibold text-[#232323] dark:text-white">3. Architecture & Integrations</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <textarea value={documentationForm.frontendStack} onChange={(event) => handleDocumentationFieldChange("frontendStack", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Frontend stack" />
+              <textarea value={documentationForm.backendStack} onChange={(event) => handleDocumentationFieldChange("backendStack", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Backend stack" />
+              <textarea value={documentationForm.database} onChange={(event) => handleDocumentationFieldChange("database", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Database details" />
+              <textarea value={documentationForm.externalApis} onChange={(event) => handleDocumentationFieldChange("externalApis", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="External APIs / services" />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+            <p className="text-sm font-semibold text-[#232323] dark:text-white">4. Component Localization Map</p>
+            <textarea value={documentationForm.componentsMap} onChange={(event) => handleDocumentationFieldChange("componentsMap", event.target.value)} rows={8} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="For each component: location, route, entry point, roles, validations, success/error criteria" />
+          </section>
+        </div>
+
+        <aside className="xl:col-span-3 rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 h-full overflow-auto shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+          <p className="text-sm font-semibold text-[#232323] dark:text-white">Upload Reference Files</p>
+          <p className="text-xs text-[#232323]/60 dark:text-white/60">
+            Import text-based files to enrich AI context with concrete business and technical data.
+          </p>
+          <label
+            htmlFor="documentation-files-input"
+            className="h-9 px-3 rounded-md border border-border inline-flex items-center gap-2 text-xs font-semibold text-[#232323] dark:text-white cursor-pointer hover:bg-[#232323]/5 dark:hover:bg-white/10"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {docUploadBusy ? "Reading files..." : "Upload Files"}
+          </label>
+          <input
+            id="documentation-files-input"
+            type="file"
+            multiple
+            accept=".txt,.md,.markdown,.json,.csv,.yaml,.yml,.xml,.html,.htm,.log"
+            onChange={appendUploadedFilesToDocumentation}
+            disabled={docUploadBusy || saving}
+            className="hidden"
+          />
+          <div className="rounded-xl border border-black/10 dark:border-white/10 bg-background/70 px-3 py-2">
+            <p className="text-[11px] font-semibold text-[#232323]/70 dark:text-white/70 mb-2">Files List</p>
+            {!uploadedFileNames.length ? (
+              <p className="text-xs text-[#232323]/50 dark:text-white/50">No files uploaded yet.</p>
+            ) : (
+              <ul className="space-y-1.5 max-h-[16rem] overflow-auto pr-1">
+                {uploadedFileNames.map((name, index) => (
+                  <li
+                    key={`${name}-${index}`}
+                    className="rounded-lg border border-black/10 dark:border-white/10 bg-card/80 px-2.5 py-1.5 text-xs text-[#232323]/85 dark:text-white/85"
+                  >
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p className="text-[11px] text-[#232323]/55 dark:text-white/55 leading-relaxed">
+            Supported: TXT, MD, JSON, CSV, YAML, XML, HTML, LOG.
+          </p>
+        </aside>
+      </div>
+    </div>
+  );
+
+  const renderConfiguration = () => (
+    <div className="p-4 space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <input
+          value={settingsForm.name}
+          onChange={(event) => setSettingsForm((prev) => ({ ...prev, name: event.target.value }))}
+          placeholder="Project name"
+          className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+        />
+        <input
+          value={settingsForm.baseUrl}
+          onChange={(event) => setSettingsForm((prev) => ({ ...prev, baseUrl: event.target.value }))}
+          placeholder="Base URL"
+          className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+        />
+        <button
+          type="button"
+          onClick={handleSaveSettings}
+          disabled={saving}
+          className="h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+        >
+          Save Settings
+        </button>
+      </div>
+      <input
+        value={settingsForm.description}
+        onChange={(event) => setSettingsForm((prev) => ({ ...prev, description: event.target.value }))}
+        placeholder="Description"
+        className="h-9 rounded-md border border-border bg-background px-3 text-sm w-full"
+      />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-[#232323] dark:text-white">Environments</p>
+          <button
+            type="button"
+            onClick={() => setIsEnvironmentModalOpen(true)}
+            className="h-8 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white"
+          >
+            Add Environment
+          </button>
+        </div>
+
+        <div className="rounded-md border border-border bg-card divide-y divide-border">
+          {!(settings?.environments || []).length ? (
+            <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">No environments.</p>
+          ) : (
+            settings.environments.map((env) => (
+              <div key={env.id} className="p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#232323] dark:text-white">{env.name}</p>
+                  <p className="text-xs text-[#232323]/60 dark:text-white/60">{env.slug} • {env.baseUrl}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEnvironment(env.id)}
+                  className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <DashboardLayout>
+      <div className="bg-card/95 overflow-hidden rounded-xl transition-all duration-200 min-h-[calc(100dvh-9rem)] flex flex-col [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_table]:border-separate [&_table]:border-spacing-0 [&_thead]:bg-[#F8F8F8]/90 dark:[&_thead]:bg-slate-900/90 [&_th]:border-black/10 dark:[&_th]:border-white/10 [&_td]:border-black/5 dark:[&_td]:border-white/10 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="border-b border-black/10 dark:border-white/10 px-4 py-3 flex items-center gap-3 bg-gradient-to-r from-card via-card to-card/90">
+          <button
+            type="button"
+            onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
+            className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/70 dark:text-white/70 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-[#232323] dark:text-white truncate inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#FFAA00]" />
+              {loading ? "Loading project..." : project?.name || "Project"}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-b border-black/10 dark:border-white/10 px-4 h-9 flex items-center gap-6 text-xs text-[#232323]/60 dark:text-white/60 bg-card/70">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`h-full inline-flex items-center gap-1 ${
+                activeTab === tab.key
+                  ? "border-b-2 border-[#FFAA00] text-[#FFAA00]"
+                  : "hover:text-[#232323] dark:hover:text-white"
+              }`}
+            >
+              {tab.key === "repository" ? <BookOpenText className="h-3.5 w-3.5" /> : null}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {error ? <div className="px-4 py-2 text-sm text-red-500">{error}</div> : null}
+
+        <div className="flex-1 min-h-0 overflow-auto">
+          {activeTab === "repository" && renderRepository()}
+          {activeTab === "variables" && renderVariables()}
+          {activeTab === "shared-steps" && renderSharedSteps()}
+          {activeTab === "documentation" && renderDocumentation()}
+          {activeTab === "configuration" && renderConfiguration()}
+        </div>
+      </div>
+
+      <Popup
+        open={isGenerateModalOpen}
+        title="Assistant AI — Generate Test Cases"
+        onClose={closeGenerateModal}
+        maxWidth="max-w-[min(96vw,1400px)]"
+        headerActions={
+          isAiGenerating ? (
+            <button
+              type="button"
+              onClick={cancelGenerateTests}
+              className="h-9 px-3 rounded-md border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm font-semibold"
+            >
+              Cancel
+            </button>
+          ) : null
+        }
+      >
+        <div className="h-[72dvh] min-h-[620px] grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-4 rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.35)] bg-card/85 flex flex-col min-h-0 overflow-hidden">
+            <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#232323]/65 dark:text-white/65 uppercase tracking-wide">Generations</p>
+              <button
+                type="button"
+                onClick={createNewGenerationDraft}
+                className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold hover:border-[#FFAA00]/50"
+              >
+                New Generation
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-auto p-2 space-y-2">
+              {!aiConversations.length ? (
+                <div className="h-full flex items-center justify-center text-xs text-[#232323]/55 dark:text-white/55 px-4 text-center">
+                  No conversations yet. Click "New Generation" and send a prompt.
+                </div>
+              ) : (
+                aiConversations
+                  .slice()
+                  .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+                  .map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAiConversationId(conversation.id);
+                        setAiError("");
+                      }}
+                      className={`w-full text-left rounded-lg border px-3 py-2.5 transition-all ${
+                        selectedAiConversationId === conversation.id
+                          ? "border-[#FFAA00]/60 bg-[#FFAA00]/10"
+                          : "border-border hover:border-[#FFAA00]/35 bg-background/60"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{conversation.title || "New Generation"}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#232323]/55 dark:text-white/55 capitalize">{conversation.phase || "idle"}</span>
+                        <span className="text-[10px] text-[#232323]/45 dark:text-white/45">{formatAiTime(conversation.updatedAt)}</span>
+                      </div>
+                    </button>
+                  ))
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-8 rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.35)] bg-card/80 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto p-4 space-y-4">
+              {!selectedAiConversation ? (
+                <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                  <div className="h-14 w-14 rounded-xl bg-[#FFAA00]/15 inline-flex items-center justify-center">
+                    <Sparkles className="h-7 w-7 text-[#FFAA00]" />
+                  </div>
+                  <p className="mt-4 text-lg font-semibold text-[#232323] dark:text-white">Start a new AI generation</p>
+                  <p className="mt-2 text-sm text-[#232323]/55 dark:text-white/55 max-w-xl">
+                    Describe what you want to generate. A conversation entry will be created on the left and preserved.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {(selectedAiConversation.messages || []).map((message) => (
+                    <div
+                      key={message.id}
+                      className={`max-w-[90%] rounded-xl border px-3 py-2.5 ${
+                        message.role === "user"
+                          ? "ml-auto border-[#FFAA00]/40 bg-[#FFAA00]/10"
+                          : "mr-auto border-border bg-background/70"
+                      }`}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/55 dark:text-white/55 mb-1">
+                        {message.role === "user" ? "You" : "AI"}
+                      </p>
+                      <p className="text-sm text-[#232323] dark:text-white whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  ))}
+
+                  {selectedAiConversation.phase === "generating" ? (
+                    <div className="rounded-md border border-blue-500/25 bg-blue-500/5 p-3 text-sm text-blue-700 dark:text-blue-300">
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        AI is generating test cases...
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {selectedAiConversation.error ? (
+                    <div className="rounded-md border border-red-500/25 bg-red-500/5 p-3 text-sm text-red-600 dark:text-red-300">
+                      {selectedAiConversation.error}
+                    </div>
+                  ) : null}
+
+                  {Array.isArray(selectedAiConversation.steps) && selectedAiConversation.steps.length ? (
+                    <div className="rounded-md border border-border bg-card overflow-hidden">
+                      <div className="px-3 py-2 border-b border-border text-xs font-semibold text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-2">
+                        <Brain className="h-3.5 w-3.5" />
+                        AI Progress Timeline
+                      </div>
+                      <div className="max-h-[260px] overflow-auto divide-y divide-border">
+                        {selectedAiConversation.steps.map((step) => (
+                          <div key={step.id} className="px-3 py-2.5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="inline-flex items-start gap-2 min-w-0">
+                                {step.status === "active" ? <Loader2 className="h-4 w-4 mt-0.5 text-blue-500 animate-spin" /> : null}
+                                {step.status === "done" ? <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-500" /> : null}
+                                {step.status === "error" ? <XCircle className="h-4 w-4 mt-0.5 text-red-500" /> : null}
+                                {step.status !== "active" && step.status !== "done" && step.status !== "error" ? (
+                                  <ListChecks className="h-4 w-4 mt-0.5 text-[#232323]/40 dark:text-white/40" />
+                                ) : null}
+                                <div className="min-w-0">
+                                  <p className="text-sm text-[#232323] dark:text-white truncate">{step.label}</p>
+                                  {step.detail ? (
+                                    <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-0.5 whitespace-pre-wrap">{step.detail}</p>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <span className="text-[10px] text-[#232323]/45 dark:text-white/45 flex-shrink-0">{formatAiTime(step.timestamp)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {Array.isArray(selectedAiConversation.generatedTests) && selectedAiConversation.generatedTests.length ? (
+                    <div className="space-y-3">
+                      <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+                        Generated {selectedAiConversation.generatedTests.length} test case{selectedAiConversation.generatedTests.length !== 1 ? "s" : ""}.
+                      </div>
+                      <div className="max-h-[220px] overflow-auto rounded-md border border-border divide-y divide-border">
+                        {selectedAiConversation.generatedTests.map((testItem, index) => (
+                          <div key={`${testItem.title || "test"}-${index}`} className="p-3">
+                            <p className="text-sm font-semibold text-[#232323] dark:text-white inline-flex items-center gap-2">
+                              <FileText className="h-3.5 w-3.5 text-[#232323]/55 dark:text-white/55" />
+                              {testItem.title || `Test ${index + 1}`}
+                            </p>
+                            {testItem.description ? <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{testItem.description}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-border p-3 space-y-2">
+              {aiError ? <div className="text-xs text-red-500">{aiError}</div> : null}
+              <textarea
+                value={aiDraftPrompt}
+                onChange={(event) => setAiDraftPrompt(event.target.value)}
+                placeholder="Describe what AI should generate for this project..."
+                rows={3}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {["Login flow tests", "Checkout flow tests", "Smoke tests", "Role permissions tests"].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setAiDraftPrompt(item)}
+                      className="h-7 px-2.5 rounded-full border border-border text-[11px] hover:border-[#FFAA00]/50"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={submitGenerateTests}
+                  disabled={isAiGenerating}
+                  className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+                >
+                  {isAiGenerating ? "Generating..." : "Generate"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Popup>
+
+      <Popup
+        open={isFolderModalOpen}
+        title={folderModalMode === "create" ? "Create Folder" : "Edit Folder"}
+        onClose={() => setIsFolderModalOpen(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Folder Name</label>
+            <input
+              value={folderForm.name}
+              onChange={(event) => setFolderForm((prev) => ({ ...prev, name: event.target.value }))}
+              className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              placeholder="Folder name"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Parent Folder</label>
+            <select
+              value={folderForm.parentId || ""}
+              onChange={(event) => setFolderForm((prev) => ({ ...prev, parentId: event.target.value }))}
+              className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="">Root</option>
+              {Array.from(folderMap.values()).map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name || folder.path || folder.id}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={submitFolderModal}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            {saving ? "Saving..." : folderModalMode === "create" ? "Create Folder" : "Save Changes"}
+          </button>
+        </div>
+      </Popup>
+
+      <Popup
+        open={!!folderToDelete}
+        title="Delete Folder"
+        onClose={() => setFolderToDelete(null)}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            Delete folder "{folderToDelete?.name || "Folder"}" and all child folders/test cases?
+          </p>
+          <button
+            type="button"
+            onClick={confirmDeleteFolder}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+          >
+            {saving ? "Deleting..." : "Delete Folder"}
+          </button>
+        </div>
+      </Popup>
+
+      <Popup
+        open={moveDialog.isOpen}
+        title={`Move ${moveDialog.itemType === "folder" ? "Folder" : "Test Case"}?`}
+        onClose={() =>
+          setMoveDialog({
+            isOpen: false,
+            itemType: "",
+            itemId: "",
+            targetFolderId: null,
+            itemName: "",
+            targetName: "",
+          })
+        }
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            {moveDialog.targetFolderId === null
+              ? `This will move "${moveDialog.itemName}" to the root level.`
+              : `This will move "${moveDialog.itemName}" into the folder "${moveDialog.targetName}".`}
+          </p>
+          <button
+            type="button"
+            onClick={confirmMoveItem}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            {saving ? "Moving..." : "Confirm Move"}
+          </button>
+        </div>
+      </Popup>
+
+      <Popup
+        open={isCreateTestCaseModalOpen}
+        title="Create Test Case"
+        onClose={() => setIsCreateTestCaseModalOpen(false)}
+        maxWidth="max-w-5xl"
+        headerActions={
+          <button
+            type="button"
+            onClick={submitCreateTestCase}
+            disabled={saving}
+            className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+          >
+            {saving ? "Creating..." : "Create Test Case"}
+          </button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="inline-flex items-center rounded-md border border-border bg-background p-1">
+              <button
+                type="button"
+                onClick={() => setCreateMode("advanced")}
+                className={`h-7 px-3 rounded text-xs font-semibold transition ${
+                  createMode === "advanced" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60"
+                }`}
+              >
+                Advanced Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateMode("simple")}
+                className={`h-7 px-3 rounded text-xs font-semibold transition ${
+                  createMode === "simple" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60"
+                }`}
+              >
+                Simple Mode
+              </button>
+            </div>
+            <div className="text-xs text-[#232323]/50 dark:text-white/50">
+              Use `$variable_name` in steps, or insert from Variables picker.
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div>
+                <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Title</label>
+                <input
+                  value={testCaseForm.title}
+                  onChange={(event) => setTestCaseForm((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="Test case title"
+                  className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Description</label>
+                <textarea
+                  value={testCaseForm.description}
+                  onChange={(event) => setTestCaseForm((prev) => ({ ...prev, description: event.target.value }))}
+                  rows={createMode === "advanced" ? 4 : 3}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60">Steps</label>
+                  <div className="inline-flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSharedStepPickerMode("create");
+                        setIsCreateSharedStepsPickerOpen(true);
+                      }}
+                      className="h-7 px-2.5 rounded-md border border-border text-xs font-semibold"
+                    >
+                      + Shared Step
+                    </button>
+                    <button type="button" onClick={addStep} className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold">
+                      + Add Step
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {testCaseForm.steps.map((step, index) => (
+                    <div key={step.id || `step-${index}`}>
+                      <div
+                        className={`rounded-xl border border-black/15 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_2px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.22)] p-3 bg-background/95 transition-all duration-300 ${
+                          newlyInsertedStepId && newlyInsertedStepId === step.id ? "ring-1 ring-[#FFAA00] scale-[1.01]" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 inline-flex items-center gap-2">
+                            Step {index + 1}
+                            {step.isSharedStep ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-300">
+                                Shared: {step.sharedStepName}
+                              </span>
+                            ) : null}
+                          </p>
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openVariablePicker("create", step.id, "action")}
+                              className="h-6 px-2 rounded border border-border text-[11px]"
+                            >
+                              $ Variable
+                            </button>
+                            {testCaseForm.steps.length > 1 ? (
+                              <button type="button" onClick={() => removeStep(index)} className="h-6 px-2 rounded text-xs text-red-500 hover:bg-red-500/10">
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <textarea
+                          value={step.action}
+                          onChange={(event) => {
+                            updateStep(index, "action", event.target.value);
+                            handleVariableAutocompleteInput("create", step.id, "action", event.target.value, event.target.selectionStart);
+                          }}
+                          onClick={(event) =>
+                            handleVariableAutocompleteInput("create", step.id, "action", event.target.value, event.target.selectionStart)
+                          }
+                          onKeyUp={(event) =>
+                            handleVariableAutocompleteInput("create", step.id, "action", event.currentTarget.value, event.currentTarget.selectionStart)
+                          }
+                          onBlur={() => window.setTimeout(() => closeVariableAutocomplete(), 120)}
+                          data-var-target={`create-${step.id}-action`}
+                          rows={createMode === "advanced" ? 2 : 1}
+                          placeholder="Action"
+                          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm mb-2"
+                        />
+                        {variableAutocomplete.open && variableAutocomplete.mode === "create" && String(variableAutocomplete.stepKey) === String(step.id) && variableAutocomplete.field === "action" ? (
+                          <div className="mb-2 rounded-md border border-blue-500/20 bg-background/95 shadow-sm max-h-40 overflow-auto">
+                            {filteredVariableSuggestions.length ? (
+                              filteredVariableSuggestions.slice(0, 8).map((item) => (
+                                <button
+                                  key={`create-action-var-${step.id}-${item.id || item.name}`}
+                                  type="button"
+                                  onMouseDown={(event) => event.preventDefault()}
+                                  onClick={() => applyVariableAutocomplete(item.name)}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                >
+                                  <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-3 py-2 text-xs text-[#232323]/60 dark:text-white/60">No matching variable</div>
+                            )}
+                          </div>
+                        ) : null}
+                        <VariableValuePreview value={step.action} />
+                        <textarea
+                          value={step.expectedResult}
+                          onChange={(event) => {
+                            updateStep(index, "expectedResult", event.target.value);
+                            handleVariableAutocompleteInput("create", step.id, "expectedResult", event.target.value, event.target.selectionStart);
+                          }}
+                          onClick={(event) =>
+                            handleVariableAutocompleteInput("create", step.id, "expectedResult", event.target.value, event.target.selectionStart)
+                          }
+                          onKeyUp={(event) =>
+                            handleVariableAutocompleteInput("create", step.id, "expectedResult", event.currentTarget.value, event.currentTarget.selectionStart)
+                          }
+                          onBlur={() => window.setTimeout(() => closeVariableAutocomplete(), 120)}
+                          data-var-target={`create-${step.id}-expectedResult`}
+                          rows={createMode === "advanced" ? 2 : 1}
+                          placeholder="Expected result"
+                          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+                        />
+                        {variableAutocomplete.open && variableAutocomplete.mode === "create" && String(variableAutocomplete.stepKey) === String(step.id) && variableAutocomplete.field === "expectedResult" ? (
+                          <div className="mt-2 rounded-md border border-blue-500/20 bg-background/95 shadow-sm max-h-40 overflow-auto">
+                            {filteredVariableSuggestions.length ? (
+                              filteredVariableSuggestions.slice(0, 8).map((item) => (
+                                <button
+                                  key={`create-expected-var-${step.id}-${item.id || item.name}`}
+                                  type="button"
+                                  onMouseDown={(event) => event.preventDefault()}
+                                  onClick={() => applyVariableAutocomplete(item.name)}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                >
+                                  <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-3 py-2 text-xs text-[#232323]/60 dark:text-white/60">No matching variable</div>
+                            )}
+                          </div>
+                        ) : null}
+                        <VariableValuePreview value={step.expectedResult} />
+                      </div>
+
+                      {index < testCaseForm.steps.length - 1 ? (
+                        <div className="flex justify-center py-1">
+                          <button
+                            type="button"
+                            onClick={() => insertStepAfter(index)}
+                            className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all"
+                          >
+                            + Insert Step Between
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {createMode === "advanced" ? (
+              <div className="space-y-4 lg:sticky lg:top-0 self-start">
+                <div>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Priority</label>
+                  <select
+                    value={testCaseForm.priority}
+                    onChange={(event) => setTestCaseForm((prev) => ({ ...prev, priority: event.target.value }))}
+                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                    <option>Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Type</label>
+                  <select
+                    value={testCaseForm.testCaseType}
+                    onChange={(event) => setTestCaseForm((prev) => ({ ...prev, testCaseType: event.target.value }))}
+                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option>Functional</option>
+                    <option>Regression</option>
+                    <option>Smoke</option>
+                    <option>Integration</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Automation</label>
+                  <select
+                    value={testCaseForm.automationStatus}
+                    onChange={(event) => setTestCaseForm((prev) => ({ ...prev, automationStatus: event.target.value }))}
+                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option>Not Automated</option>
+                    <option>Automated</option>
+                    <option>In Progress</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Tags</label>
+                  <input
+                    value={testCaseForm.tagsInput}
+                    onChange={(event) => setTestCaseForm((prev) => ({ ...prev, tagsInput: event.target.value }))}
+                    placeholder="login, checkout"
+                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+        </div>
+      </Popup>
+
+      <Popup
+        open={isCreateSharedStepsPickerOpen}
+        title="Add Shared Step"
+        onClose={() => setIsCreateSharedStepsPickerOpen(false)}
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-3">
+          <input
+            value={createSharedStepsSearch}
+            onChange={(event) => setCreateSharedStepsSearch(event.target.value)}
+            placeholder="Search shared steps"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <div className="max-h-[360px] overflow-auto rounded-md border border-border divide-y divide-border">
+            {(sharedSteps || [])
+              .filter((item) => {
+                const term = createSharedStepsSearch.trim().toLowerCase();
+                if (!term) return true;
+                return (
+                  (item.name || "").toLowerCase().includes(term) ||
+                  (item.action || "").toLowerCase().includes(term) ||
+                  (item.expectedResult || "").toLowerCase().includes(term)
+                );
+              })
+              .map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    sharedStepPickerMode === "edit" ? addSharedStepToEditForm(item) : addSharedStepToCreateForm(item)
+                  }
+                  className="w-full text-left p-3 hover:bg-[#232323]/5 dark:hover:bg-white/5"
+                >
+                  <p className="text-sm font-semibold text-[#232323] dark:text-white">{item.name}</p>
+                  <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1 truncate">{item.action}</p>
+                  <p className="text-xs text-[#232323]/60 dark:text-white/60 truncate">Expected: {item.expectedResult}</p>
+                </button>
+              ))}
+          </div>
+        </div>
+      </Popup>
+
+      <Popup
+        open={isVariablePickerOpen}
+        title="Insert Variable"
+        onClose={() => setIsVariablePickerOpen(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-3">
+          <input
+            value={variableSearch}
+            onChange={(event) => setVariableSearch(event.target.value)}
+            placeholder="Search variables"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <div className="max-h-[300px] overflow-auto rounded-md border border-border divide-y divide-border">
+            {(variables || [])
+              .filter((item) => {
+                const term = variableSearch.trim().toLowerCase();
+                if (!term) return true;
+                return (
+                  (item.name || "").toLowerCase().includes(term) ||
+                  (item.value || "").toLowerCase().includes(term)
+                );
+              })
+              .map((item) => (
+                <div key={item.id} className="p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#232323] dark:text-white">${item.name}</p>
+                    <p className="text-xs text-[#232323]/60 dark:text-white/60 truncate">{item.value}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => insertVariableIntoStep(item.name)}
+                    className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold"
+                  >
+                    Insert
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      </Popup>
+
+      <Popup
+        open={!!editingTestCase}
+        title="Edit Test Case"
+        onClose={() => setEditingTestCase(null)}
+        maxWidth="max-w-5xl"
+        headerLeading={
+          <div className="inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => navigateEditingTestCase(-1)}
+              disabled={activeEditingIndex <= 0}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Previous test case"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateEditingTestCase(1)}
+              disabled={activeEditingIndex < 0 || activeEditingIndex >= filteredFolderCases.length - 1}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Next test case"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        }
+        headerActions={
+          <button
+            type="button"
+            onClick={submitEditTestCase}
+            disabled={saving}
+            className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        }
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Title</label>
+              <input
+                value={editingTestCase?.title || ""}
+                onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), title: event.target.value }))}
+                className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Description</label>
+              <textarea
+                value={editingTestCase?.description || ""}
+                onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), description: event.target.value }))}
+                rows={4}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs text-[#232323]/60 dark:text-white/60">Steps</label>
+                <div className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSharedStepPickerMode("edit");
+                      setIsCreateSharedStepsPickerOpen(true);
+                    }}
+                    className="h-7 px-2.5 rounded-md border border-border text-xs font-semibold"
+                  >
+                    + Shared Step
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#FFAA00]"
+                    onClick={() =>
+                      setEditingTestCase((prev) => ({
+                        ...(prev || {}),
+                        steps: [...(prev?.steps || []), { action: "", expectedResult: "" }],
+                      }))
+                    }
+                  >
+                    + Add Step
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {(editingTestCase?.steps || []).map((step, index) => (
+                  <div key={`edit-step-${index}`}>
+                    <div className="rounded-xl border border-black/15 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_2px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.22)] p-3 bg-background/95">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Step {index + 1}</p>
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openVariablePicker("edit", index, "action")}
+                            className="h-6 px-2 rounded border border-border text-[11px]"
+                          >
+                            $ Variable
+                          </button>
+                          {(editingTestCase?.steps || []).length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingTestCase((prev) => ({
+                                  ...(prev || {}),
+                                  steps: (prev?.steps || []).filter((_, stepIndex) => stepIndex !== index),
+                                }))
+                              }
+                              className="text-xs text-red-500"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <textarea
+                        value={step.action || ""}
+                        onChange={(event) =>
+                          setEditingTestCase((prev) => ({
+                            ...(prev || {}),
+                            steps: (prev?.steps || []).map((item, stepIndex) =>
+                              stepIndex === index ? { ...item, action: event.target.value } : item,
+                            ),
+                          }))
+                        }
+                        onClick={(event) =>
+                          handleVariableAutocompleteInput("edit", index, "action", event.target.value, event.target.selectionStart)
+                        }
+                        onKeyUp={(event) =>
+                          handleVariableAutocompleteInput("edit", index, "action", event.currentTarget.value, event.currentTarget.selectionStart)
+                        }
+                        onBlur={() => window.setTimeout(() => closeVariableAutocomplete(), 120)}
+                        data-var-target={`edit-${index}-action`}
+                        rows={2}
+                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm mb-2"
+                      />
+                      {variableAutocomplete.open && variableAutocomplete.mode === "edit" && String(variableAutocomplete.stepKey) === String(index) && variableAutocomplete.field === "action" ? (
+                        <div className="mb-2 rounded-md border border-blue-500/20 bg-background/95 shadow-sm max-h-40 overflow-auto">
+                          {filteredVariableSuggestions.length ? (
+                            filteredVariableSuggestions.slice(0, 8).map((item) => (
+                              <button
+                                key={`edit-action-var-${index}-${item.id || item.name}`}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyVariableAutocomplete(item.name)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                              >
+                                <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-xs text-[#232323]/60 dark:text-white/60">No matching variable</div>
+                          )}
+                        </div>
+                      ) : null}
+                      <VariableValuePreview value={step.action} />
+                      <textarea
+                        value={step.expectedResult || ""}
+                        onChange={(event) =>
+                          setEditingTestCase((prev) => ({
+                            ...(prev || {}),
+                            steps: (prev?.steps || []).map((item, stepIndex) =>
+                              stepIndex === index ? { ...item, expectedResult: event.target.value } : item,
+                            ),
+                          }))
+                        }
+                        onClick={(event) =>
+                          handleVariableAutocompleteInput("edit", index, "expectedResult", event.target.value, event.target.selectionStart)
+                        }
+                        onKeyUp={(event) =>
+                          handleVariableAutocompleteInput("edit", index, "expectedResult", event.currentTarget.value, event.currentTarget.selectionStart)
+                        }
+                        onBlur={() => window.setTimeout(() => closeVariableAutocomplete(), 120)}
+                        data-var-target={`edit-${index}-expectedResult`}
+                        rows={2}
+                        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+                      />
+                      {variableAutocomplete.open && variableAutocomplete.mode === "edit" && String(variableAutocomplete.stepKey) === String(index) && variableAutocomplete.field === "expectedResult" ? (
+                        <div className="mt-2 rounded-md border border-blue-500/20 bg-background/95 shadow-sm max-h-40 overflow-auto">
+                          {filteredVariableSuggestions.length ? (
+                            filteredVariableSuggestions.slice(0, 8).map((item) => (
+                              <button
+                                key={`edit-expected-var-${index}-${item.id || item.name}`}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyVariableAutocomplete(item.name)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                              >
+                                <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-xs text-[#232323]/60 dark:text-white/60">No matching variable</div>
+                          )}
+                        </div>
+                      ) : null}
+                      <VariableValuePreview value={step.expectedResult} />
+                    </div>
+
+                    {index < (editingTestCase?.steps || []).length - 1 ? (
+                      <div className="flex justify-center py-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingTestCase((prev) => {
+                              const currentSteps = prev?.steps || [];
+                              const nextSteps = [...currentSteps];
+                              nextSteps.splice(index + 1, 0, { action: "", expectedResult: "" });
+                              return { ...(prev || {}), steps: nextSteps };
+                            })
+                          }
+                          className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all"
+                        >
+                          + Insert Step Between
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 lg:sticky lg:top-0 self-start">
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Status</label>
+              <select
+                value={editingTestCase?.status || "Active"}
+                onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), status: event.target.value }))}
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option>Active</option>
+                <option>Draft</option>
+                <option>InReview</option>
+                <option>Outdated</option>
+                <option>Rejected</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Priority</label>
+              <select
+                value={String(editingTestCase?.priority ?? 1)}
+                onChange={(event) =>
+                  setEditingTestCase((prev) => ({ ...(prev || {}), priority: Number(event.target.value) }))
+                }
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="0">Low</option>
+                <option value="1">Medium</option>
+                <option value="2">High</option>
+                <option value="3">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Type</label>
+              <input
+                value={editingTestCase?.testCaseType || ""}
+                onChange={(event) =>
+                  setEditingTestCase((prev) => ({ ...(prev || {}), testCaseType: event.target.value }))
+                }
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Automation</label>
+              <input
+                value={editingTestCase?.automationStatus || ""}
+                onChange={(event) =>
+                  setEditingTestCase((prev) => ({ ...(prev || {}), automationStatus: event.target.value }))
+                }
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Tags</label>
+              <input
+                value={editingTestCase?.tagsInput || ""}
+                onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), tagsInput: event.target.value }))}
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </Popup>
+
+      <Popup open={!!deletingTestCase} title="Delete Test Case" onClose={() => setDeletingTestCase(null)} maxWidth="max-w-md">
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            Delete "{deletingTestCase?.title || deletingTestCase?.name || "this test case"}"?
+          </p>
+          <button
+            type="button"
+            onClick={confirmDeleteTestCase}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+          >
+            {saving ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </Popup>
+
+      <Popup open={bulkDeleteOpen} title="Delete Selected Test Cases" onClose={() => setBulkDeleteOpen(false)} maxWidth="max-w-md">
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            Delete {selectedTestCaseIds.length} selected test case{selectedTestCaseIds.length !== 1 ? "s" : ""}?
+          </p>
+          <button
+            type="button"
+            onClick={confirmBulkDelete}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+          >
+            {saving ? "Deleting..." : "Delete Selected"}
+          </button>
+        </div>
+      </Popup>
+
+      <Popup open={isVariableModalOpen} title="Add Variable" onClose={() => setIsVariableModalOpen(false)} maxWidth="max-w-lg">
+        <div className="space-y-3">
+          <input
+            value={variableForm.name}
+            onChange={(event) => setVariableForm((prev) => ({ ...prev, name: event.target.value }))}
+            placeholder="Name"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <input
+            value={variableForm.value}
+            onChange={(event) => setVariableForm((prev) => ({ ...prev, value: event.target.value }))}
+            placeholder="Value"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <input
+            value={variableForm.description}
+            onChange={(event) => setVariableForm((prev) => ({ ...prev, description: event.target.value }))}
+            placeholder="Description"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleCreateVariable}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            Add Variable
+          </button>
+        </div>
+      </Popup>
+
+      <Popup open={isSharedStepModalOpen} title="Add Shared Step" onClose={() => setIsSharedStepModalOpen(false)} maxWidth="max-w-2xl">
+        <div className="space-y-3">
+          <input
+            value={sharedStepForm.name}
+            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, name: event.target.value }))}
+            placeholder="Name"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <textarea
+            value={sharedStepForm.action}
+            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, action: event.target.value }))}
+            rows={3}
+            placeholder="Action"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <textarea
+            value={sharedStepForm.expectedResult}
+            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, expectedResult: event.target.value }))}
+            rows={3}
+            placeholder="Expected result"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <input
+            value={sharedStepForm.description}
+            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, description: event.target.value }))}
+            placeholder="Description"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleCreateSharedStep}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            Add Shared Step
+          </button>
+        </div>
+      </Popup>
+
+      <Popup open={isEnvironmentModalOpen} title="Add Environment" onClose={() => setIsEnvironmentModalOpen(false)} maxWidth="max-w-lg">
+        <div className="space-y-3">
+          <input
+            value={envForm.name}
+            onChange={(event) => setEnvForm((prev) => ({ ...prev, name: event.target.value }))}
+            placeholder="Name"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <input
+            value={envForm.slug}
+            onChange={(event) => setEnvForm((prev) => ({ ...prev, slug: event.target.value }))}
+            placeholder="Slug"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <input
+            value={envForm.baseUrl}
+            onChange={(event) => setEnvForm((prev) => ({ ...prev, baseUrl: event.target.value }))}
+            placeholder="Base URL"
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleCreateEnvironment}
+            disabled={saving}
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+          >
+            Add Environment
+          </button>
+        </div>
+      </Popup>
     </DashboardLayout>
   );
 }

@@ -40,3 +40,28 @@ export async function joinOrganizationByCode(token) {
   });
   return parseJson(response);
 }
+
+export async function fetchOrgNotifications(orgSlug, options = {}) {
+  const params = new URLSearchParams();
+  if (typeof options?.limit === 'number') {
+    params.set('limit', String(options.limit));
+  }
+  if (options?.unreadOnly) {
+    params.set('unreadOnly', 'true');
+  }
+
+  const query = params.toString();
+  const response = await apiFetch(
+    `/organizations/${encodeURIComponent(orgSlug)}/notifications${query ? `?${query}` : ''}`,
+  );
+  return parseJson(response);
+}
+
+export async function markOrgNotificationsAsRead(orgSlug, notificationIds = []) {
+  const response = await apiFetch(`/organizations/${encodeURIComponent(orgSlug)}/notifications`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notificationIds }),
+  });
+  return parseJson(response);
+}

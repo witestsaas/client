@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
   AlertCircle,
   CheckCircle,
-  Clock,
   FileText,
   Folder,
+  Loader2,
   PlayCircle,
   TrendingUp,
-  Users,
 } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import { fetchActivity, fetchStats, fetchTestExecutions, fetchTrends } from "../services/api";
+import { fetchProjectTree, fetchTestProjects } from "../services/testManagement";
+import { listPlans, listRuns } from "../services/executionReporting";
 
 function formatTimeAgo(dateString) {
   if (!dateString || dateString === "-") return "-";
@@ -27,6 +27,43 @@ function formatTimeAgo(dateString) {
   return `${diffDays}d ago`;
 }
 
+function normalizeStatus(value) {
+  return String(value || "").toLowerCase();
+}
+
+function isRunSuccess(status) {
+  const normalized = normalizeStatus(status);
+  return normalized === "completed" || normalized === "passed" || normalized === "success";
+}
+
+function isRunFailure(status) {
+  const normalized = normalizeStatus(status);
+  return normalized === "failed" || normalized === "error" || normalized === "cancelled";
+}
+
+function isRunActive(status) {
+  const normalized = normalizeStatus(status);
+  return normalized === "running" || normalized === "queued" || normalized === "pending" || normalized === "inprogress";
+}
+
+function toSafeNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function statusBadgeClass(status) {
+  if (isRunSuccess(status)) {
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  }
+  if (isRunFailure(status)) {
+    return "bg-red-500/15 text-red-700 dark:text-red-300";
+  }
+  if (isRunActive(status)) {
+    return "bg-[#FFAA00]/20 text-[#8a5a00] dark:text-[#FFCC66]";
+  }
+  return "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+}
+
 function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral" }) {
   const tones = {
     success: "bg-[#22c55e] text-white",
@@ -36,14 +73,14 @@ function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral" }) {
   };
 
   return (
-    <div className="bg-card border border-border hover:border-[#FFAA00]/60 hover:shadow-md transition-all rounded-xl p-3 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tones[tone]}`}>
-        <Icon className="h-5 w-5" />
+    <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-all duration-200 p-3 flex items-center gap-2.5 min-h-[84px]">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tones[tone]}`}>
+        <Icon className="h-4.5 w-4.5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xl font-semibold text-[#232323] dark:text-white leading-none">{value}</p>
+        <p className="text-lg font-semibold text-[#232323] dark:text-white leading-none">{value}</p>
         <p className="text-xs text-[#232323]/60 dark:text-white/70 mt-1 uppercase font-semibold tracking-wide">{title}</p>
-        {subtitle ? <p className="text-[10px] text-[#232323]/50 dark:text-white/60">{subtitle}</p> : null}
+        {subtitle ? <p className="text-[10px] text-[#232323]/50 dark:text-white/60 truncate">{subtitle}</p> : null}
       </div>
     </div>
   );
@@ -51,30 +88,64 @@ function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral" }) {
 
 export default function DashboardPage() {
   const { orgSlug } = useParams();
-  const [stats, setStats] = useState(null);
-  const [trends, setTrends] = useState([]);
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState([]);
   const [runs, setRuns] = useState([]);
-  const [activity, setActivity] = useState([]);
+  const [plansCount, setPlansCount] = useState(0);
+  const [projectCounts, setProjectCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!orgSlug) return;
       setLoading(true);
       setError("");
       try {
-        const [statsData, trendsData, runsData, activityData] = await Promise.all([
-          fetchStats(),
-          fetchTrends(),
-          fetchTestExecutions(),
-          fetchActivity(),
+        const [projectsData, runsData, plansData] = await Promise.all([
+          fetchTestProjects(orgSlug),
+          listRuns(orgSlug),
+          listPlans(orgSlug),
         ]);
         if (cancelled) return;
-        setStats(statsData);
-        setTrends(Array.isArray(trendsData) ? trendsData : []);
-        setRuns(runsData?.testRuns || []);
-        setActivity(Array.isArray(activityData) ? activityData : []);
+
+        const normalizedProjects = Array.isArray(projectsData) ? projectsData : [];
+        const normalizedRuns = Array.isArray(runsData) ? runsData : [];
+        const normalizedPlans = Array.isArray(plansData) ? plansData : [];
+
+        setProjects(normalizedProjects);
+        setRuns(normalizedRuns);
+        setPlansCount(normalizedPlans.length);
+
+        const countEntries = await Promise.all(
+          normalizedProjects.map(async (project) => {
+            const fallbackFolders = Number(project?._count?.folders ?? project?.folders?.length ?? 0);
+            const fallbackTestCases = Number(project?._count?.testCases ?? 0);
+            try {
+              const tree = await fetchProjectTree(orgSlug, project.id);
+              return [
+                String(project.id),
+                {
+                  folders: Array.isArray(tree?.folders) ? tree.folders.length : fallbackFolders,
+                  testCases: Array.isArray(tree?.testCases) ? tree.testCases.length : fallbackTestCases,
+                },
+              ];
+            } catch {
+              return [
+                String(project.id),
+                {
+                  folders: fallbackFolders,
+                  testCases: fallbackTestCases,
+                },
+              ];
+            }
+          }),
+        );
+
+        if (!cancelled) {
+          setProjectCounts(Object.fromEntries(countEntries));
+        }
       } catch (e) {
         if (!cancelled) setError(e.message || "Failed to load dashboard");
       } finally {
@@ -88,33 +159,180 @@ export default function DashboardPage() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [orgSlug]);
+
+  const stats = useMemo(() => {
+    const totalProjects = projects.length;
+    const totalRuns = runs.length;
+    const successfulRuns = runs.filter((run) => {
+      const passed = toSafeNumber(run?.passedTests);
+      const failed = toSafeNumber(run?.failedTests);
+      const skipped = toSafeNumber(run?.skippedTests);
+      const total = toSafeNumber(run?.totalTests);
+      const hasCounters = passed + failed + skipped > 0 || total > 0;
+      if (hasCounters) {
+        return failed === 0 && passed > 0;
+      }
+      return isRunSuccess(run?.status);
+    }).length;
+
+    const failedRuns = runs.filter((run) => {
+      const passed = toSafeNumber(run?.passedTests);
+      const failed = toSafeNumber(run?.failedTests);
+      const skipped = toSafeNumber(run?.skippedTests);
+      const total = toSafeNumber(run?.totalTests);
+      const hasCounters = passed + failed + skipped > 0 || total > 0;
+      if (hasCounters) {
+        return failed > 0;
+      }
+      return isRunFailure(run?.status);
+    }).length;
+
+    const activeRuns = runs.filter((run) => isRunActive(run?.status)).length;
+    const passedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
+    const failedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
+    const executedTests = passedTests + failedTests;
+    const totalTestCases = projects.reduce((sum, project) => sum + Number(projectCounts[String(project.id)]?.testCases || 0), 0);
+    const successRate = executedTests > 0 ? Math.round((passedTests / executedTests) * 100) : 0;
+
+    return {
+      totalProjects,
+      totalRuns,
+      successfulRuns,
+      failedRuns,
+      activeRuns,
+      totalTestCases,
+      passedTests,
+      failedTests,
+      executedTests,
+      successRate,
+    };
+  }, [projects, runs, projectCounts]);
 
   const cards = useMemo(() => {
-    if (!stats) return [];
-    const failedPct = 100 - (stats.successRate || 0);
     return [
-      { title: "Success Rate", value: `${stats.successRate || 0}%`, icon: CheckCircle, tone: "success" },
-      { title: "Total Test Cases", value: stats.testCases ?? 0, icon: FileText, tone: "neutral" },
-      { title: "Failures", value: `${failedPct}%`, icon: AlertCircle, tone: "danger" },
-      { title: "Projects", value: stats.projects ?? 0, icon: Folder, tone: "warning" },
+      {
+        title: "Projects",
+        value: stats.totalProjects,
+        subtitle: `${plansCount} execution plans`,
+        icon: Folder,
+        tone: "warning",
+      },
+      {
+        title: "Test Cases",
+        value: stats.totalTestCases,
+        subtitle: "Across all projects",
+        icon: FileText,
+        tone: "neutral",
+      },
+      {
+        title: "Success Rate",
+        value: `${stats.successRate}%`,
+        subtitle: `${stats.passedTests} passed / ${stats.failedTests} failed`,
+        icon: CheckCircle,
+        tone: "success",
+      },
+      {
+        title: "Failures",
+        value: stats.failedRuns,
+        subtitle: `${stats.activeRuns} active run${stats.activeRuns === 1 ? "" : "s"}`,
+        icon: AlertCircle,
+        tone: "danger",
+      },
     ];
-  }, [stats]);
+  }, [plansCount, stats]);
+
+  const runsByProject = useMemo(() => {
+    const out = new Map();
+    for (const run of runs) {
+      const key = String(run?.projectId || "");
+      if (!key) continue;
+      const prev = out.get(key);
+      if (!prev) {
+        out.set(key, run);
+        continue;
+      }
+      const prevTs = new Date(prev?.updatedAt || prev?.createdAt || 0).getTime();
+      const currentTs = new Date(run?.updatedAt || run?.createdAt || 0).getTime();
+      if (currentTs > prevTs) {
+        out.set(key, run);
+      }
+    }
+    return out;
+  }, [runs]);
+
+  const activity = useMemo(() => {
+    const projectEvents = projects.map((project) => ({
+      id: `project-${project.id}`,
+      label: `Project updated: ${project.name || "Project"}`,
+      detail: `${projectCounts[String(project.id)]?.testCases || 0} test case${
+        Number(projectCounts[String(project.id)]?.testCases || 0) === 1 ? "" : "s"
+      }`,
+      ts: project.updatedAt || project.createdAt || null,
+    }));
+
+    const runEvents = runs.map((run) => ({
+      id: `run-${run.id}`,
+      label: `Run ${String(run.status || "updated").toLowerCase()}`,
+      detail: run.project?.name || run.projectName || "Project",
+      ts: run.updatedAt || run.createdAt || null,
+      status: run.status,
+    }));
+
+    return [...projectEvents, ...runEvents]
+      .filter((item) => item.ts)
+      .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+      .slice(0, 10);
+  }, [projects, runs, projectCounts]);
+
+  const trends = useMemo(() => {
+    const passedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
+    const failedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
+    const executedTests = passedTests + failedTests;
+
+    const done = executedTests > 0 ? Math.round((passedTests / executedTests) * 100) : 0;
+    const failed = executedTests > 0 ? Math.round((failedTests / executedTests) * 100) : 0;
+
+    const totalRuns = runs.length;
+    const activeRuns = runs.filter((run) => isRunActive(run?.status)).length;
+    const active = totalRuns > 0 ? Math.round((activeRuns / totalRuns) * 100) : 0;
+
+    return [
+      { label: "Success", value: done },
+      { label: "Running", value: active },
+      { label: "Failed", value: failed },
+    ];
+  }, [runs]);
+
+  const recentRuns = useMemo(() => {
+    return runs
+      .slice()
+      .sort((a, b) => new Date(b?.updatedAt || b?.createdAt || 0) - new Date(a?.updatedAt || a?.createdAt || 0))
+      .slice(0, 5);
+  }, [runs]);
+
+  const recentProjects = useMemo(() => {
+    return projects
+      .slice()
+      .sort((a, b) => new Date(b?.updatedAt || b?.createdAt || 0) - new Date(a?.updatedAt || a?.createdAt || 0));
+  }, [projects]);
+
+  const recentActivity = useMemo(() => activity, [activity]);
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 text-[#232323] dark:text-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <div className="h-full min-h-0 overflow-hidden text-[#232323] dark:text-white flex flex-col gap-3">
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-base text-[#232323]/70 dark:text-white/70">Overview of your testing suite performance.</p>
+            <h1 className="text-2xl font-bold leading-tight">Dashboard</h1>
+            <p className="text-sm text-[#232323]/70 dark:text-white/70">Overview of your testing suite performance.</p>
           </div>
           <div className="flex gap-2">
-            <Link to={`/dashboard/${orgSlug}/execution`} className="bg-[#FFAA00] hover:bg-[#FFB733] text-black font-semibold rounded-lg px-4 py-2 shadow-sm inline-flex items-center gap-2">
+            <Link to={`/dashboard/${orgSlug}/execution/tests`} className="bg-[#FFAA00] hover:bg-[#FFB733] text-black font-semibold rounded-lg px-3 py-1.5 text-sm shadow-sm inline-flex items-center gap-2 transition-all duration-200 hover:shadow-md">
               <PlayCircle className="h-4 w-4" />
-              Run Suite
+              Open Projects
             </Link>
-            <Link to={`/dashboard/${orgSlug}/platform`} className="rounded-lg border border-border px-4 py-2 hover:border-[#FFAA00]/60">
+            <Link to={`/dashboard/${orgSlug}/platform`} className="rounded-lg border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 px-3 py-1.5 text-sm hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200">
               Team Access
             </Link>
           </div>
@@ -126,110 +344,154 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        {loading && !stats ? (
-          <div className="text-sm text-[#232323]/60 dark:text-white/60">Loading dashboard...</div>
+        {loading && projects.length === 0 ? (
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 p-6 text-sm text-[#232323]/60 dark:text-white/60 inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading organization dashboard...
+          </div>
         ) : null}
 
-        {stats ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        {!loading || projects.length > 0 ? (
+          <div className="flex-1 min-h-0 grid grid-rows-[auto_auto_1fr] gap-3 overflow-hidden">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {cards.map((card) => (
                 <StatCard key={card.title} {...card} />
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-card border border-border rounded-xl p-4 hover:border-[#FFAA00]/60 transition-all">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
                     Execution Trends
                   </h3>
-                  <span className="text-xs text-[#232323]/60 dark:text-white/70">Last runs</span>
+                  <span className="text-[11px] text-[#232323]/60 dark:text-white/70">Last runs</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {trends.length === 0 ? (
                     <p className="text-sm text-[#232323]/60 dark:text-white/60">No trend data yet.</p>
                   ) : (
                     trends.map((trend) => (
                       <div key={trend.label} className="flex items-center gap-3">
-                        <span className="text-sm w-24">{trend.label}</span>
-                        <div className="flex-1 h-2 bg-[#232323]/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#FFAA00]" style={{ width: `${trend.value}%` }} />
+                        <span className="text-xs w-20">{trend.label}</span>
+                        <div className="flex-1 h-2.5 bg-[#232323]/10 dark:bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-[#FFAA00] to-[#FFBF3F]" style={{ width: `${trend.value}%` }} />
                         </div>
-                        <span className="text-xs text-[#232323]/60 dark:text-white/70">{trend.value}%</span>
+                        <span className="text-[11px] text-[#232323]/60 dark:text-white/70">{trend.value}%</span>
                       </div>
                     ))
                   )}
                 </div>
               </div>
 
-              <div className="bg-card border border-border rounded-xl p-4 hover:border-[#FFAA00]/60 transition-all">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
                     <PlayCircle className="h-4 w-4" />
                     Recent Test Runs
                   </h3>
                 </div>
-                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                <div className="space-y-1.5">
                   {runs.length === 0 ? (
                     <p className="text-sm text-[#232323]/60 dark:text-white/60">No test runs yet.</p>
                   ) : (
-                    runs.slice(0, 8).map((run) => (
-                      <div key={run.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-[#232323]/5 dark:hover:bg-white/5">
-                        <div>
-                          <p className="text-sm font-medium">{run.id.slice(0, 12)}...</p>
-                          <p className="text-xs text-[#232323]/60 dark:text-white/60">{run.status}</p>
+                    recentRuns.map((run) => (
+                      <button
+                        key={run.id}
+                        type="button"
+                        onClick={() => navigate(`/dashboard/${orgSlug}/execution/runs/${run.id}`)}
+                        className="w-full text-left flex items-center justify-between p-2 rounded-xl bg-background/50 hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{run.plan?.name || run.project?.name || run.id?.slice(0, 12) || "Run"}</p>
+                          <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(run.status)}`}>
+                            {run.status || "Unknown"}
+                          </span>
                         </div>
-                        <p className="text-xs text-[#232323]/50 dark:text-white/50">{formatTimeAgo(run.updatedAt)}</p>
-                      </div>
+                        <p className="text-[11px] text-[#232323]/50 dark:text-white/50">{formatTimeAgo(run.updatedAt)}</p>
+                      </button>
                     ))
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-card border border-border rounded-xl p-4 hover:border-[#FFAA00]/60 transition-all">
-                <h3 className="text-base font-semibold flex items-center gap-2 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
+                <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
                   <Folder className="h-4 w-4" />
-                  Projects Overview
+                  Organization Projects
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-[#232323]/5 dark:bg-white/5 rounded-lg">
-                    <p className="text-xl font-semibold">{stats.projects}</p>
-                    <p className="text-xs text-[#232323]/60 dark:text-white/70">Total Projects</p>
+                {projects.length === 0 ? (
+                  <p className="text-sm text-[#232323]/60 dark:text-white/60">No projects available yet.</p>
+                ) : (
+                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+                    {recentProjects.map((project) => {
+                        const counts = projectCounts[String(project.id)] || { folders: 0, testCases: 0 };
+                        const latestRun = runsByProject.get(String(project.id));
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests/${project.id}`)}
+                            className="w-full text-left p-2.5 rounded-xl bg-background/50 hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold truncate">{project.name || "Project"}</p>
+                                <p className="text-[11px] text-[#232323]/55 dark:text-white/55 truncate mt-0.5">
+                                  {project.description || "No description"}
+                                </p>
+                              </div>
+                              {latestRun ? (
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(latestRun.status)}`}>
+                                  {latestRun.status || "Unknown"}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1.5 text-[10px] text-[#232323]/60 dark:text-white/60 flex items-center gap-2.5">
+                              <span>{counts.folders} folder{counts.folders === 1 ? "" : "s"}</span>
+                              <span>{counts.testCases} test case{counts.testCases === 1 ? "" : "s"}</span>
+                              {latestRun ? <span>Last run {formatTimeAgo(latestRun.updatedAt || latestRun.createdAt)}</span> : null}
+                            </div>
+                          </button>
+                        );
+                      })}
                   </div>
-                  <div className="p-3 bg-[#232323]/5 dark:bg-white/5 rounded-lg">
-                    <p className="text-xl font-semibold">{runs.length}</p>
-                    <p className="text-xs text-[#232323]/60 dark:text-white/70">Total Runs</p>
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="bg-card border border-border rounded-xl p-4 hover:border-[#FFAA00]/60 transition-all">
-                <h3 className="text-base font-semibold flex items-center gap-2 mb-3">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
+                <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
                   <Activity className="h-4 w-4" />
                   Recent Activity
                 </h3>
-                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
                   {activity.length === 0 ? (
                     <p className="text-sm text-[#232323]/60 dark:text-white/60">No recent activity.</p>
                   ) : (
-                    activity.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-[#232323]/5 dark:hover:bg-white/5">
+                    recentActivity.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-2 rounded-xl bg-background/50 hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200">
                         <div>
-                          <p className="text-sm font-medium">{item.action}</p>
-                          <p className="text-xs text-[#232323]/60 dark:text-white/60">{item.user}</p>
+                          <p className="text-xs font-medium inline-flex items-center gap-1.5">
+                            {item.label}
+                            {item.status ? (
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(item.status)}`}>
+                                {item.status}
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-[11px] text-[#232323]/60 dark:text-white/60 truncate">{item.detail}</p>
                         </div>
-                        <p className="text-xs text-[#232323]/50 dark:text-white/50">{formatTimeAgo(item.time)}</p>
+                        <p className="text-[11px] text-[#232323]/50 dark:text-white/50">{formatTimeAgo(item.ts)}</p>
                       </div>
                     ))
                   )}
                 </div>
               </div>
             </div>
-          </>
+          </div>
         ) : null}
       </div>
     </DashboardLayout>

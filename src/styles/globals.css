@@ -49,6 +49,8 @@
 :root {
   --radius: 0.625rem;
   --font-geist-sans: "Manrope", "Space Grotesk", "Segoe UI", sans-serif;
+  --background: #f6f6f6;
+  --foreground: #232323;
   --card: #f6f6f6;
   --card-foreground: #232323;
   --popover: #f6f6f6;
@@ -57,5 +59,74 @@
   --primary-foreground: #f6f6f6;
   --secondary: #f0f0f0;
   --secondary-foreground: #232323;
-  /* ...rest of the CSS... */
+  --muted: #ececec;
+  --muted-foreground: #5f5f5f;
+  --accent: #ebebeb;
+  --accent-foreground: #232323;
+  --destructive: #ef4444;
+  --border: #d8d8d8;
+  --input: #d8d8d8;
+  --ring: #ffb733;
+  --chart-1: #ffb733;
+  --chart-2: #22c55e;
+  --chart-3: #3b82f6;
+  --chart-4: #ef4444;
+  --chart-5: #a855f7;
+  --sidebar: #232323;
+  --sidebar-foreground: #f6f6f6;
+  --sidebar-primary: #ffb733;
+  --sidebar-primary-foreground: #232323;
+  --sidebar-accent: #2f2f2f;
+  --sidebar-accent-foreground: #f6f6f6;
+  --sidebar-border: rgba(255, 255, 255, 0.14);
+  --sidebar-ring: #ffb733;
+}
+
+.dark {
+  --background: #232323;
+  --foreground: #f6f6f6;
+  --card: #2a2a2a;
+  --card-foreground: #f6f6f6;
+  --popover: #2a2a2a;
+  --popover-foreground: #f6f6f6;
+  --primary: #ffb733;
+  --primary-foreground: #232323;
+  --secondary: #303030;
+  --secondary-foreground: #f6f6f6;
+  --muted: #303030;
+  --muted-foreground: #cfcfcf;
+  --accent: #333333;
+  --accent-foreground: #f6f6f6;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.14);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #ffb733;
+  --chart-1: #ffb733;
+  --chart-2: #22c55e;
+  --chart-3: #60a5fa;
+  --chart-4: #f87171;
+  --chart-5: #c084fc;
+  --sidebar: #232323;
+  --sidebar-foreground: #f6f6f6;
+  --sidebar-primary: #ffb733;
+  --sidebar-primary-foreground: #232323;
+  --sidebar-accent: #2f2f2f;
+  --sidebar-accent-foreground: #f6f6f6;
+  --sidebar-border: rgba(255, 255, 255, 0.14);
+  --sidebar-ring: #ffb733;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans);
+  }
 }
