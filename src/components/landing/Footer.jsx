@@ -47,8 +47,8 @@ export default function Footer() {
 
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4"
           style={{ borderTop: `1px solid ${c.borderTop}` }}>
-          <p className="text-xs" style={{ color: c.textTiny }}>© 2026 Qalion. All rights reserved.</p>
-          <p className="text-xs font-mono" style={{ color: c.textTiny }}>NestJS · Next.js · LangGraph · Playwright</p>
+          <p className="text-xs" style={{ color: c.textTiny }}>© 2026 WIRKY GROUP. </p>
+          <p className="text-xs font-mono" style={{ color: c.textTiny }}>All rights reserved.</p>
         </div>
       </div>
     </footer>

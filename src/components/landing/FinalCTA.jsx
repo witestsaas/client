@@ -30,7 +30,7 @@ export default function FinalCTA() {
         <motion.h2 variants={fadeUp} className="text-5xl md:text-7xl font-bold text-white mb-5 leading-tight">
           Ready to automate<br />
           <span className="text-transparent bg-clip-text"
-            style={{ backgroundImage: 'linear-gradient(135deg, #ffb733, #ff6a00)' }}>
+            style={{ backgroundImage: 'linear-gradient(135deg, #ffaa00, #ff8a37)' }}>
             your testing?
           </span>
         </motion.h2>
@@ -43,7 +43,7 @@ export default function FinalCTA() {
               whileHover={{ scale: 1.06, boxShadow: '0 0 80px rgba(255,183,51,0.4), 0 0 160px rgba(255,100,0,0.15)' }}
               whileTap={{ scale: 0.96 }}
               className="relative flex items-center gap-2 font-bold px-10 py-4 rounded-xl text-base overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #ffb733 0%, #ff8c00 100%)', color: '#000' }}>
+              style={{ background: 'linear-gradient(135deg, #ffaa00 0%, #ff8c00 100%)', color: '#000' }}>
               <motion.span className="absolute inset-0 bg-white/25"
                 initial={{ x: '-100%', skewX: '-15deg' }}
                 whileHover={{ x: '200%' }}

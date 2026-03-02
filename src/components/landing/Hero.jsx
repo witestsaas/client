@@ -66,23 +66,12 @@ export default function Hero() {
         style={{ y: heroY, opacity: heroOpacity, zIndex: 10 }}
         className="relative text-center max-w-5xl mx-auto px-6 pt-20"
       >
-        {/* Badge */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full mb-8"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,183,51,0.12) 0%, rgba(255,120,0,0.06) 100%)',
-            border: '1px solid rgba(255,183,51,0.25)',
-            backdropFilter: 'blur(12px)',
-          }}>
-          <motion.span className="w-2 h-2 rounded-full bg-[#ffb733]"
-            animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-            transition={{ duration: 2, repeat: Infinity }} />
-          <span className="text-[#ffb733] text-sm font-semibold">AI-Powered Test Automation</span>
-          <span className="text-[#ffb733]/40">·</span>
-          <span className="text-xs" style={{ color: c.textSubtle }}>v2.0 now with LangGraph</span>
+          className="inline-flex items-center gap-2.5 px-4 py-2 mb-8"
+          >
         </motion.div>
 
         {/* Headline */}
@@ -96,7 +85,7 @@ export default function Hero() {
           <span className="relative inline-block">
             <motion.span
               className="text-transparent bg-clip-text"
-              style={{ backgroundImage: 'linear-gradient(135deg, #ffb733 0%, #ff6a00 40%, #ffb733 80%, #ffe066 100%)', backgroundSize: '200% 200%' }}
+              style={{ backgroundImage: 'linear-gradient(135deg, #ffaa00 0%, #ff6a00 40%, #ffaa00 80%, #ffe066 100%)', backgroundSize: '200% 200%' }}
               animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
               autonomous

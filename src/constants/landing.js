@@ -2,17 +2,17 @@ import { Bot, Globe, Zap, BarChart3, Shield, GitBranch, Cpu, Layers, Monitor } f
 
 export const codeLines = [
   { text: '✓ login_flow.spec.ts', color: '#22c55e' },
-  { text: 'agent.navigate("/checkout")', color: '#ffb733' },
+  { text: 'agent.navigate("/checkout")', color: '#ffaa00' },
   { text: '✓ 248 tests passed', color: '#22c55e' },
   { text: 'AI: generating test cases...', color: '#60a5fa' },
   { text: 'assert(page.title).toBe("Home")', color: '#d4d4d4' },
   { text: '✓ api_health_check.spec.ts', color: '#22c55e' },
-  { text: 'screenshot captured →', color: '#c084fc' },
-  { text: 'agent.click("#submit-btn")', color: '#ffb733' },
+  { text: 'screenshot captured →', color: '#ffaa00' },
+  { text: 'agent.click("#submit-btn")', color: '#ffaa00' },
 ];
 
 export const features = [
-  { icon: Bot,       title: 'Autonomous AI Agents',    desc: 'LangGraph agents navigate, interact, and self-heal — zero scripting.', accent: '#ffb733' },
+  { icon: Bot,       title: 'Autonomous AI Agents',    desc: 'LangGraph agents navigate, interact, and self-heal — zero scripting.', accent: '#ffaa00' },
   { icon: Globe,     title: 'Real Browser Automation', desc: 'Full Playwright for cross-browser E2E with screenshots & recordings.',   accent: '#3b82f6' },
   { icon: Zap,       title: 'Parallel Execution',      desc: 'Bull queues + real-time Socket.IO streams across unlimited agents.',     accent: '#22c55e' },
   { icon: BarChart3, title: 'Deep AI Analytics',       desc: 'Coverage, flakiness, and performance trends powered by AI.',            accent: '#a855f7' },
@@ -21,17 +21,17 @@ export const features = [
 ];
 
 export const steps = [
-  { number: '01', title: 'Connect your app',   desc: 'Point Qalion at your staging URL — no SDK, no code changes.',             icon: Globe,   color: '#ffb733' },
+  { number: '01', title: 'Connect your app',   desc: 'Point Qalion at your staging URL — no SDK, no code changes.',             icon: Globe,   color: '#ffaa00' },
   { number: '02', title: 'AI generates tests', desc: 'functional-test-agent explores and auto-generates test scenarios.',        icon: Cpu,     color: '#3b82f6' },
   { number: '03', title: 'Execute at scale',   desc: 'Middleware queues and distributes across parallel browser agents.',        icon: Layers,  color: '#22c55e' },
-  { number: '04', title: 'Monitor in real-time', desc: 'Socket.IO streams, instant alerts, and AI-generated reports.',          icon: Monitor, color: '#a855f7' },
+  { number: '04', title: 'Monitor in real-time', desc: 'Socket.IO streams, instant alerts, and AI-generated reports.',          icon: Monitor, color: '#ff8c00' },
 ];
 
 export const stats = [
-  { label: 'Tests executed daily',        value: 500, suffix: 'K+', color: '#ffb733' },
+  { label: 'Tests executed daily',        value: 500, suffix: 'K+', color: '#ffaa00' },
   { label: 'Average pass rate',           value: 98,  suffix: '%',  color: '#22c55e' },
   { label: 'Faster release cycles',       value: 3,   suffix: 'x',  color: '#60a5fa' },
-  { label: 'Engineering hours saved/mo',  value: 240, suffix: 'h',  color: '#c084fc' },
+  { label: 'Engineering hours saved/mo',  value: 240, suffix: 'h',  color: '#ff8c00' },
 ];
 
 export const testimonials = [
@@ -66,4 +66,4 @@ export const footerColumns = [
   { title: 'Company',    links: ['About', 'Blog', 'Privacy', 'Terms'] },
 ];
 
-export const logos = ['Playwright', 'LangChain', 'LangGraph', 'PostgreSQL', 'Redis', 'Socket.IO', 'Auth0', 'OpenAI'];
+// export const logos = ['Playwright', 'LangChain', 'LangGraph', 'PostgreSQL', 'Redis', 'Socket.IO', 'Auth0', 'OpenAI'];
