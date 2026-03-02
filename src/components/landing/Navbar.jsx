@@ -53,13 +53,12 @@ export default function Navbar() {
         >
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 pr-4 mr-2" style={{ borderRight: `1px solid ${c.borderSm}` }}>
-            <motion.div
-              whileHover={{ rotate: 15, scale: 1.1 }}
+            <div
               className="w-7 h-7 rounded-lg bg-[#ffb733] flex items-center justify-center"
               style={{ boxShadow: '0 0 12px rgba(255,183,51,0.35)' }}
             >
               <Zap className="w-3.5 h-3.5 text-black" strokeWidth={2.5} />
-            </motion.div>
+            </div>
             <span
               className="font-bold text-sm tracking-tight"
               style={{ color: c.textPrimary }}
