@@ -187,8 +187,8 @@ export function AuthProvider({ children }) {
       throw new Error(body?.message || 'Failed to create account');
     }
 
-    return refreshProfile();
-  }, [refreshProfile]);
+    return body;
+  }, []);
 
   const startGoogleAuth = useCallback(async () => {
     window.location.href = `${API_BASE_URL}/auth/google`;

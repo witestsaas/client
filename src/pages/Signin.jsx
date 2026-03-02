@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "../components/Input";
 import { GoogleButton } from "../components/GoogleButton";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
@@ -9,12 +9,16 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 
 export default function SigninPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, startGoogleAuth } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const resetSuccess = searchParams.get("reset") === "success";
+  const verifySuccess = searchParams.get("verified") === "success";
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -36,6 +40,16 @@ export default function SigninPage() {
       <div className="w-full max-w-md">
         <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-8 animate-fade-in-up transition-all duration-500">
           <h1 className="text-3xl font-extrabold text-center mb-8 text-blue-900 dark:text-white tracking-tight animate-fade-in">Sign in to your account</h1>
+          {resetSuccess ? (
+            <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+              Your password has been reset successfully. You can sign in now.
+            </div>
+          ) : null}
+          {verifySuccess ? (
+            <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+              Email verified successfully. You can sign in now.
+            </div>
+          ) : null}
           <form onSubmit={handleSubmit}>
             <Input
               label="Username or email"
@@ -80,6 +94,11 @@ export default function SigninPage() {
             />
           </div>
           <p className="mt-4 text-center text-sm text-gray-600 dark:text-white/70">
+            <Link to="/forgot-password" className="text-blue-600 dark:text-[#FFAA00] hover:underline font-medium">
+              Forgot password?
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-white/70">
             Don't have an account?{" "}
             <Link
               to="/signup"
