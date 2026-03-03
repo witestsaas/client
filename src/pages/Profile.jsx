@@ -16,6 +16,16 @@ export default function Profile() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [mfaStatus, setMfaStatus] = useState(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaActionLoading, setMfaActionLoading] = useState(false);
+  const [mfaError, setMfaError] = useState('');
+  const [mfaInfo, setMfaInfo] = useState('');
+  const [setupData, setSetupData] = useState(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+  const [regenCode, setRegenCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState([]);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -23,6 +33,43 @@ export default function Profile() {
     setLastName(user?.lastName || "");
     setAvatarUrl(user?.avatarUrl || "");
   }, [user?.firstName, user?.lastName, user?.avatarUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMfaStatus() {
+      if (!user?.userId) return;
+      setMfaLoading(true);
+      setMfaError('');
+      try {
+        const response = await apiFetch('/auth/mfa/status', {
+          method: 'GET',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load MFA status');
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled) {
+          setMfaStatus(payload);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMfaError(error?.message || 'Failed to load MFA status');
+        }
+      } finally {
+        if (!cancelled) {
+          setMfaLoading(false);
+        }
+      }
+    }
+
+    loadMfaStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.userId]);
 
   function getInitials() {
     const fullName = `${firstName || ""} ${lastName || ""}`.trim();
@@ -105,6 +152,131 @@ export default function Profile() {
       setMessage(error?.message || 'Failed to upload avatar');
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  async function refreshMfaStatus() {
+    const response = await apiFetch('/auth/mfa/status', {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to refresh MFA status');
+    }
+    const payload = await response.json().catch(() => ({}));
+    setMfaStatus(payload);
+  }
+
+  async function startMfaSetup() {
+    setMfaActionLoading(true);
+    setMfaError('');
+    setMfaInfo('');
+    setRecoveryCodes([]);
+    try {
+      const response = await apiFetch('/auth/mfa/setup', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || 'Failed to start MFA setup');
+      }
+      const payload = await response.json().catch(() => ({}));
+      setSetupData(payload);
+      setMfaInfo('Scan the QR code, then enter the authenticator code to enable MFA.');
+    } catch (error) {
+      setMfaError(error?.message || 'Failed to start MFA setup');
+    } finally {
+      setMfaActionLoading(false);
+    }
+  }
+
+  async function enableMfa() {
+    setMfaActionLoading(true);
+    setMfaError('');
+    setMfaInfo('');
+    try {
+      const response = await apiFetch('/auth/mfa/enable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: mfaCode }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Failed to enable MFA');
+      }
+
+      setRecoveryCodes(Array.isArray(payload?.recoveryCodes) ? payload.recoveryCodes : []);
+      setSetupData(null);
+      setMfaCode('');
+      await refreshMfaStatus();
+      await refreshProfile();
+      setMfaInfo('MFA enabled successfully. Save your recovery codes in a secure location.');
+    } catch (error) {
+      setMfaError(error?.message || 'Failed to enable MFA');
+    } finally {
+      setMfaActionLoading(false);
+    }
+  }
+
+  async function disableMfa() {
+    setMfaActionLoading(true);
+    setMfaError('');
+    setMfaInfo('');
+    try {
+      const response = await apiFetch('/auth/mfa/disable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: disableCode }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Failed to disable MFA');
+      }
+
+      setDisableCode('');
+      setRecoveryCodes([]);
+      setSetupData(null);
+      await refreshMfaStatus();
+      await refreshProfile();
+      setMfaInfo('MFA disabled successfully.');
+    } catch (error) {
+      setMfaError(error?.message || 'Failed to disable MFA');
+    } finally {
+      setMfaActionLoading(false);
+    }
+  }
+
+  async function regenerateRecoveryCodes() {
+    setMfaActionLoading(true);
+    setMfaError('');
+    setMfaInfo('');
+    try {
+      const response = await apiFetch('/auth/mfa/recovery-codes/regenerate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: regenCode }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Failed to regenerate recovery codes');
+      }
+
+      setRecoveryCodes(Array.isArray(payload?.recoveryCodes) ? payload.recoveryCodes : []);
+      setRegenCode('');
+      await refreshMfaStatus();
+      setMfaInfo('Recovery codes regenerated. Replace old codes immediately.');
+    } catch (error) {
+      setMfaError(error?.message || 'Failed to regenerate recovery codes');
+    } finally {
+      setMfaActionLoading(false);
     }
   }
 
@@ -193,6 +365,138 @@ export default function Profile() {
 
             {message ? <p className="text-sm text-[#232323]/70 dark:text-white/70">{message}</p> : null}
           </form>
+        </div>
+
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6 space-y-4">
+          <div>
+            <h3 className="text-xl font-semibold text-[#232323] dark:text-white">Multi-factor authentication</h3>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">
+              Protect your account with an authenticator app and recovery codes.
+            </p>
+          </div>
+
+          {mfaLoading ? (
+            <p className="text-sm text-[#232323]/70 dark:text-white/70">Loading MFA status...</p>
+          ) : (
+            <p className="text-sm text-[#232323]/70 dark:text-white/70">
+              Status: <span className="font-semibold">{mfaStatus?.enabled ? 'Enabled' : 'Disabled'}</span>
+              {mfaStatus?.enabled ? ` · Recovery codes left: ${mfaStatus?.recoveryCodesRemaining ?? 0}` : ''}
+            </p>
+          )}
+
+          {!mfaStatus?.enabled ? (
+            <div className="space-y-4">
+              {!setupData ? (
+                <button
+                  type="button"
+                  onClick={startMfaSetup}
+                  disabled={mfaActionLoading}
+                  className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70"
+                >
+                  {mfaActionLoading ? 'Preparing setup...' : 'Start MFA setup'}
+                </button>
+              ) : (
+                <div className="space-y-3 border border-black/10 dark:border-white/10 rounded-xl p-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-start">
+                    {setupData?.qrCodeDataUrl ? (
+                      <img src={setupData.qrCodeDataUrl} alt="MFA QR code" className="h-40 w-40 rounded-md border border-black/10 dark:border-white/10 bg-white" />
+                    ) : null}
+                    <div className="text-sm text-[#232323]/80 dark:text-white/80 space-y-2">
+                      <p className="font-medium">Manual key</p>
+                      <p className="break-all font-mono text-xs bg-black/5 dark:bg-white/10 rounded px-2 py-1">
+                        {setupData?.manualEntryKey || 'Unavailable'}
+                      </p>
+                      <p className="text-xs">Expires in {setupData?.expiresInSec || 600}s</p>
+                    </div>
+                  </div>
+
+                  <Input
+                    label="Authenticator code"
+                    value={mfaCode}
+                    onChange={setMfaCode}
+                  />
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={enableMfa}
+                      disabled={mfaActionLoading}
+                      className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70"
+                    >
+                      {mfaActionLoading ? 'Enabling...' : 'Enable MFA'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSetupData(null);
+                        setMfaCode('');
+                        setMfaInfo('');
+                        setMfaError('');
+                      }}
+                      disabled={mfaActionLoading}
+                      className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-medium disabled:opacity-70"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="border border-black/10 dark:border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-medium text-[#232323] dark:text-white">Disable MFA</p>
+                <Input
+                  label="Current authenticator/recovery code"
+                  value={disableCode}
+                  onChange={setDisableCode}
+                />
+                <button
+                  type="button"
+                  onClick={disableMfa}
+                  disabled={mfaActionLoading}
+                  className="h-9 px-4 rounded-md border border-red-300 text-red-600 dark:border-red-400/40 dark:text-red-400 text-sm font-semibold disabled:opacity-70"
+                >
+                  {mfaActionLoading ? 'Disabling...' : 'Disable MFA'}
+                </button>
+              </div>
+
+              <div className="border border-black/10 dark:border-white/10 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-medium text-[#232323] dark:text-white">Regenerate recovery codes</p>
+                <Input
+                  label="Current authenticator/recovery code"
+                  value={regenCode}
+                  onChange={setRegenCode}
+                />
+                <button
+                  type="button"
+                  onClick={regenerateRecoveryCodes}
+                  disabled={mfaActionLoading}
+                  className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-semibold disabled:opacity-70"
+                >
+                  {mfaActionLoading ? 'Regenerating...' : 'Regenerate codes'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {recoveryCodes.length > 0 ? (
+            <div className="border border-amber-300/60 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-400/30 rounded-xl p-4">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">
+                Save these recovery codes now
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {recoveryCodes.map((item) => (
+                  <div key={item} className="font-mono text-xs bg-white/80 dark:bg-black/20 rounded px-2 py-1 break-all text-[#232323] dark:text-white">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {mfaInfo ? <p className="text-sm text-emerald-700 dark:text-emerald-400">{mfaInfo}</p> : null}
+          {mfaError ? <p className="text-sm text-red-600">{mfaError}</p> : null}
         </div>
       </div>
     </DashboardLayout>

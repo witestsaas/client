@@ -238,6 +238,20 @@ export default function Settings() {
           <span className="text-sm text-[#232323] dark:text-white">Allow API key usage outside organization IP range</span>
           <input type="checkbox" className="h-4 w-4" />
         </label>
+        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] px-4 py-3">
+          <p className="text-sm font-medium text-[#232323] dark:text-white">Multi-factor authentication (MFA)</p>
+          <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">
+            MFA is configured per user account from the Profile page.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(`/dashboard/${orgSlug}/profile`)}
+            className="mt-3 h-9 px-3 rounded-lg border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white inline-flex items-center gap-1.5"
+          >
+            <LinkIcon className="w-4 h-4" />
+            Go to Profile MFA Settings
+          </button>
+        </div>
       </div>
     </SettingsSectionCard>
   );

@@ -131,7 +131,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 		const url = getSocketUrl();
 
 		const socket = io(url ? `${url}/test-execution` : "/test-execution", {
-			transports: ["polling", "websocket"],
+			transports: ["websocket"],
 			auth: async (cb) => {
 				const token = await getAccessToken();
 				if (token) {
@@ -140,7 +140,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 				}
 				cb({});
 			},
-			autoConnect: true,
+			autoConnect: false,
 			reconnection: true,
 			reconnectionAttempts: Infinity,
 			reconnectionDelay: 1000,
@@ -182,8 +182,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 		const current = subCounts.current.get(testRunId) ?? 0;
 
 		// First subscriber → join room
-		if (current === 0 && socket?.connected) {
-			socket.emit("subscribe:testRun", testRunId);
+		if (current === 0 && socket) {
+			if (socket.connected) {
+				socket.emit("subscribe:testRun", testRunId);
+			} else {
+				const onConnect = () => {
+					socket.emit("subscribe:testRun", testRunId);
+					socket.off("connect", onConnect);
+				};
+				socket.on("connect", onConnect);
+				socket.connect();
+			}
 		}
 		subCounts.current.set(testRunId, current + 1);
 

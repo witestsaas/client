@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "../components/Input";
 import { GoogleButton } from "../components/GoogleButton";
@@ -10,12 +10,62 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 export default function SigninPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, startGoogleAuth } = useAuth();
+  const { login, startGoogleAuth, getCaptchaChallenge } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaId, setCaptchaId] = useState("");
+  const [captchaImage, setCaptchaImage] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!showCaptcha) {
+      return;
+    }
+
+    let mounted = true;
+
+    async function loadChallenge() {
+      setCaptchaLoading(true);
+      try {
+        const challenge = await getCaptchaChallenge();
+        if (!mounted) return;
+        setCaptchaId(challenge?.challengeId || "");
+        setCaptchaImage(challenge?.imageData || "");
+        setCaptchaAnswer("");
+      } catch (err) {
+        if (!mounted) return;
+        setError(err.message || "Failed to load CAPTCHA");
+      } finally {
+        if (mounted) {
+          setCaptchaLoading(false);
+        }
+      }
+    }
+
+    loadChallenge();
+    return () => {
+      mounted = false;
+    };
+  }, [getCaptchaChallenge, showCaptcha]);
+
+  async function refreshCaptcha() {
+    setCaptchaLoading(true);
+    try {
+      const challenge = await getCaptchaChallenge();
+      setCaptchaId(challenge?.challengeId || "");
+      setCaptchaImage(challenge?.imageData || "");
+      setCaptchaAnswer("");
+    } catch (err) {
+      setError(err.message || "Failed to refresh CAPTCHA");
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }
 
   const resetSuccess = searchParams.get("reset") === "success";
   const verifySuccess = searchParams.get("verified") === "success";
@@ -25,12 +75,36 @@ export default function SigninPage() {
     setError("");
     setLoading(true);
 
+    if (showCaptcha && (!captchaId || !captchaAnswer.trim())) {
+      setError("Please solve the CAPTCHA puzzle");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const profile = await login(username, password);
+      const result = await login(username, password, {
+        captchaId: showCaptcha ? captchaId : undefined,
+        captchaAnswer: showCaptcha ? captchaAnswer : undefined,
+      });
+      if (result?.requiresMfa && result?.challengeToken) {
+        const nextUrl = `/auth/mfa?challenge=${encodeURIComponent(result.challengeToken)}&expires=${encodeURIComponent(String(result.expiresInSec || 300))}`;
+        navigate(nextUrl, { replace: true });
+        return;
+      }
+
+      const profile = result;
       const targetPath = profile?.orgSlug ? `/dashboard/${profile.orgSlug}` : "/dashboard/no-org";
       navigate(targetPath, { replace: true });
     } catch (err) {
-      setError(err.message || "Invalid username or password");
+      const message = err.message || "Invalid username or password";
+      setError(message);
+
+      const mustShowCaptcha = showCaptcha || /captcha/i.test(message);
+      if (mustShowCaptcha) {
+        setShowCaptcha(true);
+        await refreshCaptcha();
+      }
+
       setLoading(false);
     }
   }
@@ -76,6 +150,39 @@ export default function SigninPage() {
                 )}
               </button>
             </div>
+            {showCaptcha ? (
+            <div className="mb-4 rounded-md border border-blue-100 dark:border-white/10 p-3 bg-slate-50/60 dark:bg-[#232323]/60">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-600 dark:text-white/70">Solve the CAPTCHA puzzle</p>
+                <button
+                  type="button"
+                  onClick={refreshCaptcha}
+                  disabled={captchaLoading || loading}
+                  className="text-xs text-blue-600 dark:text-[#FFAA00] hover:underline disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+              </div>
+              {captchaImage ? (
+                <img
+                  src={captchaImage}
+                  alt="CAPTCHA challenge"
+                  className="h-16 w-full rounded-md border border-slate-200 dark:border-white/10 object-contain bg-white dark:bg-[#1f1f1f]"
+                />
+              ) : (
+                <div className="h-16 w-full rounded-md border border-slate-200 dark:border-white/10 flex items-center justify-center text-xs text-gray-500 dark:text-white/60">
+                  {captchaLoading ? "Loading CAPTCHA..." : "CAPTCHA unavailable"}
+                </div>
+              )}
+              <input
+                type="text"
+                value={captchaAnswer}
+                onChange={(e) => setCaptchaAnswer(e.target.value)}
+                placeholder="Enter characters shown"
+                className="mt-3 w-full rounded-md border border-slate-300 dark:border-white/15 bg-white dark:bg-[#2A2A2A] px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-[#FFAA00]"
+              />
+            </div>
+            ) : null}
             {error && (
               <p className="text-red-600 text-sm mb-3">{error}</p>
             )}

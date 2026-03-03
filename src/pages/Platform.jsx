@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Mail, Settings, ShieldAlert, Trash2, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, Mail, Settings, ShieldAlert, Trash2, UserPlus, Users, X } from "lucide-react";
 import { apiFetch } from "../services/http";
 import { fetchUserOrganizations } from "../services/organizations";
 
@@ -65,6 +65,10 @@ export default function Platform() {
   const [submittingInvite, setSubmittingInvite] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [presenceByUserId, setPresenceByUserId] = useState({});
+  const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingOrg, setDeletingOrg] = useState(false);
+  const [deleteOrgError, setDeleteOrgError] = useState("");
 
   const isOwner = org?.currentUserRole === "Owner";
   const canManage = isOwner;
@@ -251,6 +255,29 @@ export default function Platform() {
     }
   }
 
+  async function confirmDeleteOrganization() {
+    if (!orgSlug || deletingOrg) return;
+    setDeletingOrg(true);
+    setDeleteOrgError("");
+
+    try {
+      const response = await apiFetch(`/organizations/${orgSlug}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to delete organization");
+      }
+
+      setDeleteOrgOpen(false);
+      setDeleteConfirmText("");
+      navigate("/dashboard/no-org", { replace: true });
+    } catch (e) {
+      setDeleteOrgError(e?.message || "Failed to delete organization");
+    } finally {
+      setDeletingOrg(false);
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -389,12 +416,10 @@ export default function Platform() {
               </div>
               <button
                 type="button"
-                onClick={async () => {
-                  if (!confirm(`Delete organization \"${org?.name || "this organization"}\" permanently?`)) return;
-                  const response = await apiFetch(`/organizations/${orgSlug}`, { method: "DELETE" });
-                  if (response.ok) {
-                    navigate("/dashboard/no-org", { replace: true });
-                  }
+                onClick={() => {
+                  setDeleteOrgError("");
+                  setDeleteConfirmText("");
+                  setDeleteOrgOpen(true);
                 }}
                 className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2"
               >
@@ -405,6 +430,76 @@ export default function Platform() {
           </div>
         ) : null}
       </div>
+
+      {deleteOrgOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-2xl">
+            <button
+              type="button"
+              onClick={() => {
+                if (deletingOrg) return;
+                setDeleteOrgOpen(false);
+              }}
+              className="absolute top-4 right-4 h-8 w-8 rounded-full inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10"
+              aria-label="Close dialog"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="p-6">
+              <div className="h-11 w-11 rounded-full border border-red-300/70 dark:border-red-700/50 bg-red-100/70 dark:bg-red-900/30 inline-flex items-center justify-center mb-4">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-[#232323] dark:text-white">Delete organization permanently?</h3>
+              <p className="mt-2 text-sm text-[#232323]/70 dark:text-white/70">
+                This action cannot be undone. All projects, runs, members, and organization data will be permanently removed.
+              </p>
+
+              <div className="mt-4 rounded-xl border border-black/10 dark:border-white/10 bg-background/60 p-3">
+                <p className="text-xs uppercase tracking-wide text-[#232323]/55 dark:text-white/55">Organization</p>
+                <p className="mt-1 text-sm font-semibold text-[#232323] dark:text-white break-all">{org?.name || orgSlug}</p>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-sm font-medium text-[#232323] dark:text-white">
+                  Type <span className="font-semibold">{org?.name || orgSlug}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={org?.name || orgSlug}
+                  className="mt-2 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 px-3 bg-background/80"
+                  autoFocus
+                />
+              </div>
+
+              {deleteOrgError ? <p className="mt-3 text-sm text-red-600 dark:text-red-400">{deleteOrgError}</p> : null}
+
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteOrgOpen(false)}
+                  disabled={deletingOrg}
+                  className="h-10 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteOrganization}
+                  disabled={deletingOrg || deleteConfirmText.trim() !== String(org?.name || orgSlug || "")}
+                  className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deletingOrg ? "Deleting..." : "Delete Organization"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {inviteOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">

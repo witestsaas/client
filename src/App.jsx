@@ -20,6 +20,7 @@ import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import ResetPasswordUpdate from './pages/ResetPasswordUpdate.jsx';
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm.jsx';
+import MfaChallenge from './pages/MfaChallenge.jsx';
 import Logout from './pages/Logout.jsx';
 import AuthCallback from './pages/AuthCallback.jsx';
 import JoinOrganization from './pages/JoinOrganization.jsx';
@@ -38,6 +39,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/reset-password/update" element={<ResetPasswordUpdate />} />
       <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+      <Route path="/auth/mfa" element={<MfaChallenge />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/dashboard/join/:token" element={<JoinOrganization />} />

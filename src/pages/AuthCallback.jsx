@@ -37,6 +37,12 @@ export default function AuthCallbackPage() {
     const params = new URLSearchParams(window.location.search);
     const authError = params.get('error');
     const authErrorDescription = params.get('error_description');
+    const challengeToken = String(params.get('challenge') || '').trim();
+
+    if (challengeToken) {
+      navigate(`/auth/mfa?challenge=${encodeURIComponent(challengeToken)}`, { replace: true });
+      return;
+    }
 
     if (authError) {
       setError(authErrorDescription || authError);

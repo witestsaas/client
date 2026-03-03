@@ -31,6 +31,7 @@ const PUBLIC_AUTH_ROUTES = new Set([
   '/',
   '/signin',
   '/signup',
+  '/auth/mfa',
   '/verified',
   '/forgot-password',
   '/reset-password',
@@ -148,14 +149,33 @@ export function AuthProvider({ children }) {
     };
   }, [refreshProfile]);
 
-  const login = useCallback(async (username, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
+  const getCaptchaChallenge = useCallback(async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/captcha/challenge`, {
+      method: 'GET',
       credentials: 'include',
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.message || 'Failed to load CAPTCHA challenge');
+    }
+
+    return payload;
+  }, []);
+
+  const login = useCallback(async (username, password, captcha = {}) => {
+    const response = await apiFetch('/auth/login', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({
+        username,
+        password,
+        captchaToken: captcha?.captchaToken,
+        captchaId: captcha?.captchaId,
+        captchaAnswer: captcha?.captchaAnswer,
+      }),
     });
 
     const payload = await response.json().catch(() => ({}));
@@ -163,13 +183,40 @@ export function AuthProvider({ children }) {
       throw new Error(payload?.message || 'Invalid username or password');
     }
 
+    if (payload?.requiresMfa && payload?.challengeToken) {
+      return {
+        requiresMfa: true,
+        challengeToken: payload.challengeToken,
+        expiresInSec: payload.expiresInSec,
+      };
+    }
+
     return refreshProfile();
   }, [refreshProfile]);
 
-  const signup = useCallback(async (payload) => {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+  const verifyMfaLogin = useCallback(async (challengeToken, code) => {
+    const response = await apiFetch('/auth/mfa/verify-login', {
       method: 'POST',
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        challengeToken,
+        code,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.message || 'MFA verification failed');
+    }
+
+    return refreshProfile();
+  }, [refreshProfile]);
+
+  const signup = useCallback(async (payload, captcha = {}) => {
+    const response = await apiFetch('/auth/signup', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -179,6 +226,9 @@ export function AuthProvider({ children }) {
         username: payload?.username,
         email: payload?.email,
         password: payload?.password,
+        captchaToken: captcha?.captchaToken,
+        captchaId: captcha?.captchaId,
+        captchaAnswer: captcha?.captchaAnswer,
       }),
     });
 
@@ -215,7 +265,9 @@ export function AuthProvider({ children }) {
       isAuthenticated: appIsAuthenticated,
       isLoading,
       login,
+      verifyMfaLogin,
       signup,
+      getCaptchaChallenge,
       logout,
       startGoogleAuth,
       completeGoogleAuth,
@@ -226,7 +278,9 @@ export function AuthProvider({ children }) {
       appIsAuthenticated,
       isLoading,
       login,
+      verifyMfaLogin,
       signup,
+      getCaptchaChallenge,
       logout,
       startGoogleAuth,
       completeGoogleAuth,
