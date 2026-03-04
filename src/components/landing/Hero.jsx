@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Play } from 'lucide-react';
@@ -34,13 +34,39 @@ const progressBars = [
   { label: 'Edge cases',    pct: 12,  color: '#c084fc' },
 ];
 
+const headlineLineOne = 'Test smarter with';
+const headlineLineTwo = 'autonomous AI agents';
+const headlineTypingSpeed = 45;
+
 export default function Hero() {
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 600], [0, -120]);
   const heroOpacity = useTransform(scrollY, [0, 500], [1, 0]);
+  const [typedCharacters, setTypedCharacters] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const c = getLandingColors(isDark);
+
+  useEffect(() => {
+    const fullHeadline = `${headlineLineOne} ${headlineLineTwo}`;
+    const timer = window.setInterval(() => {
+      setTypedCharacters((current) => {
+        if (current >= fullHeadline.length) {
+          window.clearInterval(timer);
+          return current;
+        }
+        return current + 1;
+      });
+    }, headlineTypingSpeed);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const lineOneTypedCount = Math.min(typedCharacters, headlineLineOne.length);
+  const lineTwoTypedCount = Math.max(0, typedCharacters - headlineLineOne.length - 1);
+  const typedLineOne = headlineLineOne.slice(0, lineOneTypedCount);
+  const typedLineTwo = headlineLineTwo.slice(0, lineTwoTypedCount);
+  const isHeadlineTypingComplete = typedLineTwo.length === headlineLineTwo.length;
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -91,7 +117,13 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
           className="text-6xl md:text-8xl font-bold leading-[1.05] tracking-tight mb-6 dark:text-white text-gray-900">
-          Test smarter with{' '}
+          {typedLineOne}
+          <motion.span
+            className="inline-block ml-1 w-[0.08em] h-[0.9em] align-[-0.1em] bg-current"
+            animate={{ opacity: [1, 0.1, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{ display: typedLineOne.length < headlineLineOne.length ? 'inline-block' : 'none' }}
+          />
           <br />
           <span className="relative inline-block">
             <motion.span
@@ -99,16 +131,24 @@ export default function Hero() {
               style={{ backgroundImage: 'linear-gradient(135deg, #ffb733 0%, #ff6a00 40%, #ffb733 80%, #ffe066 100%)', backgroundSize: '200% 200%' }}
               animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
-              autonomous
+              {typedLineTwo}
             </motion.span>
+            <motion.span
+              className="inline-block ml-1 w-[0.08em] h-[0.9em] align-[-0.1em] rounded-sm"
+              style={{
+                background: 'linear-gradient(180deg, #ffb733, #ff6a00)',
+                display: typedLineOne.length === headlineLineOne.length && !isHeadlineTypingComplete ? 'inline-block' : 'none',
+              }}
+              animate={{ opacity: [1, 0.1, 1] }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+            />
             <motion.span
               className="absolute -bottom-1 left-0 h-px rounded-full"
               style={{ background: 'linear-gradient(90deg, transparent, #ffb733, #ff6a00, transparent)' }}
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: '100%', opacity: 1 }}
+              animate={{ width: isHeadlineTypingComplete ? '100%' : 0, opacity: isHeadlineTypingComplete ? 1 : 0 }}
               transition={{ delay: 0.9, duration: 0.7 }} />
-          </span>{' '}
-          AI agents
+          </span>
         </motion.h1>
 
         {/* Subheadline */}
