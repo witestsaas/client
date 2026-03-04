@@ -2,8 +2,11 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, FileText, Folder, Loader2, Monitor, Play, Plus, Search, Smartphone, Sparkles, X, XCircle } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
+import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
+import { fetchOrgQuotaUsage } from "../services/organizations";
 import { addPlanTestCases, getExecutionSlots, getPlan, getRun, runPlan } from "../services/executionReporting";
 import { fetchProjectTree } from "../services/testManagement";
+import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
 
 const DESKTOP_PROFILES = [
   { id: "desktop-chrome", label: "Google Chrome (Desktop)", osIcon: "/os_browsers_icons/windowsOS.svg", browserIcon: "/os_browsers_icons/chrome.svg" },
@@ -602,6 +605,7 @@ export default function ExecutionPlanDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [quotaPopup, setQuotaPopup] = useState({ open: false, title: "", message: "" });
   const [plan, setPlan] = useState(null);
   const [treeRows, setTreeRows] = useState([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -772,6 +776,17 @@ export default function ExecutionPlanDetail() {
     setSaving(true);
     setError("");
     try {
+      const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
+      const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
+      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0) {
+        setQuotaPopup({
+          open: true,
+          title: "Quota Required",
+          message: "Your organization has no remaining web run quota to execute this plan. Contact your organization admin to increase quota.",
+        });
+        return null;
+      }
+
       const result = await runPlan(orgSlug, planId, payload);
       const runId = result?.testRun?.id || "";
       if (runId) {
@@ -780,6 +795,14 @@ export default function ExecutionPlanDetail() {
       await loadPlan();
       return result;
     } catch (err) {
+      if (isQuotaDeniedError(err)) {
+        setQuotaPopup({
+          open: true,
+          title: "Quota Required",
+          message: "Your organization has no remaining web run quota to execute this plan. Contact your organization admin to increase quota.",
+        });
+        throw err;
+      }
       setError(err?.message || "Failed to run plan");
       throw err;
     } finally {
@@ -945,6 +968,13 @@ export default function ExecutionPlanDetail() {
           onClose={() => setRunModalOpen(false)}
           plan={plan}
           onRun={handleRunPlan}
+        />
+
+        <QuotaRequiredPopup
+          open={quotaPopup.open}
+          onClose={() => setQuotaPopup({ open: false, title: "", message: "" })}
+          title={quotaPopup.title || "Quota Required"}
+          message={quotaPopup.message || "This operation requires available quota for your organization."}
         />
       </div>
     </DashboardLayout>

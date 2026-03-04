@@ -242,49 +242,6 @@ export default function DashboardPage() {
     ];
   }, [plansCount, stats]);
 
-  const runsByProject = useMemo(() => {
-    const out = new Map();
-    for (const run of runs) {
-      const key = String(run?.projectId || "");
-      if (!key) continue;
-      const prev = out.get(key);
-      if (!prev) {
-        out.set(key, run);
-        continue;
-      }
-      const prevTs = new Date(prev?.updatedAt || prev?.createdAt || 0).getTime();
-      const currentTs = new Date(run?.updatedAt || run?.createdAt || 0).getTime();
-      if (currentTs > prevTs) {
-        out.set(key, run);
-      }
-    }
-    return out;
-  }, [runs]);
-
-  const activity = useMemo(() => {
-    const projectEvents = projects.map((project) => ({
-      id: `project-${project.id}`,
-      label: `Project updated: ${project.name || "Project"}`,
-      detail: `${projectCounts[String(project.id)]?.testCases || 0} test case${
-        Number(projectCounts[String(project.id)]?.testCases || 0) === 1 ? "" : "s"
-      }`,
-      ts: project.updatedAt || project.createdAt || null,
-    }));
-
-    const runEvents = runs.map((run) => ({
-      id: `run-${run.id}`,
-      label: `Run ${String(run.status || "updated").toLowerCase()}`,
-      detail: run.project?.name || run.projectName || "Project",
-      ts: run.updatedAt || run.createdAt || null,
-      status: run.status,
-    }));
-
-    return [...projectEvents, ...runEvents]
-      .filter((item) => item.ts)
-      .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-      .slice(0, 10);
-  }, [projects, runs, projectCounts]);
-
   const trends = useMemo(() => {
     const passedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
     const failedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
@@ -311,13 +268,72 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [runs]);
 
-  const recentProjects = useMemo(() => {
-    return projects
-      .slice()
-      .sort((a, b) => new Date(b?.updatedAt || b?.createdAt || 0) - new Date(a?.updatedAt || a?.createdAt || 0));
-  }, [projects]);
+  const projectQualityGraph = useMemo(() => {
+    const byProject = projects.map((project) => {
+      const projectId = String(project?.id || "");
+      const projectRuns = runs.filter((run) => String(run?.projectId || "") === projectId);
+      const passed = projectRuns.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
+      const failed = projectRuns.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
+      const executed = passed + failed;
+      const runCount = projectRuns.length;
+      const successRate = executed > 0 ? Math.round((passed / executed) * 100) : 0;
+      return {
+        id: projectId,
+        name: project?.name || "Project",
+        runCount,
+        passed,
+        failed,
+        executed,
+        successRate,
+        totalCases: Number(projectCounts[projectId]?.testCases || 0),
+      };
+    });
 
-  const recentActivity = useMemo(() => activity, [activity]);
+    return byProject
+      .sort((a, b) => b.executed - a.executed || b.runCount - a.runCount)
+      .slice(0, 6);
+  }, [projects, runs, projectCounts]);
+
+  const liveTimelineGraph = useMemo(() => {
+    const bucketCount = 10;
+    const bucketSizeMs = 3 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const buckets = Array.from({ length: bucketCount }, (_, index) => {
+      const start = now - (bucketCount - index) * bucketSizeMs;
+      const end = start + bucketSizeMs;
+      return {
+        index,
+        start,
+        end,
+        label: new Date(end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        total: 0,
+        success: 0,
+      };
+    });
+
+    for (const run of runs) {
+      const ts = new Date(run?.updatedAt || run?.createdAt || 0).getTime();
+      if (!ts || ts < buckets[0].start || ts > buckets[bucketCount - 1].end) continue;
+      const index = Math.min(Math.floor((ts - buckets[0].start) / bucketSizeMs), bucketCount - 1);
+      const bucket = buckets[index];
+      bucket.total += 1;
+      if (isRunSuccess(run?.status)) {
+        bucket.success += 1;
+      }
+    }
+
+    const maxTotal = Math.max(1, ...buckets.map((bucket) => bucket.total));
+    return {
+      buckets,
+      maxTotal,
+      latestRuns: buckets[bucketCount - 1]?.total || 0,
+      latestSuccessRate:
+        buckets[bucketCount - 1]?.total > 0
+          ? Math.round((buckets[bucketCount - 1].success / buckets[bucketCount - 1].total) * 100)
+          : 0,
+    };
+  }, [runs]);
 
   return (
     <DashboardLayout>
@@ -417,77 +433,91 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0">
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 min-h-0">
               <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
-                <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                  <Folder className="h-4 w-4" />
-                  Organization Projects
-                </h3>
-                {projects.length === 0 ? (
-                  <p className="text-sm text-[#232323]/60 dark:text-white/60">No projects available yet.</p>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Project Quality Score (Live)
+                  </h3>
+                  <span className="text-[11px] text-[#232323]/60 dark:text-white/70">Auto-refresh 30s</span>
+                </div>
+                {projectQualityGraph.length === 0 ? (
+                  <p className="text-sm text-[#232323]/60 dark:text-white/60">No project data available yet.</p>
                 ) : (
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
-                    {recentProjects.map((project) => {
-                        const counts = projectCounts[String(project.id)] || { folders: 0, testCases: 0 };
-                        const latestRun = runsByProject.get(String(project.id));
-                        return (
-                          <button
-                            key={project.id}
-                            type="button"
-                            onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests/${project.id}`)}
-                            className="w-full text-left p-2.5 rounded-xl bg-background/50 hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold truncate">{project.name || "Project"}</p>
-                                <p className="text-[11px] text-[#232323]/55 dark:text-white/55 truncate mt-0.5">
-                                  {project.description || "No description"}
-                                </p>
-                              </div>
-                              {latestRun ? (
-                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(latestRun.status)}`}>
-                                  {latestRun.status || "Unknown"}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="mt-1.5 text-[10px] text-[#232323]/60 dark:text-white/60 flex items-center gap-2.5">
-                              <span>{counts.folders} folder{counts.folders === 1 ? "" : "s"}</span>
-                              <span>{counts.testCases} test case{counts.testCases === 1 ? "" : "s"}</span>
-                              {latestRun ? <span>Last run {formatTimeAgo(latestRun.updatedAt || latestRun.createdAt)}</span> : null}
-                            </div>
-                          </button>
-                        );
-                      })}
+                  <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+                    {projectQualityGraph.map((project) => {
+                      const passRatio = project.executed > 0 ? (project.passed / project.executed) * 100 : 0;
+                      const failRatio = project.executed > 0 ? (project.failed / project.executed) * 100 : 0;
+                      return (
+                        <button
+                          key={project.id}
+                          type="button"
+                          onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests/${project.id}`)}
+                          className="w-full text-left rounded-xl border border-black/10 dark:border-white/10 bg-background/40 hover:bg-[#232323]/5 dark:hover:bg-white/5 p-3 transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-1.5">
+                            <p className="text-xs font-semibold truncate">{project.name}</p>
+                            <p className="text-xs font-bold text-[#232323]/80 dark:text-white/90">{project.successRate}%</p>
+                          </div>
+                          <div className="h-2.5 w-full rounded-full bg-[#232323]/10 dark:bg-white/10 overflow-hidden flex">
+                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${passRatio}%` }} />
+                            <div className="h-full bg-gradient-to-r from-red-500 to-red-400" style={{ width: `${failRatio}%` }} />
+                          </div>
+                          <div className="mt-1.5 text-[11px] text-[#232323]/60 dark:text-white/60 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>{project.executed} tests executed</span>
+                            <span>{project.runCount} run{project.runCount === 1 ? "" : "s"}</span>
+                            <span>{project.totalCases} test case{project.totalCases === 1 ? "" : "s"}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
               <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
-                <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4" />
-                  Recent Activity
-                </h3>
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
-                  {activity.length === 0 ? (
-                    <p className="text-sm text-[#232323]/60 dark:text-white/60">No recent activity.</p>
-                  ) : (
-                    recentActivity.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-2 rounded-xl bg-background/50 hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-all duration-200">
-                        <div>
-                          <p className="text-xs font-medium inline-flex items-center gap-1.5">
-                            {item.label}
-                            {item.status ? (
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(item.status)}`}>
-                                {item.status}
-                              </span>
-                            ) : null}
-                          </p>
-                          <p className="text-[11px] text-[#232323]/60 dark:text-white/60 truncate">{item.detail}</p>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    Organization Velocity (Last 30h)
+                  </h3>
+                  <div className="text-right">
+                    <p className="text-[11px] text-[#232323]/60 dark:text-white/70">Latest window</p>
+                    <p className="text-xs font-semibold text-[#232323]/80 dark:text-white/90">
+                      {liveTimelineGraph.latestRuns} runs • {liveTimelineGraph.latestSuccessRate}% success
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <div className="h-[220px] md:h-[250px] rounded-xl border border-black/10 dark:border-white/10 bg-background/40 p-3 flex items-end gap-2">
+                    {liveTimelineGraph.buckets.map((bucket) => {
+                      const totalHeight = Math.max(6, Math.round((bucket.total / liveTimelineGraph.maxTotal) * 100));
+                      const successRatio = bucket.total > 0 ? Math.round((bucket.success / bucket.total) * 100) : 0;
+                      return (
+                        <div key={`${bucket.label}-${bucket.index}`} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1">
+                          <div className="w-full flex flex-col justify-end h-36 rounded-md bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
+                            <div className="w-full bg-gradient-to-t from-[#FFAA00] to-[#FFBF3F]" style={{ height: `${totalHeight}%` }} />
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${successRatio}%` }} />
+                          </div>
+                          <p className="text-[10px] text-[#232323]/60 dark:text-white/60 truncate max-w-full">{bucket.label}</p>
                         </div>
-                        <p className="text-[11px] text-[#232323]/50 dark:text-white/50">{formatTimeAgo(item.ts)}</p>
-                      </div>
-                    ))
-                  )}
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#232323]/75 dark:text-white/80">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-[#FFAA00] shrink-0" />
+                      Runs volume
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      Success ratio
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

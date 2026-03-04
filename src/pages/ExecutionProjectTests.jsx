@@ -30,8 +30,10 @@ import {
   XCircle,
 } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
+import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
 import { useRequestLiveReplay, useTestRunSocket } from "../hooks/useSocket";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { fetchOrgQuotaUsage } from "../services/organizations";
 import {
   createFolder,
   createProjectEnvironment,
@@ -57,6 +59,7 @@ import {
   updateProjectDocumentation,
   updateProjectSettings,
 } from "../services/testManagement";
+import { isQuotaDeniedError } from "../utils/quota";
 
 const TABS = [
   { key: "repository", label: "Repository" },
@@ -99,6 +102,7 @@ const STATUS_OPTIONS = ["all", "Active", "Draft", "InReview", "Outdated", "Rejec
 const PRIORITY_LABELS = { 0: "Low", 1: "Medium", 2: "High", 3: "Critical" };
 const DOC_FORM_MARKER_START = "<!-- WITEST_DOC_FORM_STATE";
 const DOC_FORM_MARKER_END = "WITEST_DOC_FORM_STATE -->";
+const AI_QUOTA_UPGRADE_MESSAGE = "No AI generation credits are available for this organization. Upgrade your plan or contact your admin to increase quota.";
 const DOCUMENTATION_TEMPLATE = `# Project Documentation Template
 
 ## 1. Project Overview
@@ -570,9 +574,11 @@ export default function ExecutionProjectTests() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [testCaseSort, setTestCaseSort] = useState("updated");
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [aiQuota, setAiQuota] = useState(null);
   const [aiDraftPrompt, setAiDraftPrompt] = useState("");
   const [aiGenerationId, setAiGenerationId] = useState("");
   const [aiError, setAiError] = useState("");
+  const [quotaPopup, setQuotaPopup] = useState({ open: false, title: "", message: "" });
   const [aiConversations, setAiConversations] = useState([]);
   const [selectedAiConversationId, setSelectedAiConversationId] = useState("");
   const [activeAiConversationId, setActiveAiConversationId] = useState("");
@@ -631,6 +637,42 @@ export default function ExecutionProjectTests() {
     },
     [orgSlug, projectId],
   );
+
+  const loadAiQuota = useCallback(async () => {
+    if (!orgSlug) {
+      setAiQuota(null);
+      return;
+    }
+
+    try {
+      const payload = await fetchOrgQuotaUsage(orgSlug);
+      const usageRows = Array.isArray(payload?.usage) ? payload.usage : [];
+      const functionalQuota = usageRows.find((row) => row?.feature === "FunctionalGeneration") || null;
+      if (!functionalQuota) {
+        setAiQuota(null);
+        return;
+      }
+
+      const used = Number(functionalQuota?.used || 0);
+      const limit = Number(functionalQuota?.limit ?? 0);
+      const remaining = Number(functionalQuota?.remaining ?? (limit >= 0 ? Math.max(0, limit - used) : -1));
+
+      setAiQuota({
+        used,
+        limit,
+        remaining,
+        isUnlimited: limit < 0,
+      });
+    } catch {
+      setAiQuota(null);
+    }
+  }, [orgSlug]);
+
+  useEffect(() => {
+    loadAiQuota();
+    const intervalId = window.setInterval(loadAiQuota, 10000);
+    return () => window.clearInterval(intervalId);
+  }, [loadAiQuota]);
 
   const loadTabData = useCallback(async () => {
     if (!orgSlug || !projectId) return;
@@ -1593,6 +1635,15 @@ export default function ExecutionProjectTests() {
   };
 
   const submitGenerateTests = async () => {
+    if (aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0) {
+      setQuotaPopup({
+        open: true,
+        title: "AI Quota Required",
+        message: AI_QUOTA_UPGRADE_MESSAGE,
+      });
+      return;
+    }
+
     const trimmed = aiDraftPrompt.trim();
     if (!trimmed) {
       setAiError("Please enter what you want AI to generate");
@@ -1698,8 +1749,22 @@ export default function ExecutionProjectTests() {
       );
       await loadRepositoryData(false);
     } catch (err) {
-      const message = err?.message || "Failed to generate test cases";
+      const rawMessage = err?.message || "Failed to generate test cases";
+      const isQuotaDenied =
+        isQuotaDeniedError(err) ||
+        String(rawMessage || "").toLowerCase() === "request failed" ||
+        Boolean(aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0);
+      const message = isQuotaDenied
+        ? AI_QUOTA_UPGRADE_MESSAGE
+        : rawMessage;
       setAiError(message);
+      if (isQuotaDenied) {
+        setQuotaPopup({
+          open: true,
+          title: "AI Quota Required",
+          message,
+        });
+      }
       updateAiConversation(conversationId, (conversation) => ({
         phase: "error",
         error: message,
@@ -1716,6 +1781,7 @@ export default function ExecutionProjectTests() {
     } finally {
       setAiGenerationId("");
       setActiveAiConversationId("");
+      loadAiQuota();
     }
   };
 
@@ -2127,6 +2193,13 @@ export default function ExecutionProjectTests() {
                 Assistant AI
               </span>
             </button>
+            <p className="mt-2 text-xs text-[#232323]/55 dark:text-white/55">
+              {aiQuota?.isUnlimited
+                ? "AI Remaining: Unlimited"
+                : aiQuota
+                  ? `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
+                  : "AI Remaining: --"}
+            </p>
           </div>
         ) : (
           <div className="h-full flex flex-col">
@@ -2141,6 +2214,13 @@ export default function ExecutionProjectTests() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <div className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold inline-flex items-center text-[#232323]/70 dark:text-white/70">
+                    {aiQuota?.isUnlimited
+                      ? "AI Remaining: Unlimited"
+                      : aiQuota
+                        ? `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
+                        : "AI Remaining: --"}
+                  </div>
                   {selectedTestCaseIds.length > 0 ? (
                     <>
                       <button
@@ -2854,6 +2934,13 @@ export default function ExecutionProjectTests() {
           </div>
         </div>
       </Popup>
+
+      <QuotaRequiredPopup
+        open={quotaPopup.open}
+        onClose={() => setQuotaPopup({ open: false, title: "", message: "" })}
+        title={quotaPopup.title || "Quota Required"}
+        message={quotaPopup.message || "This operation requires available quota for your organization."}
+      />
 
       <Popup
         open={isFolderModalOpen}

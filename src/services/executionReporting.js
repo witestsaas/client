@@ -3,7 +3,11 @@ import { apiFetch } from './http';
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.message || data?.error || 'Request failed');
+    const error = new Error(data?.message || data?.error || 'Request failed');
+    error.status = response.status;
+    error.code = data?.code;
+    error.payload = data;
+    throw error;
   }
   return data;
 }

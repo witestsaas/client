@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, X } from "lucide-react";
+import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../hooks/useSocket.tsx";
-import { fetchMyInvitations, fetchOrgNotifications, markOrgNotificationsAsRead } from "../services/organizations";
+import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, markOrgNotificationsAsRead } from "../services/organizations";
 import { listRuns } from "../services/executionReporting";
 import { fetchProjectTree, fetchTestProjects } from "../services/testManagement";
 
@@ -31,6 +31,7 @@ export default function DashboardHeader() {
   const [aiError, setAiError] = useState(null);
   const [aiResults, setAiResults] = useState([]);
   const [activeRuns, setActiveRuns] = useState([]);
+  const [quotaUsage, setQuotaUsage] = useState(null);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
   const previousInviteCountRef = useRef(0);
   const previousRunningCountRef = useRef(-1);
@@ -126,6 +127,44 @@ export default function DashboardHeader() {
     } catch {
       setOrgNotifications([]);
       setOrgUnreadCount(0);
+    }
+  }, [isNoOrg, orgSlug]);
+
+  const loadFunctionalQuota = useCallback(async () => {
+    if (!orgSlug || isNoOrg) {
+      setQuotaUsage(null);
+      return;
+    }
+
+    try {
+      const payload = await fetchOrgQuotaUsage(orgSlug);
+      const usageRows = Array.isArray(payload?.usage) ? payload.usage : [];
+      const mapFeature = (feature) => {
+        const row = usageRows.find((item) => item?.feature === feature) || null;
+        if (!row) {
+          return { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true };
+        }
+        const used = Number(row?.used || 0);
+        const limit = Number(row?.limit ?? 0);
+        const remaining = Number(row?.remaining ?? (limit >= 0 ? Math.max(0, limit - used) : -1));
+        return {
+          used,
+          limit,
+          remaining,
+          isUnlimited: limit < 0,
+          isUnknown: false,
+        };
+      };
+
+      setQuotaUsage({
+        ai: mapFeature("FunctionalGeneration"),
+        web: mapFeature("WebTestRun"),
+      });
+    } catch {
+      setQuotaUsage({
+        ai: { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true },
+        web: { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true },
+      });
     }
   }, [isNoOrg, orgSlug]);
 
@@ -434,6 +473,23 @@ export default function DashboardHeader() {
     };
   }, [loadActiveRuns]);
 
+  useEffect(() => {
+    loadFunctionalQuota();
+    const intervalId = window.setInterval(loadFunctionalQuota, POLL_INTERVAL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadFunctionalQuota();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [loadFunctionalQuota]);
+
   return (
     <header className="sticky top-0 z-40 h-11 shrink-0 relative border-b border-white/10 bg-[#232323] dark:bg-[#232323] px-6 flex items-center justify-between">
       {!isNoOrg ? (
@@ -497,6 +553,54 @@ export default function DashboardHeader() {
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
+        {!isNoOrg && quotaUsage ? (
+          <div className="inline-flex items-center gap-1.5">
+            <div
+              className={`h-8 px-2.5 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 ${
+                quotaUsage.ai.isUnknown
+                  ? "border-white/10 bg-white/5 text-white/70"
+                  : quotaUsage.ai.isUnlimited
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                    : quotaUsage.ai.remaining > 0
+                      ? "border-white/10 bg-white/5 text-white/90"
+                      : "border-red-400/30 bg-red-500/10 text-red-200"
+              }`}
+              title={
+                quotaUsage.ai.isUnknown
+                  ? "AI quota unavailable"
+                  : quotaUsage.ai.isUnlimited
+                    ? "AI quota unlimited"
+                    : `AI quota remaining ${quotaUsage.ai.remaining}`
+              }
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{quotaUsage.ai.isUnknown ? "--" : quotaUsage.ai.isUnlimited ? "∞" : Math.max(0, quotaUsage.ai.remaining)}</span>
+            </div>
+
+            <div
+              className={`h-8 px-2.5 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 ${
+                quotaUsage.web.isUnknown
+                  ? "border-white/10 bg-white/5 text-white/70"
+                  : quotaUsage.web.isUnlimited
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                    : quotaUsage.web.remaining > 0
+                      ? "border-white/10 bg-white/5 text-white/90"
+                      : "border-red-400/30 bg-red-500/10 text-red-200"
+              }`}
+              title={
+                quotaUsage.web.isUnknown
+                  ? "Web run quota unavailable"
+                  : quotaUsage.web.isUnlimited
+                    ? "Web run quota unlimited"
+                    : `Web run quota remaining ${quotaUsage.web.remaining}`
+              }
+            >
+              <PlayCircle className="h-3.5 w-3.5" />
+              <span>{quotaUsage.web.isUnknown ? "--" : quotaUsage.web.isUnlimited ? "∞" : Math.max(0, quotaUsage.web.remaining)}</span>
+            </div>
+          </div>
+        ) : null}
+
         {!isNoOrg ? (
           <div
             className="relative"

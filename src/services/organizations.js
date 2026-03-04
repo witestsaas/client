@@ -3,7 +3,10 @@ import { apiFetch } from './http';
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.message || data?.error || 'Request failed');
+    const error = new Error(data?.message || data?.error || 'Request failed');
+    error.status = response.status;
+    error.payload = data;
+    throw error;
   }
   return data;
 }
@@ -62,6 +65,47 @@ export async function markOrgNotificationsAsRead(orgSlug, notificationIds = []) 
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ notificationIds }),
+  });
+  return parseJson(response);
+}
+
+export async function fetchOrgQuotaUsage(orgSlug) {
+  const response = await apiFetch(`/organizations/${encodeURIComponent(orgSlug)}/quotas/usage`);
+  return parseJson(response);
+}
+
+export async function fetchAdminQuotaOrganizations(options = {}) {
+  const params = new URLSearchParams();
+  if (options?.search) {
+    params.set('search', String(options.search));
+  }
+  if (typeof options?.limit === 'number') {
+    params.set('limit', String(options.limit));
+  }
+  const query = params.toString();
+  const response = await apiFetch(`/admin/quotas/organizations${query ? `?${query}` : ''}`);
+  return parseJson(response);
+}
+
+export async function fetchAdminQuotaAccess() {
+  const response = await apiFetch('/admin/quotas/access');
+  return parseJson(response);
+}
+
+export async function updateAdminOrgQuota(orgSlug, payload) {
+  const response = await apiFetch(`/admin/quotas/organizations/${encodeURIComponent(orgSlug)}/subscription`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(response);
+}
+
+export async function resetAllAdminQuotas(payload = {}) {
+  const response = await apiFetch('/admin/quotas/reset-all', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
   });
   return parseJson(response);
 }

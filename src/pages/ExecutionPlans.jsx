@@ -2,8 +2,45 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Calendar, Filter, MoreVertical, Play, Plus, Search, Trash2, X } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
+import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
+import { fetchOrgQuotaUsage } from "../services/organizations";
 import { fetchProjectSettings, fetchTestProjects } from "../services/testManagement";
 import { createPlan, deletePlan, listPlans, runPlan } from "../services/executionReporting";
+import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
+
+function normalizeEnvironmentOptions(configPayload) {
+  const rawRows = Array.isArray(configPayload?.environments)
+    ? configPayload.environments
+    : Array.isArray(configPayload?.settings?.environments)
+      ? configPayload.settings.environments
+      : [];
+
+  const options = rawRows
+    .map((item) => {
+      if (!item) return null;
+      if (typeof item === "string") {
+        const text = item.trim();
+        if (!text) return null;
+        return { id: text, value: text, label: text };
+      }
+
+      const value = String(item.slug || item.name || "").trim();
+      if (!value) return null;
+      return {
+        id: item.id || value,
+        value,
+        label: String(item.name || item.slug || value),
+      };
+    })
+    .filter(Boolean);
+
+  const seen = new Set();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
 
 function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, projectEnvironments, form, setForm, onCreate, saving }) {
   if (!open) return null;
@@ -61,24 +98,18 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
               onChange={(event) => setForm((prev) => ({ ...prev, environment: event.target.value }))}
               className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
             >
-              {projectEnvironments.length ? (
-                projectEnvironments.map((env) => {
-                  const value = env.slug || env.name;
-                  return (
-                    <option key={env.id || value} value={value}>
-                      {env.name || env.slug}
-                    </option>
-                  );
-                })
-              ) : (
-                <>
-                  <option value="development">development</option>
-                  <option value="staging">staging</option>
-                  <option value="qa">qa</option>
-                  <option value="production">production</option>
-                </>
-              )}
+              {!projectEnvironments.length ? <option value="">No configured environments</option> : null}
+              {projectEnvironments.map((env) => (
+                <option key={env.id || env.value} value={env.value}>
+                  {env.label}
+                </option>
+              ))}
             </select>
+            {!projectEnvironments.length ? (
+              <p className="text-[11px] text-[#232323]/60 dark:text-white/60">
+                Add environments in project configuration from Test Cases page.
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -87,7 +118,7 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
           <button
             type="button"
             onClick={onCreate}
-            disabled={saving || !projectId || !form.name.trim()}
+            disabled={saving || !projectId || !form.name.trim() || !projectEnvironments.length || !form.environment}
             className="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-2"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -121,6 +152,7 @@ export default function ExecutionPlans() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [quotaPopup, setQuotaPopup] = useState({ open: false, title: "", message: "" });
   const [plans, setPlans] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -185,14 +217,19 @@ export default function ExecutionPlans() {
 
     fetchProjectSettings(orgSlug, projectId)
       .then((conf) => {
-        const envs = Array.isArray(conf?.environments) ? conf.environments : [];
+        const envs = normalizeEnvironmentOptions(conf);
         setProjectEnvironments(envs);
-        const defaultEnv = envs[0]?.slug || envs[0]?.name || "staging";
-        setForm((prev) => ({ ...prev, environment: prev.environment || defaultEnv }));
+        setForm((prev) => {
+          const hasCurrent = envs.some((env) => env.value === prev.environment);
+          return {
+            ...prev,
+            environment: hasCurrent ? prev.environment : envs[0]?.value || "",
+          };
+        });
       })
       .catch(() => {
         setProjectEnvironments([]);
-        setForm((prev) => ({ ...prev, environment: prev.environment || "staging" }));
+        setForm((prev) => ({ ...prev, environment: "" }));
       });
   }, [orgSlug, projectId]);
 
@@ -228,7 +265,7 @@ export default function ExecutionPlans() {
         projectId,
         name: form.name.trim(),
         description: form.description.trim(),
-        environment: form.environment || projectEnvironments[0]?.slug || projectEnvironments[0]?.name || "staging",
+        environment: form.environment || projectEnvironments[0]?.value || "",
       });
       setForm((prev) => ({ ...prev, name: "", description: "" }));
       setShowCreateModal(false);
@@ -244,9 +281,28 @@ export default function ExecutionPlans() {
     setSaving(true);
     setError("");
     try {
+      const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
+      const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
+      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0) {
+        setQuotaPopup({
+          open: true,
+          title: "Quota Required",
+          message: "Your organization has no remaining web run quota to execute this test plan. Contact your organization admin to increase quota.",
+        });
+        return;
+      }
+
       await runPlan(orgSlug, planId, {});
       setPlans(await listPlans(orgSlug, { projectId: projectId || undefined }));
     } catch (err) {
+      if (isQuotaDeniedError(err)) {
+        setQuotaPopup({
+          open: true,
+          title: "Quota Required",
+          message: "Your organization has no remaining web run quota to execute this test plan. Contact your organization admin to increase quota.",
+        });
+        return;
+      }
       setError(err?.message || "Failed to run plan");
     } finally {
       setSaving(false);
@@ -409,6 +465,13 @@ export default function ExecutionPlans() {
           setForm={setForm}
           onCreate={handleCreatePlan}
           saving={saving}
+        />
+
+        <QuotaRequiredPopup
+          open={quotaPopup.open}
+          onClose={() => setQuotaPopup({ open: false, title: "", message: "" })}
+          title={quotaPopup.title || "Quota Required"}
+          message={quotaPopup.message || "This operation requires available quota for your organization."}
         />
       </div>
     </DashboardLayout>
