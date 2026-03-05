@@ -64,7 +64,7 @@ function statusBadgeClass(status) {
   return "bg-slate-500/15 text-slate-700 dark:text-slate-300";
 }
 
-function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral" }) {
+function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral", progressValue = null }) {
   const tones = {
     success: "bg-[#22c55e] text-white",
     warning: "bg-[#FFAA00] text-black",
@@ -73,14 +73,22 @@ function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral" }) {
   };
 
   return (
-    <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-all duration-200 p-3 flex items-center gap-2.5 min-h-[84px]">
+    <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-all duration-200 p-3.5 flex items-center gap-3 h-full">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tones[tone]}`}>
         <Icon className="h-4.5 w-4.5" />
       </div>
-      <div className="min-w-0">
-        <p className="text-lg font-semibold text-[#232323] dark:text-white leading-none">{value}</p>
-        <p className="text-xs text-[#232323]/60 dark:text-white/70 mt-1 uppercase font-semibold tracking-wide">{title}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-xl font-semibold text-[#232323] dark:text-white leading-none">{value}</p>
+        <p className="text-[11px] text-[#232323]/60 dark:text-white/70 mt-1 uppercase font-semibold tracking-wide">{title}</p>
         {subtitle ? <p className="text-[10px] text-[#232323]/50 dark:text-white/60 truncate">{subtitle}</p> : null}
+        {typeof progressValue === "number" ? (
+          <div className="mt-2 h-1.5 w-full rounded-full bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#FFAA00] to-[#FFBF3F]"
+              style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -154,7 +162,7 @@ export default function DashboardPage() {
     }
 
     load();
-    const timer = setInterval(load, 30000);
+    const timer = setInterval(load, 5000);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -192,8 +200,13 @@ export default function DashboardPage() {
     const passedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
     const failedTests = runs.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
     const executedTests = passedTests + failedTests;
+    const activeRunsRows = runs.filter((run) => isRunActive(run?.status));
+    const livePassedTests = activeRunsRows.reduce((sum, run) => sum + toSafeNumber(run?.passedTests), 0);
+    const liveFailedTests = activeRunsRows.reduce((sum, run) => sum + toSafeNumber(run?.failedTests), 0);
+    const liveExecutedTests = livePassedTests + liveFailedTests;
     const totalTestCases = projects.reduce((sum, project) => sum + Number(projectCounts[String(project.id)]?.testCases || 0), 0);
     const successRate = executedTests > 0 ? Math.round((passedTests / executedTests) * 100) : 0;
+    const liveQualityScore = liveExecutedTests > 0 ? Math.round((livePassedTests / liveExecutedTests) * 100) : successRate;
 
     return {
       totalProjects,
@@ -206,6 +219,8 @@ export default function DashboardPage() {
       failedTests,
       executedTests,
       successRate,
+      liveExecutedTests,
+      liveQualityScore,
     };
   }, [projects, runs, projectCounts]);
 
@@ -231,6 +246,16 @@ export default function DashboardPage() {
         subtitle: `${stats.passedTests} passed / ${stats.failedTests} failed`,
         icon: CheckCircle,
         tone: "success",
+      },
+      {
+        title: "Project Quality Score (Live)",
+        value: `${stats.liveQualityScore}%`,
+        subtitle: stats.liveExecutedTests > 0
+          ? `${stats.liveExecutedTests} tests executed in active runs`
+          : "Waiting for live execution data",
+        icon: TrendingUp,
+        tone: "neutral",
+        progressValue: stats.liveQualityScore,
       },
       {
         title: "Failures",
@@ -369,7 +394,7 @@ export default function DashboardPage() {
 
         {!loading || projects.length > 0 ? (
           <div className="flex-1 min-h-0 grid grid-rows-[auto_auto_1fr] gap-3 overflow-hidden">
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
               {cards.map((card) => (
                 <StatCard key={card.title} {...card} />
               ))}
@@ -377,27 +402,47 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Execution Trends
+                    <Activity className="h-4 w-4" />
+                    Organization Velocity (Last 30h)
                   </h3>
-                  <span className="text-[11px] text-[#232323]/60 dark:text-white/70">Last runs</span>
+                  <div className="text-right">
+                    <p className="text-[11px] text-[#232323]/60 dark:text-white/70">Latest window</p>
+                    <p className="text-xs font-semibold text-[#232323]/80 dark:text-white/90">
+                      {liveTimelineGraph.latestRuns} runs • {liveTimelineGraph.latestSuccessRate}% success
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  {trends.length === 0 ? (
-                    <p className="text-sm text-[#232323]/60 dark:text-white/60">No trend data yet.</p>
-                  ) : (
-                    trends.map((trend) => (
-                      <div key={trend.label} className="flex items-center gap-3">
-                        <span className="text-xs w-20">{trend.label}</span>
-                        <div className="flex-1 h-2.5 bg-[#232323]/10 dark:bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-[#FFAA00] to-[#FFBF3F]" style={{ width: `${trend.value}%` }} />
+
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <div className="h-[220px] md:h-[250px] rounded-xl border border-black/10 dark:border-white/10 bg-background/40 p-3 flex items-end gap-2">
+                    {liveTimelineGraph.buckets.map((bucket) => {
+                      const totalHeight = Math.max(6, Math.round((bucket.total / liveTimelineGraph.maxTotal) * 100));
+                      const successRatio = bucket.total > 0 ? Math.round((bucket.success / bucket.total) * 100) : 0;
+                      return (
+                        <div key={`${bucket.label}-${bucket.index}`} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1">
+                          <div className="w-full flex flex-col justify-end h-36 rounded-md bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
+                            <div className="w-full bg-gradient-to-t from-[#FFAA00] to-[#FFBF3F]" style={{ height: `${totalHeight}%` }} />
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${successRatio}%` }} />
+                          </div>
+                          <p className="text-[10px] text-[#232323]/60 dark:text-white/60 truncate max-w-full">{bucket.label}</p>
                         </div>
-                        <span className="text-[11px] text-[#232323]/60 dark:text-white/70">{trend.value}%</span>
-                      </div>
-                    ))
-                  )}
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#232323]/75 dark:text-white/80">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-[#FFAA00] shrink-0" />
+                      Runs volume
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      Success ratio
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -477,47 +522,27 @@ export default function DashboardPage() {
               </div>
 
               <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
-                <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Activity className="h-4 w-4" />
-                    Organization Velocity (Last 30h)
+                    <TrendingUp className="h-4 w-4" />
+                    Execution Trends
                   </h3>
-                  <div className="text-right">
-                    <p className="text-[11px] text-[#232323]/60 dark:text-white/70">Latest window</p>
-                    <p className="text-xs font-semibold text-[#232323]/80 dark:text-white/90">
-                      {liveTimelineGraph.latestRuns} runs • {liveTimelineGraph.latestSuccessRate}% success
-                    </p>
-                  </div>
+                  <span className="text-[11px] text-[#232323]/60 dark:text-white/70">Last runs</span>
                 </div>
-
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <div className="h-[220px] md:h-[250px] rounded-xl border border-black/10 dark:border-white/10 bg-background/40 p-3 flex items-end gap-2">
-                    {liveTimelineGraph.buckets.map((bucket) => {
-                      const totalHeight = Math.max(6, Math.round((bucket.total / liveTimelineGraph.maxTotal) * 100));
-                      const successRatio = bucket.total > 0 ? Math.round((bucket.success / bucket.total) * 100) : 0;
-                      return (
-                        <div key={`${bucket.label}-${bucket.index}`} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1">
-                          <div className="w-full flex flex-col justify-end h-36 rounded-md bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
-                            <div className="w-full bg-gradient-to-t from-[#FFAA00] to-[#FFBF3F]" style={{ height: `${totalHeight}%` }} />
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-[#232323]/10 dark:bg-white/10 overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${successRatio}%` }} />
-                          </div>
-                          <p className="text-[10px] text-[#232323]/60 dark:text-white/60 truncate max-w-full">{bucket.label}</p>
+                <div className="space-y-1.5">
+                  {trends.length === 0 ? (
+                    <p className="text-sm text-[#232323]/60 dark:text-white/60">No trend data yet.</p>
+                  ) : (
+                    trends.map((trend) => (
+                      <div key={trend.label} className="flex items-center gap-3">
+                        <span className="text-xs w-20">{trend.label}</span>
+                        <div className="flex-1 h-2.5 bg-[#232323]/10 dark:bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-[#FFAA00] to-[#FFBF3F]" style={{ width: `${trend.value}%` }} />
                         </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#232323]/75 dark:text-white/80">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
-                      <span className="w-2 h-2 rounded-full bg-[#FFAA00] shrink-0" />
-                      Runs volume
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      Success ratio
-                    </span>
-                  </div>
+                        <span className="text-[11px] text-[#232323]/60 dark:text-white/70">{trend.value}%</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
