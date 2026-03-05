@@ -34,15 +34,42 @@ function getOperationRows(aiUsage) {
       const inputTokens = Number(stats?.inputTokens || 0);
       const outputTokens = Number(stats?.outputTokens || 0);
       const generations = Number(stats?.generations || 0);
+      const llmCalls = Number(stats?.llmCalls || 0);
       return {
         operation,
         inputTokens,
         outputTokens,
         generations,
+        llmCalls,
         totalTokens: inputTokens + outputTokens,
       };
     })
     .sort((a, b) => b.totalTokens - a.totalTokens);
+}
+
+function getBreakdownRows(collection) {
+  const map = collection && typeof collection === "object" ? collection : {};
+  return Object.entries(map)
+    .map(([name, stats]) => {
+      const inputTokens = Number(stats?.inputTokens || 0);
+      const outputTokens = Number(stats?.outputTokens || 0);
+      const llmCalls = Number(stats?.llmCalls || 0);
+      return {
+        name,
+        inputTokens,
+        outputTokens,
+        llmCalls,
+        totalTokens: inputTokens + outputTokens,
+      };
+    })
+    .filter((row) => {
+      const normalized = String(row?.name || "").trim().toLowerCase();
+      const isUnknown = normalized === "unknown";
+      const hasValues = Number(row?.totalTokens || 0) > 0 || Number(row?.llmCalls || 0) > 0;
+      return !isUnknown || hasValues;
+    })
+    .sort((a, b) => b.totalTokens - a.totalTokens)
+    .slice(0, 3);
 }
 
 export default function PlatformAdminQuotas() {
@@ -64,15 +91,17 @@ export default function PlatformAdminQuotas() {
         const usage = Array.isArray(row?.usage) ? row.usage : [];
         const ai = usageItem(usage, "FunctionalGeneration");
         const web = usageItem(usage, "WebTestRun");
+        const aiUsage = row?.statistics?.aiUsage || {};
 
         acc.organizations += 1;
         acc.aiUsed += Number(ai.used || 0);
         acc.aiLimit += Number(ai.limit || 0);
         acc.webUsed += Number(web.used || 0);
         acc.webLimit += Number(web.limit || 0);
+        acc.totalLlmCalls += Number(aiUsage?.totalLlmCalls || 0);
         return acc;
       },
-      { organizations: 0, aiUsed: 0, aiLimit: 0, webUsed: 0, webLimit: 0 },
+      { organizations: 0, aiUsed: 0, aiLimit: 0, webUsed: 0, webLimit: 0, totalLlmCalls: 0 },
     );
   }, [rows]);
 
@@ -187,7 +216,7 @@ export default function PlatformAdminQuotas() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <p className="text-sm text-[#232323]/60 dark:text-white/60">Organizations</p>
                 <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">{formatNumber(summary.organizations)}</p>
@@ -203,6 +232,10 @@ export default function PlatformAdminQuotas() {
                 <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">
                   {formatNumber(summary.webUsed)} / {formatNumber(summary.webLimit)}
                 </p>
+              </div>
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">LLM Calls (All Orgs)</p>
+                <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">{formatNumber(summary.totalLlmCalls)}</p>
               </div>
             </div>
 
@@ -279,6 +312,8 @@ export default function PlatformAdminQuotas() {
                       <th className="text-left px-4 py-2">AI Cases</th>
                       <th className="text-left px-4 py-2">Input Tok</th>
                       <th className="text-left px-4 py-2">Output Tok</th>
+                      <th className="text-left px-4 py-2">LLM Calls</th>
+                      <th className="text-left px-4 py-2">Models / Providers</th>
                       <th className="text-left px-4 py-2">Operation Tokens</th>
                       <th className="text-left px-4 py-2">Actions</th>
                     </tr>
@@ -289,8 +324,14 @@ export default function PlatformAdminQuotas() {
                       const usage = Array.isArray(row?.usage) ? row.usage : [];
                       const ai = usageItem(usage, "FunctionalGeneration");
                       const web = usageItem(usage, "WebTestRun");
+                      const aiUsage = row?.statistics?.aiUsage || {};
                       const form = formBySlug[slug] || buildQuotaFormRow(row, defaultPlanId);
-                      const operationRows = getOperationRows(row?.statistics?.aiUsage);
+                      const operationRows = getOperationRows(aiUsage);
+                      const providerRows = getBreakdownRows(aiUsage?.providers);
+                      const modelRows = getBreakdownRows(aiUsage?.models);
+                      const functionalCalls = Number(aiUsage?.channels?.functional?.llmCalls || 0);
+                      const webCalls = Number(aiUsage?.channels?.web?.llmCalls || 0);
+                      const totalCalls = Number(aiUsage?.totalLlmCalls || 0);
 
                       return (
                         <tr key={slug} className="border-t border-black/10 dark:border-white/10 align-top">
@@ -336,8 +377,32 @@ export default function PlatformAdminQuotas() {
                           </td>
                           <td className="px-4 py-3">{formatNumber(row?.statistics?.testRunsThisCycle || 0)}</td>
                           <td className="px-4 py-3">{formatNumber(row?.statistics?.aiGeneratedTestCasesThisCycle || 0)}</td>
-                          <td className="px-4 py-3">{formatNumber(row?.statistics?.aiUsage?.totalInputTokens || 0)}</td>
-                          <td className="px-4 py-3">{formatNumber(row?.statistics?.aiUsage?.totalOutputTokens || 0)}</td>
+                          <td className="px-4 py-3">{formatNumber(aiUsage?.totalInputTokens || 0)}</td>
+                          <td className="px-4 py-3">{formatNumber(aiUsage?.totalOutputTokens || 0)}</td>
+                          <td className="px-4 py-3 min-w-[140px]">
+                            <p className="text-xs font-semibold text-[#232323] dark:text-white">{formatNumber(totalCalls)}</p>
+                            <p className="text-[11px] text-[#232323]/65 dark:text-white/65 mt-0.5">
+                              Func: {formatNumber(functionalCalls)} • Web: {formatNumber(webCalls)}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 min-w-[260px]">
+                            {(providerRows.length > 0 || modelRows.length > 0) ? (
+                              <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                                {providerRows.map((item) => (
+                                  <p key={`${slug}-provider-${item.name}`} className="text-[11px] text-[#232323]/70 dark:text-white/70 truncate">
+                                    Provider {item.name}: {formatNumber(item.llmCalls)} calls, {formatNumber(item.totalTokens)} tok
+                                  </p>
+                                ))}
+                                {modelRows.map((item) => (
+                                  <p key={`${slug}-model-${item.name}`} className="text-[11px] text-[#232323]/70 dark:text-white/70 truncate">
+                                    Model {item.name}: {formatNumber(item.llmCalls)} calls, {formatNumber(item.totalTokens)} tok
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-[#232323]/55 dark:text-white/55">No model/provider data</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 min-w-[320px]">
                             {operationRows.length > 0 ? (
                               <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
@@ -350,7 +415,7 @@ export default function PlatformAdminQuotas() {
                                       {operationRow.operation.replace(/[_-]+/g, " ")}
                                     </p>
                                     <p className="text-[11px] text-[#232323]/65 dark:text-white/65 mt-0.5">
-                                      In: {formatNumber(operationRow.inputTokens)} • Out: {formatNumber(operationRow.outputTokens)} • Total: {formatNumber(operationRow.totalTokens)}
+                                      In: {formatNumber(operationRow.inputTokens)} • Out: {formatNumber(operationRow.outputTokens)} • Calls: {formatNumber(operationRow.llmCalls)} • Total: {formatNumber(operationRow.totalTokens)}
                                     </p>
                                   </div>
                                 ))}
@@ -374,7 +439,7 @@ export default function PlatformAdminQuotas() {
                     })}
                     {!loading && rows.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-6 text-center text-sm text-[#232323]/60 dark:text-white/60">
+                        <td colSpan={11} className="px-4 py-6 text-center text-sm text-[#232323]/60 dark:text-white/60">
                           No organizations found.
                         </td>
                       </tr>

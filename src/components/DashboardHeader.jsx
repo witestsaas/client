@@ -475,7 +475,8 @@ export default function DashboardHeader() {
 
   useEffect(() => {
     loadFunctionalQuota();
-    const intervalId = window.setInterval(loadFunctionalQuota, POLL_INTERVAL_MS);
+    const intervalMs = activeRuns.length > 0 ? 2500 : POLL_INTERVAL_MS;
+    const intervalId = window.setInterval(loadFunctionalQuota, intervalMs);
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -488,7 +489,7 @@ export default function DashboardHeader() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [loadFunctionalQuota]);
+  }, [loadFunctionalQuota, activeRuns.length]);
 
   return (
     <header className="sticky top-0 z-40 h-11 shrink-0 relative border-b border-white/10 bg-[#232323] dark:bg-[#232323] px-6 flex items-center justify-between">

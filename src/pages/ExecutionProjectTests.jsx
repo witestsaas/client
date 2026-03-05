@@ -1628,6 +1628,25 @@ export default function ExecutionProjectTests() {
         });
       } catch {
       }
+      if (activeAiConversationId) {
+        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-start",
+          "generation:cancelled",
+          "Starting generation...",
+          "error",
+          "Generation cancelled",
+        );
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-cancel",
+          "generation:cancelled",
+          "Generation cancelled",
+          "error",
+          "Modal closed",
+        );
+      }
     }
     setIsGenerateModalOpen(false);
     setAiGenerationId("");
@@ -1752,11 +1771,26 @@ export default function ExecutionProjectTests() {
       const rawMessage = err?.message || "Failed to generate test cases";
       const isQuotaDenied =
         isQuotaDeniedError(err) ||
-        String(rawMessage || "").toLowerCase() === "request failed" ||
         Boolean(aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0);
       const message = isQuotaDenied
         ? AI_QUOTA_UPGRADE_MESSAGE
         : rawMessage;
+      upsertConversationStep(
+        conversationId,
+        "gen-start",
+        "generation:error",
+        "Starting generation...",
+        "error",
+        message,
+      );
+      upsertConversationStep(
+        conversationId,
+        "gen-error",
+        "generation:error",
+        "Generation failed",
+        "error",
+        message,
+      );
       setAiError(message);
       if (isQuotaDenied) {
         setQuotaPopup({
@@ -1796,6 +1830,22 @@ export default function ExecutionProjectTests() {
     } finally {
       if (activeAiConversationId) {
         updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-start",
+          "generation:cancelled",
+          "Starting generation...",
+          "error",
+          "Generation cancelled",
+        );
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-cancel",
+          "generation:cancelled",
+          "Generation cancelled",
+          "error",
+          "User cancelled",
+        );
       }
       setAiGenerationId("");
       setActiveAiConversationId("");

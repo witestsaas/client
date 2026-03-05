@@ -1,9 +1,25 @@
 import { apiFetch } from './http';
 
 async function parseJson(response) {
-  const data = await response.json().catch(() => ({}));
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    const rawText = await response.text().catch(() => '');
+    const normalizedText = String(rawText || '').trim();
+    if (normalizedText) {
+      data = {
+        message:
+          normalizedText.length > 220
+            ? `${normalizedText.slice(0, 220)}...`
+            : normalizedText,
+      };
+    }
+  }
+
   if (!response.ok) {
-    const error = new Error(data?.message || data?.error || 'Request failed');
+    const fallback = `Request failed (${response.status}${response.statusText ? ` ${response.statusText}` : ''})`;
+    const error = new Error(data?.message || data?.error || fallback);
     error.status = response.status;
     error.code = data?.code;
     error.payload = data;

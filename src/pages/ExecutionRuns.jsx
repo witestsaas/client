@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Image as ImageIcon, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
 import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
+import { useTestRunGlobalUpdates, useTestRunSocket } from "../hooks/useSocket";
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
@@ -52,6 +53,37 @@ function resolveRunId(run) {
   return run?.id || run?.runId || run?.testRunId || run?.test_run_id || "";
 }
 
+function normalizeRunResults(run) {
+  if (!run || typeof run !== "object") return [];
+  const candidates = [
+    run?.results,
+    run?.testResults,
+    run?.testRunResults,
+    run?.executionResults,
+    run?.items,
+  ];
+  const firstArray = candidates.find((value) => Array.isArray(value));
+  return Array.isArray(firstArray) ? firstArray : [];
+}
+
+function isActiveRunStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+  return normalized === "pending" || normalized === "queued" || normalized === "running";
+}
+
+function isStoppedRunStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+  return normalized === "aborted" || normalized === "cancelled" || normalized === "canceled" || normalized === "stopped";
+}
+
+function normalizeStepKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/["'`]/g, "")
+    .trim();
+}
+
 function normalizeLogLines(logs) {
   const source = Array.isArray(logs)
     ? logs
@@ -88,23 +120,64 @@ function buildMinioPublicUrl(value) {
   return `${protocol}://${host}:8000/test-artifacts/${key}`;
 }
 
+function collectArtifactStringValues(value, depth = 0) {
+  if (!value || depth > 4) return [];
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = String(value).trim();
+    return normalized ? [normalized] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectArtifactStringValues(item, depth + 1));
+  }
+  if (typeof value === "object") {
+    const objectValue = value || {};
+    const preferredKeys = [
+      "url",
+      "path",
+      "key",
+      "s3Key",
+      "publicUrl",
+      "screenshot",
+      "screenshotUrl",
+      "screenshotPath",
+      "value",
+    ];
+
+    const collected = preferredKeys.flatMap((key) => collectArtifactStringValues(objectValue[key], depth + 1));
+    if (collected.length > 0) {
+      return collected;
+    }
+
+    return Object.values(objectValue).flatMap((item) => collectArtifactStringValues(item, depth + 1));
+  }
+  return [];
+}
+
 function buildArtifactUrlCandidates(value) {
   if (!value) return [];
-  const normalized = String(value);
   const candidates = [];
+  const values = collectArtifactStringValues(value);
 
-  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-    candidates.push(normalized);
-  } else if (normalized.startsWith("/uploads/")) {
-    candidates.push(normalized);
-    const asKey = normalized.replace(/^\/uploads\//, "");
-    const minio = buildMinioPublicUrl(asKey);
-    if (minio) candidates.push(minio);
-  } else {
+  values.forEach((normalized) => {
+    if (!normalized) return;
+
+    if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+      candidates.push(normalized);
+      return;
+    }
+
+    if (normalized.startsWith("/uploads/")) {
+      candidates.push(normalized);
+      const asKey = normalized.replace(/^\/uploads\//, "");
+      const minio = buildMinioPublicUrl(asKey);
+      if (minio) candidates.push(minio);
+      return;
+    }
+
     candidates.push(`/uploads/${normalized.replace(/^\/+/, "")}`);
     const minio = buildMinioPublicUrl(normalized);
     if (minio) candidates.push(minio);
-  }
+  });
 
   return Array.from(new Set(candidates.filter(Boolean)));
 }
@@ -149,10 +222,12 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
   const [artifactsByResult, setArtifactsByResult] = useState({});
   const [networkByResult, setNetworkByResult] = useState({});
   const [resolvedScreenshotUrlByKey, setResolvedScreenshotUrlByKey] = useState({});
+  const [liveObservationsByResult, setLiveObservationsByResult] = useState({});
   const [rerunModalOpen, setRerunModalOpen] = useState(false);
   const [rerunMode, setRerunMode] = useState("all");
   const [parallelSessions, setParallelSessions] = useState(1);
   const [rerunning, setRerunning] = useState(false);
+  const lastResultsByRunRef = useRef(new Map());
 
   useEffect(() => {
     if (!open) {
@@ -162,6 +237,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
       setActiveResultId("");
       setActiveTab("steps");
       setResolvedScreenshotUrlByKey({});
+      setLiveObservationsByResult({});
     }
   }, [open]);
 
@@ -174,12 +250,27 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
       try {
         const data = await getRun(orgSlug, runId);
         if (cancelled) return;
-        setRun(data || null);
+        const nextRun = data || null;
+        const fetchedResults = normalizeRunResults(nextRun);
+        const runKey = String(runId || "");
+        if (runKey && fetchedResults.length > 0) {
+          lastResultsByRunRef.current.set(runKey, fetchedResults);
+        }
+        const cachedResults = runKey ? (lastResultsByRunRef.current.get(runKey) || []) : [];
+        const mergedRun = nextRun
+          ? {
+              ...nextRun,
+              results: fetchedResults.length > 0 ? fetchedResults : cachedResults,
+            }
+          : nextRun;
+
+        setRun(mergedRun);
         setActiveResultId((prev) => {
           const currentId = String(prev || "");
           const preferredId = String(initialResultId || "");
-          const resultIds = Array.isArray(data?.results)
-            ? data.results.map((result) => String(result?.id || "")).filter(Boolean)
+          const availableResults = normalizeRunResults(mergedRun);
+          const resultIds = Array.isArray(availableResults)
+            ? availableResults.map((result) => String(result?.id || "")).filter(Boolean)
             : [];
 
           if (preferredId && resultIds.includes(preferredId)) {
@@ -211,8 +302,60 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
     };
   }, [open, orgSlug, runId, initialResultId]);
 
-  const results = Array.isArray(run?.results) ? run.results : [];
+  const results = normalizeRunResults(run);
   const selectedResult = results.find((result) => String(result?.id) === String(activeResultId)) || results[0] || null;
+
+  useTestRunSocket(open && runId ? runId : null, {
+    onLiveEvent: (event) => {
+      if (!open) return;
+
+      const eventType = String(event?.type || "");
+      const eventData = event?.data || {};
+      const eventTestCaseId = String(event?.testCaseId || "").trim();
+      const eventBrowser = String(event?.browser || "").trim().toLowerCase();
+
+      const targetResult = results.find((item) => {
+        const caseMatches = eventTestCaseId
+          ? String(item?.testCaseId || item?.testCase?.id || "") === eventTestCaseId
+          : true;
+        const browserMatches = eventBrowser
+          ? String(item?.browser || "").trim().toLowerCase() === eventBrowser
+          : true;
+        return caseMatches && browserMatches;
+      }) || selectedResult;
+
+      const targetResultId = String(targetResult?.id || "");
+      if (!targetResultId) return;
+
+      const actionName = String(eventData?.actionName || eventData?.stepName || eventType || "Observation");
+      const message = String(eventData?.message || eventData?.detail || eventData?.note || "").trim();
+      if (!message && !eventData?.screenshotUrl) return;
+
+      const status = eventType.includes("failed")
+        ? "failed"
+        : eventType.includes("complete") || eventType.includes("analyzed")
+          ? "completed"
+          : "running";
+
+      const observation = {
+        id: `${String(eventData?.actionId || actionName)}-${String(event?.timestamp || Date.now())}`,
+        name: actionName,
+        status,
+        observed: message || "Observation updated",
+        timestamp: String(event?.timestamp || new Date().toISOString()),
+        screenshotUrl: String(eventData?.screenshotUrl || ""),
+      };
+
+      setLiveObservationsByResult((prev) => {
+        const current = Array.isArray(prev[targetResultId]) ? prev[targetResultId] : [];
+        if (current.some((item) => item.id === observation.id)) {
+          return prev;
+        }
+        const next = [...current, observation].slice(-120);
+        return { ...prev, [targetResultId]: next };
+      });
+    },
+  });
 
   useEffect(() => {
     if (!open || !selectedResult?.id || !orgSlug || !runId) return;
@@ -311,19 +454,21 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
   const selectedVideoUrl = selectedArtifacts?.videoUrl || toArtifactUrl(selectedResult?.videoPath);
   const structuredOutput = selectedResult?.structuredOutput || {};
   const runtimePayload = selectedResultId ? resultPayloadById[selectedResultId] : null;
-  const screenshotItems = (
-    Array.isArray(selectedArtifacts?.screenshotsUrls)
-      ? selectedArtifacts.screenshotsUrls
-      : Array.isArray(runtimePayload?.artifacts?.screenshotsPath)
-        ? runtimePayload.artifacts.screenshotsPath
-        : Array.isArray(structuredOutput?.artifacts?.screenshotsPath)
-          ? structuredOutput.artifacts.screenshotsPath
-          : Array.isArray(structuredOutput?.screenshots)
-            ? structuredOutput.screenshots
-            : Array.isArray(selectedResult?.screenshotsPath)
-              ? selectedResult.screenshotsPath
-              : []
-  ).map((item, index) => ({
+  const screenshotRawValues = [
+    ...(Array.isArray(selectedArtifacts?.screenshotsUrls) ? selectedArtifacts.screenshotsUrls : []),
+    ...(Array.isArray(runtimePayload?.artifacts?.screenshotsPath) ? runtimePayload.artifacts.screenshotsPath : []),
+    ...(Array.isArray(structuredOutput?.artifacts?.screenshotsPath) ? structuredOutput.artifacts.screenshotsPath : []),
+    ...(Array.isArray(structuredOutput?.screenshots) ? structuredOutput.screenshots : []),
+    ...(Array.isArray(selectedResult?.screenshotsPath) ? selectedResult.screenshotsPath : []),
+    ...(Array.isArray(structuredOutput?.browserActions)
+      ? structuredOutput.browserActions.map((action) => action?.screenshotUrl || action?.screenshotPath || action?.screenshot || "")
+      : []),
+    ...(Array.isArray(runtimePayload?.browserActions)
+      ? runtimePayload.browserActions.map((action) => action?.screenshotUrl || action?.screenshotPath || action?.screenshot || "")
+      : []),
+  ];
+
+  const screenshotItems = screenshotRawValues.map((item, index) => ({
     key: `${String(item || "")}-${index}`,
     candidates: buildArtifactUrlCandidates(item),
   })).filter((item) => item.candidates.length > 0);
@@ -340,23 +485,112 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
             ? runtimePayload.rawOutput.results.steps
             : [];
 
-  const normalizedRuntimeSteps = structuredSteps.map((step, index) => ({
-    ...step,
-    name: step?.name || step?.action || `Step ${index + 1}`,
-    observed: step?.observed || step?.message || step?.expectedResult || "",
-    status: step?.status || "pending",
-    error: step?.error || null,
-  }));
+  const structuredBrowserActions = Array.isArray(structuredOutput?.browserActions)
+    ? structuredOutput.browserActions
+    : Array.isArray(structuredOutput?.rawOutput?.results?.browserActions)
+      ? structuredOutput.rawOutput.results.browserActions
+      : Array.isArray(runtimePayload?.browserActions)
+        ? runtimePayload.browserActions
+        : Array.isArray(runtimePayload?.results?.browserActions)
+          ? runtimePayload.results.browserActions
+          : Array.isArray(runtimePayload?.rawOutput?.results?.browserActions)
+            ? runtimePayload.rawOutput.results.browserActions
+            : [];
+
+  const actionScreenshotByName = new Map();
+  structuredBrowserActions.forEach((action) => {
+    const actionNameKey = normalizeStepKey(action?.step || action?.action || "");
+    const screenshotValue = action?.screenshotUrl || action?.screenshotPath || action?.screenshot || "";
+    if (!actionNameKey || !screenshotValue || actionScreenshotByName.has(actionNameKey)) return;
+    actionScreenshotByName.set(actionNameKey, screenshotValue);
+  });
+
+  const normalizedRuntimeSteps = structuredSteps.map((step, index) => {
+    const stepName = step?.name || step?.action || `Step ${index + 1}`;
+    const byIndexAction = structuredBrowserActions[index] || null;
+    const byIndexScreenshot = byIndexAction?.screenshotUrl || byIndexAction?.screenshotPath || byIndexAction?.screenshot || "";
+    const byNameScreenshot = actionScreenshotByName.get(normalizeStepKey(stepName)) || "";
+    const fallbackScreenshot = byNameScreenshot || byIndexScreenshot || "";
+
+    return {
+      ...step,
+      name: stepName,
+      observed: step?.observed || step?.message || step?.expectedResult || "",
+      status: step?.status || "pending",
+      error: step?.error || null,
+      screenshotUrl: step?.screenshotUrl || step?.screenshotPath || step?.screenshot || fallbackScreenshot,
+    };
+  });
+
+  const normalizedActionObservations = structuredBrowserActions.map((action, index) => {
+    const inlineScreenshot = action?.screenshotUrl || action?.screenshotPath || action?.screenshot || "";
+    const inlineCandidates = buildArtifactUrlCandidates(inlineScreenshot);
+    const fallbackByIndex = screenshotItems[index] || null;
+    const screenshotCandidates = inlineCandidates.length ? inlineCandidates : (fallbackByIndex?.candidates || []);
+
+    return {
+      name: action?.step || action?.action || `Action ${index + 1}`,
+      observed: action?.message || action?.observed || action?.targetElement || "",
+      status:
+        action?.status === "completed"
+          ? "completed"
+          : action?.status === "failed"
+            ? "failed"
+            : "running",
+      error: action?.error || null,
+      screenshotKey: fallbackByIndex?.key || `${String(action?.step || action?.action || "action")}-${index}`,
+      screenshotCandidates,
+    };
+  });
+
+  const resultStatusText = String(selectedResult?.status || "").toLowerCase();
+  const finishedResultStatus = resultStatusText === "passed" || resultStatusText === "completed"
+    ? "passed"
+    : resultStatusText === "failed" || resultStatusText === "error" || resultStatusText === "cancelled"
+      ? "failed"
+      : "pending";
 
   const fallbackSteps = Array.isArray(selectedResult?.testCase?.steps)
     ? [...selectedResult.testCase.steps].sort((a, b) => Number(a?.stepOrder || 0) - Number(b?.stepOrder || 0)).map((step) => ({
         name: step?.action || "Step",
         observed: step?.expectedResult || "",
-        status: "pending",
+        status: finishedResultStatus,
       }))
     : [];
 
-  const steps = normalizedRuntimeSteps.length ? normalizedRuntimeSteps : fallbackSteps;
+  const hasDetailedRuntimeObservations = normalizedRuntimeSteps.some((step) => {
+    const status = String(step?.status || "").toLowerCase();
+    const observation = String(step?.observed || "").trim();
+    return status !== "pending" || observation.length > 0;
+  });
+
+  const baseSteps = hasDetailedRuntimeObservations
+    ? normalizedRuntimeSteps
+    : normalizedActionObservations.length
+      ? normalizedActionObservations
+      : fallbackSteps;
+
+  const steps = (() => {
+    const cloned = Array.isArray(baseSteps) ? baseSteps.map((item) => ({ ...item })) : [];
+    const resultIsFailed = finishedResultStatus === "failed";
+    const hasFailedStep = cloned.some((step) => {
+      const status = String(step?.status || "").toLowerCase();
+      return status === "failed" || status === "error" || status === "aborted" || status === "cancelled";
+    });
+
+    if (resultIsFailed && cloned.length > 0 && !hasFailedStep) {
+      const lastIndex = cloned.length - 1;
+      const fallbackError = String(selectedResult?.errorMessage || "Final verification failed.").trim();
+      cloned[lastIndex] = {
+        ...cloned[lastIndex],
+        status: "failed",
+        error: cloned[lastIndex]?.error || fallbackError,
+        observed: String(cloned[lastIndex]?.observed || "").trim() || fallbackError,
+      };
+    }
+
+    return cloned;
+  })();
 
   const runRerun = async () => {
     if (!orgSlug || !runId) return;
@@ -439,7 +673,9 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
             <div className="col-span-8 min-h-0 flex flex-col">
               {!selectedResult ? (
-                <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">No test result selected.</div>
+                <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">
+                  {isActiveRunStatus(run?.status) ? "Results are being generated..." : "No test results available for this run."}
+                </div>
               ) : (
                 <>
                   <div className="px-5 py-3 border-b border-black/10 dark:border-white/10">
@@ -484,7 +720,6 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                   <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 flex items-center gap-2">
                     <button type="button" onClick={() => setActiveTab("steps")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "steps" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><FileText className="h-3.5 w-3.5" />Steps</button>
                     <button type="button" onClick={() => setActiveTab("video")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "video" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Video className="h-3.5 w-3.5" />Video</button>
-                    <button type="button" onClick={() => setActiveTab("screenshots")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "screenshots" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><ImageIcon className="h-3.5 w-3.5" />Screenshots</button>
                     <button type="button" onClick={() => setActiveTab("console")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "console" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><TerminalSquare className="h-3.5 w-3.5" />Console</button>
                     <button type="button" onClick={() => setActiveTab("network")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "network" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Globe2 className="h-3.5 w-3.5" />Network</button>
 
@@ -506,6 +741,53 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                 const stepStatus = String(step?.status || "pending").toLowerCase();
                                 const isPassed = stepStatus === "passed" || stepStatus === "completed";
                                 const isFailed = stepStatus === "failed" || stepStatus === "error";
+                                const inlineStepScreenshot = step?.screenshotUrl || step?.screenshotPath || step?.screenshot || "";
+                                const stepCandidates = buildArtifactUrlCandidates(inlineStepScreenshot);
+                                const normalizedName = normalizeStepKey(step?.name || `Step ${index + 1}`);
+                                const matchedActionScreenshot = normalizedActionObservations.find((actionStep) => {
+                                  if (!Array.isArray(actionStep?.screenshotCandidates) || actionStep.screenshotCandidates.length === 0) {
+                                    return false;
+                                  }
+                                  const actionName = normalizeStepKey(actionStep?.name);
+                                  return actionName === normalizedName || actionName.includes(normalizedName) || normalizedName.includes(actionName);
+                                }) || null;
+
+                                const byActionIndexScreenshot = Array.isArray(normalizedActionObservations[index]?.screenshotCandidates)
+                                  && normalizedActionObservations[index].screenshotCandidates.length > 0
+                                  ? {
+                                      key: normalizedActionObservations[index].screenshotKey,
+                                      candidates: normalizedActionObservations[index].screenshotCandidates,
+                                    }
+                                  : null;
+
+                                const indexFallbackScreenshot = steps.length === screenshotItems.length
+                                  ? screenshotItems[index] || null
+                                  : null;
+
+                                const mappedScreenshotItem = matchedActionScreenshot
+                                  ? {
+                                      key: matchedActionScreenshot.screenshotKey,
+                                      candidates: matchedActionScreenshot.screenshotCandidates,
+                                    }
+                                  : byActionIndexScreenshot
+                                    ? byActionIndexScreenshot
+                                  : indexFallbackScreenshot;
+
+                                const screenshotCandidates = stepCandidates.length
+                                  ? stepCandidates
+                                  : mappedScreenshotItem?.candidates || [];
+
+                                const noteText = String(
+                                  step?.observed ||
+                                  step?.message ||
+                                  step?.error ||
+                                  (isFailed
+                                    ? "AI noted a failure on this step."
+                                    : isPassed
+                                      ? "AI noted this step passed successfully."
+                                      : "AI is analyzing this step."),
+                                );
+
                                 const statusClasses = isPassed
                                   ? "border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
                                   : isFailed
@@ -513,30 +795,61 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                     : "border-black/10 dark:border-white/15 bg-card text-[#232323]/75 dark:text-white/75";
 
                                 return (
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-semibold text-[#232323] dark:text-white">{step?.name || `Step ${index + 1}`}</p>
-                                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
-                                  {isPassed ? <CheckCircle2 className="h-3 w-3" /> : null}
-                                  {isFailed ? <XCircle className="h-3 w-3" /> : null}
-                                  {String(step?.status || "pending")}
-                                </span>
-                              </div>
-                                );
-                              })()}
-                              {step?.observed ? <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{step.observed}</p> : null}
-                              {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1">{step.error}</p> : null}
-                              {(() => {
-                                const stepScreenshot = step?.screenshotUrl || step?.screenshotPath || step?.screenshot || "";
-                                const stepCandidates = buildArtifactUrlCandidates(stepScreenshot);
-                                if (!stepCandidates.length) return null;
-                                return (
-                                  <div className="mt-2 overflow-hidden rounded-lg border border-black/10 dark:border-white/10 bg-card">
-                                    <ArtifactImage
-                                      candidates={stepCandidates}
-                                      alt={`Step ${index + 1} screenshot`}
-                                      className="w-full h-44 object-cover bg-muted"
-                                    />
+                              <div className="flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold text-[#232323] dark:text-white">{step?.name || `Step ${index + 1}`}</p>
+                                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
+                                      {isPassed ? <CheckCircle2 className="h-3 w-3" /> : null}
+                                      {isFailed ? <XCircle className="h-3 w-3" /> : null}
+                                      {String(step?.status || "pending")}
+                                    </span>
                                   </div>
+
+                                  <div className="mt-1.5 rounded-md border border-black/10 dark:border-white/10 bg-card/70 px-2.5 py-2">
+                                    <p className="text-[11px] font-semibold text-[#232323]/75 dark:text-white/75">AI Note</p>
+                                    <p className="text-xs text-[#232323]/65 dark:text-white/65 mt-0.5 leading-relaxed">{noteText}</p>
+                                  </div>
+
+                                  {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1.5">{step.error}</p> : null}
+                                </div>
+
+                                <div className="w-52 flex-shrink-0">
+                                  {screenshotCandidates.length ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const key = mappedScreenshotItem?.key;
+                                        const target = key
+                                          ? (resolvedScreenshotUrlByKey[key] || screenshotCandidates[0])
+                                          : screenshotCandidates[0];
+                                        window.open(target, "_blank", "noopener,noreferrer");
+                                      }}
+                                      className="w-full rounded-lg border border-black/10 dark:border-white/10 overflow-hidden bg-card text-left"
+                                    >
+                                      <ArtifactImage
+                                        candidates={screenshotCandidates}
+                                        alt={`Step ${index + 1} screenshot`}
+                                        className="w-full h-28 object-cover bg-muted"
+                                        onResolved={(url) => {
+                                          if (!mappedScreenshotItem?.key) return;
+                                          setResolvedScreenshotUrlByKey((prev) =>
+                                            prev[mappedScreenshotItem.key] === url ? prev : { ...prev, [mappedScreenshotItem.key]: url },
+                                          );
+                                        }}
+                                      />
+                                      <div className="px-2 py-1.5 text-[10px] text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-1">
+                                        <ExternalLink className="h-3 w-3" />
+                                        Screenshot
+                                      </div>
+                                    </button>
+                                  ) : (
+                                    <div className="h-28 rounded-lg border border-dashed border-black/15 dark:border-white/15 bg-background/60 text-[11px] text-[#232323]/50 dark:text-white/50 flex items-center justify-center px-2 text-center">
+                                      Screenshot not available yet
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                                 );
                               })()}
                             </div>
@@ -550,38 +863,6 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         <video controls src={selectedVideoUrl} className="w-full max-h-[55vh] rounded-xl border border-black/10 dark:border-white/10 bg-[#1e1e1e] dark:bg-[#232323]" />
                       ) : (
                         <p className="text-sm text-[#232323]/60 dark:text-white/60">Video not available yet.</p>
-                      )
-                    ) : null}
-
-                    {activeTab === "screenshots" ? (
-                      screenshotItems.length ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {screenshotItems.map((item, index) => (
-                            <button
-                              key={item.key}
-                              type="button"
-                              onClick={() => window.open(resolvedScreenshotUrlByKey[item.key] || item.candidates[0], "_blank", "noopener,noreferrer")}
-                              className="group rounded-xl border border-black/10 dark:border-white/10 bg-background/70 overflow-hidden text-left"
-                            >
-                              <ArtifactImage
-                                candidates={item.candidates}
-                                alt={`Screenshot ${index + 1}`}
-                                className="w-full h-52 object-cover bg-muted"
-                                onResolved={(url) => {
-                                  setResolvedScreenshotUrlByKey((prev) =>
-                                    prev[item.key] === url ? prev : { ...prev, [item.key]: url },
-                                  );
-                                }}
-                              />
-                              <div className="px-2.5 py-2 text-[11px] text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-1.5">
-                                <ExternalLink className="h-3 w-3" />
-                                Screenshot {index + 1}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Screenshots not available yet.</p>
                       )
                     ) : null}
 
@@ -718,6 +999,15 @@ export default function ExecutionRuns() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState("");
 
+  const refreshRuns = async () => {
+    if (!orgSlug) return;
+    const rows = await listRuns(orgSlug, {
+      projectId: projectId || undefined,
+      status: status || undefined,
+    });
+    setRuns(rows);
+  };
+
   const loadData = async (initial = false) => {
     if (!orgSlug) return;
     if (initial) setLoading(true);
@@ -758,13 +1048,35 @@ export default function ExecutionRuns() {
     if (projectId && typeof window !== "undefined") {
       window.localStorage.setItem(`selectedProject_${orgSlug}`, projectId);
     }
-    listRuns(orgSlug, {
-      projectId: projectId || undefined,
-      status: status || undefined,
-    })
-      .then((rows) => setRuns(rows))
+    refreshRuns()
       .catch((err) => setError(err?.message || "Failed to load test runs"));
   }, [orgSlug, projectId, status]);
+
+  useEffect(() => {
+    if (!orgSlug) return;
+
+    const hasActiveRun = runs.some((run) => isActiveRunStatus(run?.status));
+    const intervalMs = hasActiveRun ? 2500 : 15000;
+    const timer = window.setInterval(() => {
+      refreshRuns().catch(() => undefined);
+    }, intervalMs);
+
+    return () => window.clearInterval(timer);
+  }, [orgSlug, projectId, status, runs]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshRuns().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [orgSlug, projectId, status]);
+
+  useTestRunGlobalUpdates(() => {
+    refreshRuns().catch(() => undefined);
+  });
 
   useEffect(() => {
     const onProjectChange = (event) => {
@@ -788,6 +1100,20 @@ export default function ExecutionRuns() {
       return planName.includes(term) || environment.includes(term) || runStatus.includes(term);
     });
   }, [runs, search]);
+
+  const runCounters = useMemo(() => {
+    return runs.reduce(
+      (acc, run) => {
+        const normalized = String(run?.status || "").toLowerCase();
+        if (isActiveRunStatus(normalized)) acc.running += 1;
+        else if (normalized === "completed" || normalized === "passed") acc.passed += 1;
+        else if (normalized === "failed" || normalized === "error") acc.failed += 1;
+        else if (isStoppedRunStatus(normalized)) acc.stopped += 1;
+        return acc;
+      },
+      { running: 0, stopped: 0, passed: 0, failed: 0 },
+    );
+  }, [runs]);
 
   const handleCancelRun = async (runId) => {
     setSaving(true);
@@ -890,6 +1216,25 @@ export default function ExecutionRuns() {
               <option value="Error">Error</option>
             </select>
           </div>
+        </div>
+
+        <div className="px-6 py-3 border-b border-black/10 dark:border-white/10 bg-card/85 flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-blue-200/70 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold">
+            <Loader2 className="h-3.5 w-3.5" />
+            Running: {runCounters.running}
+          </span>
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-amber-200/70 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 font-semibold">
+            <Square className="h-3.5 w-3.5" />
+            Stopped: {runCounters.stopped}
+          </span>
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-green-200/70 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-semibold">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Passed: {runCounters.passed}
+          </span>
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-red-200/70 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-semibold">
+            <XCircle className="h-3.5 w-3.5" />
+            Failed: {runCounters.failed}
+          </span>
         </div>
 
         {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</div> : null}
