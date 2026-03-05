@@ -507,10 +507,8 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
   const normalizedRuntimeSteps = structuredSteps.map((step, index) => {
     const stepName = step?.name || step?.action || `Step ${index + 1}`;
-    const byIndexAction = structuredBrowserActions[index] || null;
-    const byIndexScreenshot = byIndexAction?.screenshotUrl || byIndexAction?.screenshotPath || byIndexAction?.screenshot || "";
     const byNameScreenshot = actionScreenshotByName.get(normalizeStepKey(stepName)) || "";
-    const fallbackScreenshot = byNameScreenshot || byIndexScreenshot || "";
+    const fallbackScreenshot = byNameScreenshot || "";
 
     return {
       ...step,
@@ -749,29 +747,15 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                     return false;
                                   }
                                   const actionName = normalizeStepKey(actionStep?.name);
-                                  return actionName === normalizedName || actionName.includes(normalizedName) || normalizedName.includes(actionName);
+                                  return actionName === normalizedName;
                                 }) || null;
-
-                                const byActionIndexScreenshot = Array.isArray(normalizedActionObservations[index]?.screenshotCandidates)
-                                  && normalizedActionObservations[index].screenshotCandidates.length > 0
-                                  ? {
-                                      key: normalizedActionObservations[index].screenshotKey,
-                                      candidates: normalizedActionObservations[index].screenshotCandidates,
-                                    }
-                                  : null;
-
-                                const indexFallbackScreenshot = steps.length === screenshotItems.length
-                                  ? screenshotItems[index] || null
-                                  : null;
 
                                 const mappedScreenshotItem = matchedActionScreenshot
                                   ? {
                                       key: matchedActionScreenshot.screenshotKey,
                                       candidates: matchedActionScreenshot.screenshotCandidates,
                                     }
-                                  : byActionIndexScreenshot
-                                    ? byActionIndexScreenshot
-                                  : indexFallbackScreenshot;
+                                  : null;
 
                                 const screenshotCandidates = stepCandidates.length
                                   ? stepCandidates
