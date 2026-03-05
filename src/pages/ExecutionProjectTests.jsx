@@ -1431,6 +1431,27 @@ export default function ExecutionProjectTests() {
     });
   }, [updateAiConversation]);
 
+  const getLiveEntityStepId = useCallback((prefix, data) => {
+    const raw = String(
+      data?.testCaseId ||
+      data?.folderId ||
+      data?.title ||
+      data?.folderName ||
+      "",
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!raw) return `${prefix}-unknown`;
+
+    const safe = raw
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-_.]/g, "")
+      .slice(0, 80);
+
+    return `${prefix}-${safe || "unknown"}`;
+  }, []);
+
   useEffect(() => {
     if (!aiStorageKey) return;
     try {
@@ -1477,12 +1498,28 @@ export default function ExecutionProjectTests() {
       const { type, data } = event || {};
       if (!type) return;
 
+      const shouldCloseStartStep =
+        type !== "generation:started" &&
+        type !== "generation:error" &&
+        type !== "generation:cancelled";
+
+      if (shouldCloseStartStep) {
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-start",
+          type,
+          "Starting generation...",
+          "done",
+          "Generation started",
+        );
+      }
+
       if (type === "generation:started") {
         updateAiConversation(activeAiConversationId, (conversation) => {
           const isTerminal = ["completed", "error", "cancelled"].includes(conversation?.phase);
           return isTerminal ? {} : { phase: "generating" };
         });
-        upsertConversationStep(activeAiConversationId, "gen-start", type, "Starting generation...", "done", data?.message);
+        upsertConversationStep(activeAiConversationId, "gen-start", type, "Starting generation...", "active", data?.message);
       }
 
       if (type === "phase:reading-docs") {
@@ -1512,8 +1549,29 @@ export default function ExecutionProjectTests() {
       if (type === "browser:analyzing") {
         upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "active", data?.message);
       }
+      if (type === "browser:progress") {
+        upsertConversationStep(
+          activeAiConversationId,
+          "plan",
+          type,
+          "Planning test cases from prompt...",
+          "active",
+          data?.message || data?.detail || "Analyzing website and extracting test scenarios",
+        );
+      }
       if (type === "browser:analyzed") {
         upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "done", data?.message || "Planning complete");
+      }
+
+      if (type === "docs:updated") {
+        upsertConversationStep(
+          activeAiConversationId,
+          "docs-update",
+          type,
+          "Updating project documentation...",
+          "done",
+          data?.message || "Documentation updated",
+        );
       }
 
       if (type === "folder:found" || type === "folder:created") {
@@ -1528,37 +1586,54 @@ export default function ExecutionProjectTests() {
       }
 
       if (type === "test:creating") {
+        const stepId = getLiveEntityStepId("test", data);
         upsertConversationStep(
           activeAiConversationId,
-          `test-${data?.title || Date.now()}`,
+          stepId,
           type,
           `Creating test: ${data?.title || "Test case"}`,
           "active",
         );
       }
       if (type === "test:created") {
-        const testId = `test-${data?.title || data?.testCaseId || Date.now()}`;
-        upsertConversationStep(activeAiConversationId, testId, type, `Created test: ${data?.title || "Test case"}`, "done", `${data?.stepsCount || "?"} steps`);
+        const stepId = getLiveEntityStepId("test", data);
+        upsertConversationStep(
+          activeAiConversationId,
+          stepId,
+          type,
+          `Created test: ${data?.title || "Test case"}`,
+          "done",
+          `${data?.stepsCount || "?"} steps`,
+        );
       }
 
       if (type === "test:updating") {
+        const stepId = getLiveEntityStepId("update", data);
         upsertConversationStep(
           activeAiConversationId,
-          `update-${data?.testCaseId || data?.title || Date.now()}`,
+          stepId,
           type,
           `Updating test: ${data?.title || "Test case"}`,
           "active",
         );
       }
       if (type === "test:updated") {
-        const testId = `update-${data?.testCaseId || data?.title || Date.now()}`;
-        upsertConversationStep(activeAiConversationId, testId, type, `Updated test: ${data?.title || "Test case"}`, "done", `${data?.stepsCount || "?"} steps`);
+        const stepId = getLiveEntityStepId("update", data);
+        upsertConversationStep(
+          activeAiConversationId,
+          stepId,
+          type,
+          `Updated test: ${data?.title || "Test case"}`,
+          "done",
+          `${data?.stepsCount || "?"} steps`,
+        );
       }
 
       if (type === "test:error") {
+        const stepId = getLiveEntityStepId("test", data);
         upsertConversationStep(
           activeAiConversationId,
-          `error-${data?.title || Date.now()}`,
+          stepId,
           type,
           `Failed: ${data?.title || "Test case"}`,
           "error",
@@ -1566,12 +1641,35 @@ export default function ExecutionProjectTests() {
         );
       }
 
+      if (type === "generation:retry") {
+        upsertConversationStep(
+          activeAiConversationId,
+          "gen-retry",
+          type,
+          `Retrying generation${data?.attempt ? ` (attempt ${data.attempt + 1})` : ""}...`,
+          "active",
+          data?.message || "Temporary AI response error, retrying",
+        );
+      }
+
       if (type === "generation:completed") {
-        updateAiConversation(activeAiConversationId, (conversation) => ({
-          phase: "completed",
-          reasoning: data?.reasoning || conversation.reasoning || "",
-          suggestions: Array.isArray(data?.suggestions) ? data.suggestions : conversation.suggestions || [],
-        }));
+        updateAiConversation(activeAiConversationId, (conversation) => {
+          const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
+          return {
+            phase: "completed",
+            reasoning: data?.reasoning || conversation.reasoning || "",
+            suggestions: Array.isArray(data?.suggestions) ? data.suggestions : conversation.suggestions || [],
+            steps: steps.map((step) =>
+              step.status === "active"
+                ? {
+                    ...step,
+                    status: "done",
+                    detail: step.detail || "Completed",
+                  }
+                : step,
+            ),
+          };
+        });
         upsertConversationStep(
           activeAiConversationId,
           "gen-done",
@@ -1583,16 +1681,45 @@ export default function ExecutionProjectTests() {
 
       if (type === "generation:error") {
         const message = data?.error || data?.message || "Generation failed";
-        updateAiConversation(activeAiConversationId, () => ({ phase: "error", error: message }));
+        updateAiConversation(activeAiConversationId, (conversation) => {
+          const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
+          return {
+            phase: "error",
+            error: message,
+            steps: steps.map((step) =>
+              step.status === "active"
+                ? {
+                    ...step,
+                    status: "error",
+                    detail: step.detail || "Interrupted by generation error",
+                  }
+                : step,
+            ),
+          };
+        });
         upsertConversationStep(activeAiConversationId, "gen-error", type, "Generation failed", "error", message);
       }
 
       if (type === "generation:cancelled") {
-        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+        updateAiConversation(activeAiConversationId, (conversation) => {
+          const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
+          return {
+            phase: "cancelled",
+            steps: steps.map((step) =>
+              step.status === "active"
+                ? {
+                    ...step,
+                    status: "error",
+                    detail: step.detail || "Cancelled",
+                  }
+                : step,
+            ),
+          };
+        });
         upsertConversationStep(activeAiConversationId, "gen-cancel", type, "Generation cancelled", "error", data?.message);
       }
     },
-    [activeAiConversationId, upsertConversationStep, updateAiConversation],
+    [activeAiConversationId, getLiveEntityStepId, upsertConversationStep, updateAiConversation],
   );
 
   useTestRunSocket(aiGenerationId || null, {

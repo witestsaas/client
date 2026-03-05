@@ -84,6 +84,19 @@ function normalizeStepKey(value) {
     .trim();
 }
 
+function tokenizeMatchText(value) {
+  const raw = String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return raw
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
+}
+
 function normalizeLogLines(logs) {
   const source = Array.isArray(logs)
     ? logs
@@ -473,6 +486,12 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
     candidates: buildArtifactUrlCandidates(item),
   })).filter((item) => item.candidates.length > 0);
 
+  const runLevelScreenshotCandidates = Array.from(
+    new Set(
+      screenshotItems.flatMap((item) => (Array.isArray(item?.candidates) ? item.candidates : [])).filter(Boolean),
+    ),
+  );
+
   const structuredSteps = Array.isArray(structuredOutput?.steps)
     ? structuredOutput.steps
     : Array.isArray(structuredOutput?.rawOutput?.results?.steps)
@@ -588,6 +607,110 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
     }
 
     return cloned;
+  })();
+
+  const stepScreenshotItems = (() => {
+    const usedActionIndices = new Set();
+    let nextActionCursor = 0;
+    const actionCandidates = normalizedActionObservations
+      .map((actionStep, actionIndex) => ({
+        actionIndex,
+        normalizedName: normalizeStepKey(actionStep?.name || ""),
+        searchText: [
+          actionStep?.name,
+          actionStep?.observed,
+          actionStep?.error,
+          structuredBrowserActions[actionIndex]?.message,
+          structuredBrowserActions[actionIndex]?.targetElement,
+          structuredBrowserActions[actionIndex]?.step,
+          structuredBrowserActions[actionIndex]?.action,
+        ].filter(Boolean).join(" "),
+        key: actionStep?.screenshotKey || `action-${actionIndex}`,
+        candidates: Array.isArray(actionStep?.screenshotCandidates) ? actionStep.screenshotCandidates : [],
+      }))
+      .filter((item) => item.candidates.length > 0);
+
+    return (Array.isArray(steps) ? steps : []).map((step, index) => {
+      const inlineStepScreenshot = step?.screenshotUrl || step?.screenshotPath || step?.screenshot || "";
+      const inlineCandidates = buildArtifactUrlCandidates(inlineStepScreenshot);
+      if (inlineCandidates.length > 0) {
+        return {
+          key: `step-inline-${index}`,
+          candidates: inlineCandidates,
+        };
+      }
+
+      const normalizedName = normalizeStepKey(step?.name || `Step ${index + 1}`);
+      const stepTokens = tokenizeMatchText(`${step?.name || ""} ${step?.observed || ""} ${step?.message || ""}`);
+
+      const forwardCandidates = actionCandidates.filter((item) =>
+        !usedActionIndices.has(item.actionIndex) && item.actionIndex >= nextActionCursor,
+      );
+
+      const candidatePool = forwardCandidates.length
+        ? forwardCandidates
+        : actionCandidates.filter((item) => !usedActionIndices.has(item.actionIndex));
+
+      const scoredCandidates = candidatePool
+        .map((item) => {
+          const candidateTokens = tokenizeMatchText(item.searchText);
+          const overlapCount = stepTokens.reduce((count, token) => (candidateTokens.includes(token) ? count + 1 : count), 0);
+          const expectedIndex = actionCandidates.length > 0 && steps.length > 0
+            ? Math.min(
+                actionCandidates.length - 1,
+                Math.max(0, Math.round(((index + 1) * actionCandidates.length) / steps.length) - 1),
+              )
+            : index;
+          const distancePenalty = Math.abs(item.actionIndex - expectedIndex);
+          const exactNameBonus = item.normalizedName && item.normalizedName === normalizedName ? 12 : 0;
+          const score = (overlapCount * 5) + exactNameBonus - distancePenalty;
+          return { ...item, score };
+        })
+        .sort((a, b) => b.score - a.score || a.actionIndex - b.actionIndex);
+
+      const bestCandidate = scoredCandidates[0] || null;
+
+      if (bestCandidate && bestCandidate.score >= 3) {
+        usedActionIndices.add(bestCandidate.actionIndex);
+        nextActionCursor = bestCandidate.actionIndex + 1;
+        return {
+          key: bestCandidate.key,
+          candidates: bestCandidate.candidates,
+        };
+      }
+
+      const nearestMatch = candidatePool.find((item) => {
+        if (usedActionIndices.has(item.actionIndex)) return false;
+        return item.actionIndex >= nextActionCursor;
+      }) || candidatePool[0] || null;
+
+      if (nearestMatch) {
+        usedActionIndices.add(nearestMatch.actionIndex);
+        nextActionCursor = nearestMatch.actionIndex + 1;
+        return {
+          key: nearestMatch.key,
+          candidates: nearestMatch.candidates,
+        };
+      }
+
+      const indexedScreenshotItem = screenshotItems[index] || null;
+      if (indexedScreenshotItem?.candidates?.length) {
+        return indexedScreenshotItem;
+      }
+
+      if (runLevelScreenshotCandidates.length > 0) {
+        const offset = index % runLevelScreenshotCandidates.length;
+        return {
+          key: `run-fallback-${index}`,
+          candidates: [
+            ...runLevelScreenshotCandidates.slice(offset),
+            ...runLevelScreenshotCandidates.slice(0, offset),
+          ],
+        };
+      }
+
+      return null;
+    });
   })();
 
   const runRerun = async () => {
@@ -739,27 +862,8 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                 const stepStatus = String(step?.status || "pending").toLowerCase();
                                 const isPassed = stepStatus === "passed" || stepStatus === "completed";
                                 const isFailed = stepStatus === "failed" || stepStatus === "error";
-                                const inlineStepScreenshot = step?.screenshotUrl || step?.screenshotPath || step?.screenshot || "";
-                                const stepCandidates = buildArtifactUrlCandidates(inlineStepScreenshot);
-                                const normalizedName = normalizeStepKey(step?.name || `Step ${index + 1}`);
-                                const matchedActionScreenshot = normalizedActionObservations.find((actionStep) => {
-                                  if (!Array.isArray(actionStep?.screenshotCandidates) || actionStep.screenshotCandidates.length === 0) {
-                                    return false;
-                                  }
-                                  const actionName = normalizeStepKey(actionStep?.name);
-                                  return actionName === normalizedName;
-                                }) || null;
-
-                                const mappedScreenshotItem = matchedActionScreenshot
-                                  ? {
-                                      key: matchedActionScreenshot.screenshotKey,
-                                      candidates: matchedActionScreenshot.screenshotCandidates,
-                                    }
-                                  : null;
-
-                                const screenshotCandidates = stepCandidates.length
-                                  ? stepCandidates
-                                  : mappedScreenshotItem?.candidates || [];
+                                const resolvedScreenshotItem = stepScreenshotItems[index] || null;
+                                const screenshotCandidates = resolvedScreenshotItem?.candidates || [];
 
                                 const noteText = String(
                                   step?.observed ||
@@ -803,7 +907,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const key = mappedScreenshotItem?.key;
+                                        const key = resolvedScreenshotItem?.key;
                                         const target = key
                                           ? (resolvedScreenshotUrlByKey[key] || screenshotCandidates[0])
                                           : screenshotCandidates[0];
@@ -816,9 +920,9 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                         alt={`Step ${index + 1} screenshot`}
                                         className="w-full h-28 object-cover bg-muted"
                                         onResolved={(url) => {
-                                          if (!mappedScreenshotItem?.key) return;
+                                          if (!resolvedScreenshotItem?.key) return;
                                           setResolvedScreenshotUrlByKey((prev) =>
-                                            prev[mappedScreenshotItem.key] === url ? prev : { ...prev, [mappedScreenshotItem.key]: url },
+                                            prev[resolvedScreenshotItem.key] === url ? prev : { ...prev, [resolvedScreenshotItem.key]: url },
                                           );
                                         }}
                                       />

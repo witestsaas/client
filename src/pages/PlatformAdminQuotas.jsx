@@ -313,7 +313,7 @@ export default function PlatformAdminQuotas() {
                       <th className="text-left px-4 py-2">Input Tok</th>
                       <th className="text-left px-4 py-2">Output Tok</th>
                       <th className="text-left px-4 py-2">LLM Calls</th>
-                      <th className="text-left px-4 py-2">Models / Providers</th>
+                      <th className="text-left px-4 py-2">Models</th>
                       <th className="text-left px-4 py-2">Operation Tokens</th>
                       <th className="text-left px-4 py-2">Actions</th>
                     </tr>
@@ -327,7 +327,6 @@ export default function PlatformAdminQuotas() {
                       const aiUsage = row?.statistics?.aiUsage || {};
                       const form = formBySlug[slug] || buildQuotaFormRow(row, defaultPlanId);
                       const operationRows = getOperationRows(aiUsage);
-                      const providerRows = getBreakdownRows(aiUsage?.providers);
                       const modelRows = getBreakdownRows(aiUsage?.models);
                       const functionalCalls = Number(aiUsage?.channels?.functional?.llmCalls || 0);
                       const webCalls = Number(aiUsage?.channels?.web?.llmCalls || 0);
@@ -386,13 +385,8 @@ export default function PlatformAdminQuotas() {
                             </p>
                           </td>
                           <td className="px-4 py-3 min-w-[260px]">
-                            {(providerRows.length > 0 || modelRows.length > 0) ? (
+                            {modelRows.length > 0 ? (
                               <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                                {providerRows.map((item) => (
-                                  <p key={`${slug}-provider-${item.name}`} className="text-[11px] text-[#232323]/70 dark:text-white/70 truncate">
-                                    Provider {item.name}: {formatNumber(item.llmCalls)} calls, {formatNumber(item.totalTokens)} tok
-                                  </p>
-                                ))}
                                 {modelRows.map((item) => (
                                   <p key={`${slug}-model-${item.name}`} className="text-[11px] text-[#232323]/70 dark:text-white/70 truncate">
                                     Model {item.name}: {formatNumber(item.llmCalls)} calls, {formatNumber(item.totalTokens)} tok
@@ -400,7 +394,7 @@ export default function PlatformAdminQuotas() {
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-xs text-[#232323]/55 dark:text-white/55">No model/provider data</span>
+                              <span className="text-xs text-[#232323]/55 dark:text-white/55">No model data</span>
                             )}
                           </td>
                           <td className="px-4 py-3 min-w-[320px]">
