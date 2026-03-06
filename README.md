@@ -28,4 +28,4 @@ The frontend now uses Auth0 for authentication.
 3. Optional Google connection override:
 	- `VITE_AUTH0_GOOGLE_CONNECTION` (default `google-oauth2`)
 4. Ensure callback URL in Auth0 includes:
-	- `http://localhost:5173/auth/callback`
+	- `http://localhost:3000/auth/callback`
