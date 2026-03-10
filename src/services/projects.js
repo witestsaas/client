@@ -1,5 +1,7 @@
 import { apiFetch } from './http';
 
+/*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -8,6 +10,8 @@ async function parseJson(response) {
   return data;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjects(orgSlug) {
   const response = await apiFetch(
     `/projects?orgSlug=${encodeURIComponent(orgSlug)}&_t=${Date.now()}`,
@@ -15,12 +19,16 @@ export async function fetchProjects(orgSlug) {
   return parseJson(response);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProject(orgSlug, projectId) {
   const response = await apiFetch(
     `/projects/${projectId}?orgSlug=${encodeURIComponent(orgSlug)}&_t=${Date.now()}`,
   );
   return parseJson(response);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createProject(orgSlug, payload) {
   const response = await apiFetch('/projects', {
@@ -35,6 +43,8 @@ export async function createProject(orgSlug, payload) {
   return parseJson(response);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function updateProject(orgSlug, projectId, payload) {
   const response = await apiFetch(`/projects/${projectId}`, {
     method: 'PATCH',
@@ -46,6 +56,8 @@ export async function updateProject(orgSlug, projectId, payload) {
   });
   return parseJson(response);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function deleteProject(orgSlug, projectId) {
   const response = await apiFetch(`/projects/${projectId}?orgSlug=${encodeURIComponent(orgSlug)}`, {

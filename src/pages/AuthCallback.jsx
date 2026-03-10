@@ -7,6 +7,8 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 async function resolvePrimaryOrgWithRetry(retries = 3) {
   let lastError;
   for (let attempt = 0; attempt < retries; attempt += 1) {
@@ -23,6 +25,8 @@ async function resolvePrimaryOrgWithRetry(retries = 3) {
   }
   return undefined;
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();

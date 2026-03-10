@@ -1,3 +1,5 @@
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export function isQuotaDeniedError(error) {
   const status = Number(error?.status || error?.payload?.statusCode || 0);
   const code = String(error?.code || error?.payload?.code || "").toLowerCase();
@@ -9,6 +11,9 @@ export function isQuotaDeniedError(error) {
 
   return false;
 }
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export function getFeatureQuotaSnapshot(payload, feature) {
   const usageRows = Array.isArray(payload?.usage) ? payload.usage : [];

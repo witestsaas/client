@@ -99,9 +99,13 @@ export default function PlatformAdminQuotas() {
         acc.webUsed += Number(web.used || 0);
         acc.webLimit += Number(web.limit || 0);
         acc.totalLlmCalls += Number(aiUsage?.totalLlmCalls || 0);
+        // LLM price calculation
+        const inputTokens = Number(aiUsage?.totalInputTokens || 0);
+        const outputTokens = Number(aiUsage?.totalOutputTokens || 0);
+        acc.totalLlmPrice += (inputTokens / 1_000_000) * 0.5 + (outputTokens / 1_000_000) * 3.0;
         return acc;
       },
-      { organizations: 0, aiUsed: 0, aiLimit: 0, webUsed: 0, webLimit: 0, totalLlmCalls: 0 },
+      { organizations: 0, aiUsed: 0, aiLimit: 0, webUsed: 0, webLimit: 0, totalLlmCalls: 0, totalLlmPrice: 0 },
     );
   }, [rows]);
 
@@ -216,7 +220,7 @@ export default function PlatformAdminQuotas() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <p className="text-sm text-[#232323]/60 dark:text-white/60">Organizations</p>
                 <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">{formatNumber(summary.organizations)}</p>
@@ -236,6 +240,11 @@ export default function PlatformAdminQuotas() {
               <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                 <p className="text-sm text-[#232323]/60 dark:text-white/60">LLM Calls (All Orgs)</p>
                 <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">{formatNumber(summary.totalLlmCalls)}</p>
+              </div>
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">LLM Price (Realtime)</p>
+                <p className="text-2xl font-bold text-[#232323] dark:text-white mt-2">${summary.totalLlmPrice.toFixed(2)}</p>
+                <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">$0.50/1M in, $3.00/1M out</p>
               </div>
             </div>
 
@@ -313,6 +322,7 @@ export default function PlatformAdminQuotas() {
                       <th className="text-left px-4 py-2">Input Tok</th>
                       <th className="text-left px-4 py-2">Output Tok</th>
                       <th className="text-left px-4 py-2">LLM Calls</th>
+                      <th className="text-left px-4 py-2">LLM Price</th>
                       <th className="text-left px-4 py-2">Models</th>
                       <th className="text-left px-4 py-2">Operation Tokens</th>
                       <th className="text-left px-4 py-2">Actions</th>
@@ -327,16 +337,33 @@ export default function PlatformAdminQuotas() {
                       const aiUsage = row?.statistics?.aiUsage || {};
                       const form = formBySlug[slug] || buildQuotaFormRow(row, defaultPlanId);
                       const operationRows = getOperationRows(aiUsage);
+
                       const modelRows = getBreakdownRows(aiUsage?.models);
                       const functionalCalls = Number(aiUsage?.channels?.functional?.llmCalls || 0);
                       const webCalls = Number(aiUsage?.channels?.web?.llmCalls || 0);
                       const totalCalls = Number(aiUsage?.totalLlmCalls || 0);
+                      // LLM price for this org
+                      const inputTokens = Number(aiUsage?.totalInputTokens || 0);
+                      const outputTokens = Number(aiUsage?.totalOutputTokens || 0);
+                      const llmPrice = (inputTokens / 1_000_000) * 0.5 + (outputTokens / 1_000_000) * 3.0;
 
                       return (
                         <tr key={slug} className="border-t border-black/10 dark:border-white/10 align-top">
                           <td className="px-4 py-3">
-                            <p className="font-semibold text-[#232323] dark:text-white">{row?.organization?.name || slug}</p>
-                            <p className="text-xs text-[#232323]/60 dark:text-white/60">{slug}</p>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-[#232323] dark:text-white">{row?.organization?.name || slug}</p>
+                                {/* LLM Price Badge */}
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#3b82f6]/30 bg-gradient-to-r from-[#e0e7ff] via-[#f0f9ff] to-[#f0fdfa] dark:from-[#1e293b] dark:via-[#0f172a] dark:to-[#0e7490] shadow-sm text-xs font-bold text-[#2563eb] dark:text-[#60a5fa] animate-pulse"
+                                  title={`Realtime LLM price: $${llmPrice.toFixed(2)} ($0.50/1M in, $3.00/1M out)`}
+                                >
+                                  <svg width="16" height="16" fill="none" viewBox="0 0 16 16" className="mr-1"><circle cx="8" cy="8" r="7" stroke="#2563eb" strokeWidth="2" fill="#e0e7ff" /><path d="M5.5 8.5l2 2 3-3" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  ${llmPrice.toFixed(2)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#232323]/60 dark:text-white/60">{slug}</p>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs text-[#232323]/60 dark:text-white/60 mb-1">{ai.used}/{ai.limit} used</p>
@@ -383,6 +410,10 @@ export default function PlatformAdminQuotas() {
                             <p className="text-[11px] text-[#232323]/65 dark:text-white/65 mt-0.5">
                               Func: {formatNumber(functionalCalls)} • Web: {formatNumber(webCalls)}
                             </p>
+                          </td>
+                          <td className="px-4 py-3 min-w-[120px]">
+                            <span className="font-semibold text-[#232323] dark:text-white">${llmPrice.toFixed(2)}</span>
+                            <span className="block text-[11px] text-[#232323]/65 dark:text-white/65 mt-0.5">in: {inputTokens.toLocaleString()} • out: {outputTokens.toLocaleString()}</span>
                           </td>
                           <td className="px-4 py-3 min-w-[260px]">
                             {modelRows.length > 0 ? (

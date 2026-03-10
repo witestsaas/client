@@ -1,5 +1,7 @@
 import { apiFetch } from './http';
 
+/*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 async function parseJson(response) {
   let data = {};
   try {
@@ -28,6 +30,8 @@ async function parseJson(response) {
   return data;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjectTree(orgSlug, projectId) {
   const ts = Date.now();
   const [projectRes, foldersRes, testCasesRes] = await Promise.all([
@@ -47,12 +51,16 @@ export async function fetchProjectTree(orgSlug, projectId) {
   };
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchTestProjects(orgSlug) {
   const ts = Date.now();
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects?_t=${ts}`);
   const data = await parseJson(res);
   return Array.isArray(data) ? data : data?.projects || [];
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createTestProject(orgSlug, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects`, {
@@ -62,6 +70,8 @@ export async function createTestProject(orgSlug, payload) {
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function updateTestProject(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects`, {
@@ -75,12 +85,16 @@ export async function updateTestProject(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteTestProject(orgSlug, projectId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}`, {
     method: 'DELETE',
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createFolder(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/folders`, {
@@ -91,6 +105,8 @@ export async function createFolder(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function renameFolder(orgSlug, projectId, folderId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/folders/${encodeURIComponent(folderId)}`, {
     method: 'PATCH',
@@ -100,12 +116,16 @@ export async function renameFolder(orgSlug, projectId, folderId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteFolder(orgSlug, projectId, folderId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/folders/${encodeURIComponent(folderId)}`, {
     method: 'DELETE',
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createTestCase(orgSlug, projectId, payload) {
   const title = payload?.title || payload?.name || '';
@@ -120,6 +140,8 @@ export async function createTestCase(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function updateTestCase(orgSlug, projectId, testCaseId, payload) {
   const title = payload?.title || payload?.name || '';
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/test-cases/${encodeURIComponent(testCaseId)}`, {
@@ -133,12 +155,16 @@ export async function updateTestCase(orgSlug, projectId, testCaseId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteTestCase(orgSlug, projectId, testCaseId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/test-cases/${encodeURIComponent(testCaseId)}`, {
     method: 'DELETE',
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function cloneTestCase(orgSlug, projectId, testCaseId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/test-cases/${encodeURIComponent(testCaseId)}/clone`, {
@@ -149,10 +175,14 @@ export async function cloneTestCase(orgSlug, projectId, testCaseId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjectDocumentation(orgSlug, projectId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/documentation?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function updateProjectDocumentation(orgSlug, projectId, documentation) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/documentation`, {
@@ -163,11 +193,15 @@ export async function updateProjectDocumentation(orgSlug, projectId, documentati
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjectVariables(orgSlug, projectId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/variables?_t=${Date.now()}`);
   const data = await parseJson(res);
   return Array.isArray(data) ? data : [];
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createProjectVariable(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/variables`, {
@@ -178,6 +212,8 @@ export async function createProjectVariable(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteProjectVariable(orgSlug, projectId, id) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/variables`, {
     method: 'DELETE',
@@ -187,11 +223,15 @@ export async function deleteProjectVariable(orgSlug, projectId, id) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjectSharedSteps(orgSlug, projectId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/shared-steps?_t=${Date.now()}`);
   const data = await parseJson(res);
   return Array.isArray(data) ? data : [];
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createProjectSharedStep(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/shared-steps`, {
@@ -202,6 +242,8 @@ export async function createProjectSharedStep(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteProjectSharedStep(orgSlug, projectId, id) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/shared-steps`, {
     method: 'DELETE',
@@ -211,10 +253,14 @@ export async function deleteProjectSharedStep(orgSlug, projectId, id) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchProjectSettings(orgSlug, projectId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/settings?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function updateProjectSettings(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/settings`, {
@@ -225,6 +271,8 @@ export async function updateProjectSettings(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function createProjectEnvironment(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/environments`, {
     method: 'POST',
@@ -234,12 +282,16 @@ export async function createProjectEnvironment(orgSlug, projectId, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteProjectEnvironment(orgSlug, projectId, id) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/environments?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function moveProjectItem(orgSlug, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/move`, {
@@ -250,6 +302,8 @@ export async function moveProjectItem(orgSlug, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function generateFunctionalTests(orgSlug, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/ai/generate-functional-tests`, {
     method: 'POST',
@@ -258,6 +312,8 @@ export async function generateFunctionalTests(orgSlug, payload) {
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function cancelFunctionalGeneration(orgSlug, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/ai/generate-functional-tests/cancel`, {

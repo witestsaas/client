@@ -1,3 +1,5 @@
+
+/// <reference types="vite/client" />
 "use client";
 
 import {
@@ -102,7 +104,7 @@ function getSocketUrl(): string {
 // Context
 // ---------------------------------------------------------------------------
 
-interface SocketContextValue {
+export interface SocketContextValue {
 	/** The raw socket.io socket (namespace /test-execution). null when not yet connected. */
 	socket: Socket | null;
 	/** Whether the socket is connected */
@@ -122,107 +124,107 @@ const SocketContext = createContext<SocketContextValue>({
 // ---------------------------------------------------------------------------
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-	const socketRef = useRef<Socket | null>(null);
-	const [connected, setConnected] = useState(false);
-	// Track subscription counts so multiple components can subscribe to the same run
-	const subCounts = useRef<Map<string, number>>(new Map());
+       const socketRef = useRef<Socket | null>(null);
+       const [connected, setConnected] = useState(false);
+       // Track subscription counts so multiple components can subscribe to the same run
+       const subCounts = useRef<Map<string, number>>(new Map());
 
-	useEffect(() => {
-		const url = getSocketUrl();
+       useEffect(() => {
+	       const url = getSocketUrl();
 
-		const socket = io(url ? `${url}/test-execution` : "/test-execution", {
-			transports: ["websocket"],
-			auth: async (cb) => {
-				const token = await getAccessToken();
-				if (token) {
-					cb({ token });
-					return;
-				}
-				cb({});
-			},
-			autoConnect: false,
-			reconnection: true,
-			reconnectionAttempts: Infinity,
-			reconnectionDelay: 1000,
-			reconnectionDelayMax: 10000,
-			withCredentials: true,
-		});
+	       const socket: Socket = io(url ? `${url}/test-execution` : "/test-execution", {
+		       transports: ["websocket"],
+		       auth: async (cb) => {
+			       const token = await getAccessToken();
+			       if (token) {
+				       cb({ token });
+				       return;
+			       }
+			       cb({});
+		       },
+		       autoConnect: false,
+		       reconnection: true,
+		       reconnectionAttempts: Infinity,
+		       reconnectionDelay: 1000,
+		       reconnectionDelayMax: 10000,
+		       withCredentials: true,
+	       });
 
-		socketRef.current = socket;
+	       socketRef.current = socket;
 
-		socket.on("connect", () => {
-			console.log("[Socket] Connected:", socket.id);
-			setConnected(true);
+	       socket.on("connect", () => {
+		       console.log("[Socket] Connected:", socket.id);
+		       setConnected(true);
 
-			// Re-subscribe to any active subscriptions after reconnect
-			subCounts.current.forEach((count, testRunId) => {
-				if (count > 0) {
-					socket.emit("subscribe:testRun", testRunId);
-				}
-			});
-		});
+		       // Re-subscribe to any active subscriptions after reconnect
+		       subCounts.current.forEach((count, testRunId) => {
+			       if (count > 0) {
+				       socket.emit("subscribe:testRun", testRunId);
+			       }
+		       });
+	       });
 
-		socket.on("disconnect", (reason) => {
-			console.log("[Socket] Disconnected:", reason);
-			setConnected(false);
-		});
+	       socket.on("disconnect", (reason) => {
+		       console.log("[Socket] Disconnected:", reason);
+		       setConnected(false);
+	       });
 
-		socket.on("connect_error", (err) => {
-			console.warn("[Socket] Connection error:", err.message);
-		});
+	       socket.on("connect_error", (err) => {
+		       console.warn("[Socket] Connection error:", err.message);
+	       });
 
-		return () => {
-			socket.disconnect();
-			socketRef.current = null;
-		};
-	}, []);
+	       return () => {
+		       socket.disconnect();
+		       socketRef.current = null;
+	       };
+       }, []);
 
-	const subscribeTestRun = useCallback((testRunId: string) => {
-		const socket = socketRef.current;
-		const current = subCounts.current.get(testRunId) ?? 0;
+       const subscribeTestRun = useCallback((testRunId: string) => {
+	       const socket = socketRef.current;
+	       const current = subCounts.current.get(testRunId) ?? 0;
 
-		// First subscriber → join room
-		if (current === 0 && socket) {
-			if (socket.connected) {
-				socket.emit("subscribe:testRun", testRunId);
-			} else {
-				const onConnect = () => {
-					socket.emit("subscribe:testRun", testRunId);
-					socket.off("connect", onConnect);
-				};
-				socket.on("connect", onConnect);
-				socket.connect();
-			}
-		}
-		subCounts.current.set(testRunId, current + 1);
+	       // First subscriber → join room
+	       if (current === 0 && socket) {
+		       if (socket.connected) {
+			       socket.emit("subscribe:testRun", testRunId);
+		       } else {
+			       const onConnect = () => {
+				       socket.emit("subscribe:testRun", testRunId);
+				       socket.off("connect", onConnect);
+			       };
+			       socket.on("connect", onConnect);
+			       socket.connect();
+		       }
+	       }
+	       subCounts.current.set(testRunId, current + 1);
 
-		// Return unsubscribe function
-		return () => {
-			const count = subCounts.current.get(testRunId) ?? 1;
-			const next = count - 1;
+	       // Return unsubscribe function
+	       return () => {
+		       const count = subCounts.current.get(testRunId) ?? 1;
+		       const next = count - 1;
 
-			if (next <= 0) {
-				subCounts.current.delete(testRunId);
-				if (socket?.connected) {
-					socket.emit("unsubscribe:testRun", testRunId);
-				}
-			} else {
-				subCounts.current.set(testRunId, next);
-			}
-		};
-	}, []);
+		       if (next <= 0) {
+			       subCounts.current.delete(testRunId);
+			       if (socket?.connected) {
+				       socket.emit("unsubscribe:testRun", testRunId);
+			       }
+		       } else {
+			       subCounts.current.set(testRunId, next);
+		       }
+	       };
+       }, []);
 
-	return (
-		<SocketContext.Provider
-			value={{
-				socket: socketRef.current,
-				connected,
-				subscribeTestRun,
-			}}
-		>
-			{children}
-		</SocketContext.Provider>
-	);
+       return (
+	       <SocketContext.Provider
+		       value={{
+			       socket: socketRef.current,
+			       connected,
+			       subscribeTestRun,
+		       }}
+	       >
+		       {children}
+	       </SocketContext.Provider>
+       );
 }
 
 // ---------------------------------------------------------------------------

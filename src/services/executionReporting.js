@@ -1,5 +1,7 @@
 import { apiFetch } from './http';
 
+/*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -12,6 +14,8 @@ async function parseJson(response) {
   return data;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function listPlans(orgSlug, options = {}) {
   const params = new URLSearchParams({ _t: String(Date.now()) });
   if (options?.projectId) {
@@ -22,6 +26,8 @@ export async function listPlans(orgSlug, options = {}) {
   return Array.isArray(data) ? data : [];
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function createPlan(orgSlug, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans`, {
     method: 'POST',
@@ -31,10 +37,14 @@ export async function createPlan(orgSlug, payload) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function getPlan(orgSlug, planId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function deletePlan(orgSlug, planId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}`, {
@@ -42,6 +52,8 @@ export async function deletePlan(orgSlug, planId) {
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function runPlan(orgSlug, planId, payload = {}) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}/run`, {
@@ -52,10 +64,14 @@ export async function runPlan(orgSlug, planId, payload = {}) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function getExecutionSlots(orgSlug) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/test-execution/slots?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function addPlanTestCases(orgSlug, planId, payload = {}) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}/test-cases`, {
@@ -65,6 +81,8 @@ export async function addPlanTestCases(orgSlug, planId, payload = {}) {
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function listRuns(orgSlug, options = {}) {
   const params = new URLSearchParams({ _t: String(Date.now()) });
@@ -76,20 +94,28 @@ export async function listRuns(orgSlug, options = {}) {
   return Array.isArray(data) ? data : [];
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function getRun(orgSlug, runId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function getRunResultLogs(orgSlug, runId, resultId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}/results/${encodeURIComponent(resultId)}/logs?_t=${Date.now()}`);
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function getResultArtifacts(resultId) {
   const res = await apiFetch(`/test-results/${encodeURIComponent(resultId)}/artifacts?_t=${Date.now()}`);
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function cancelRun(orgSlug, runId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}/cancel`, {
@@ -97,6 +123,8 @@ export async function cancelRun(orgSlug, runId) {
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function rerunRun(orgSlug, runId, payload = {}) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}/rerun`, {
@@ -107,6 +135,8 @@ export async function rerunRun(orgSlug, runId, payload = {}) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function rerunRunResult(orgSlug, runId, resultId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}/results/${encodeURIComponent(resultId)}/rerun`, {
     method: 'POST',
@@ -114,12 +144,16 @@ export async function rerunRunResult(orgSlug, runId, resultId) {
   return parseJson(res);
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deleteRun(orgSlug, runId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}`, {
     method: 'DELETE',
   });
   return parseJson(res);
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function listRunActivities(orgSlug, runId, options = {}) {
   const params = new URLSearchParams({
@@ -134,6 +168,8 @@ export async function listRunActivities(orgSlug, runId, options = {}) {
   const data = await parseJson(res);
   return Array.isArray(data?.activities) ? data.activities : [];
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createRunActivity(orgSlug, runId, content) {
   const res = await apiFetch(`/organizations/${encodeURIComponent(orgSlug)}/activities`, {

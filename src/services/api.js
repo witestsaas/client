@@ -2,6 +2,8 @@ import { apiFetch, getApiBaseUrl } from './http';
 
 const API_BASE_URL = getApiBaseUrl();
 
+/*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 async function fetchRunsPayload() {
   const response = await apiFetch('/test-execution');
   if (!response.ok) {
@@ -10,9 +12,13 @@ async function fetchRunsPayload() {
   return response.json();
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchTestExecutions() {
   return fetchRunsPayload();
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function fetchHealth() {
   const res = await fetch(`${API_BASE_URL}/health`);
@@ -20,11 +26,15 @@ export async function fetchHealth() {
   return res.json();
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchUser() {
   const res = await apiFetch('/auth/me');
   if (!res.ok) throw new Error('Failed to fetch user info');
   return res.json();
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function fetchStats() {
   const data = await fetchRunsPayload();
@@ -39,6 +49,8 @@ export async function fetchStats() {
   };
 }
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function fetchActivity() {
   const data = await fetchRunsPayload();
   const runs = data.testRuns || [];
@@ -50,6 +62,8 @@ export async function fetchActivity() {
     time: run.updatedAt ? new Date(run.updatedAt).toLocaleString() : '-',
   }));
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function fetchTrends() {
   const data = await fetchRunsPayload();

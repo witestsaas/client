@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../hooks/useSocket.tsx";
-import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, markOrgNotificationsAsRead } from "../services/organizations";
+import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, fetchOrgLlmUsage, markOrgNotificationsAsRead } from "../services/organizations";
 import { listRuns } from "../services/executionReporting";
 import { fetchProjectTree, fetchTestProjects } from "../services/testManagement";
 
@@ -32,6 +32,7 @@ export default function DashboardHeader() {
   const [aiResults, setAiResults] = useState([]);
   const [activeRuns, setActiveRuns] = useState([]);
   const [quotaUsage, setQuotaUsage] = useState(null);
+  const [llmUsage, setLlmUsage] = useState(null);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
   const previousInviteCountRef = useRef(0);
   const previousRunningCountRef = useRef(-1);
@@ -155,16 +156,19 @@ export default function DashboardHeader() {
           isUnknown: false,
         };
       };
-
       setQuotaUsage({
         ai: mapFeature("FunctionalGeneration"),
         web: mapFeature("WebTestRun"),
       });
+      // Fetch detailed LLM usage for price
+      const llm = await fetchOrgLlmUsage(orgSlug);
+      setLlmUsage(llm);
     } catch {
       setQuotaUsage({
         ai: { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true },
         web: { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true },
       });
+      setLlmUsage(null);
     }
   }, [isNoOrg, orgSlug]);
 
@@ -551,9 +555,26 @@ export default function DashboardHeader() {
         <div />
       )}
 
+
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
+        {/* LLM Price Badge - right side, small, no animation, uses detailed LLM usage */}
+        {!isNoOrg && llmUsage ? (() => {
+          const inputTokens = Number(llmUsage.totalInputTokens || 0);
+          const outputTokens = Number(llmUsage.totalOutputTokens || 0);
+          const llmPrice = (inputTokens / 1_000_000) * 0.5 + (outputTokens / 1_000_000) * 3.0;
+          return (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#3b82f6]/20 bg-[#f0f9ff] dark:bg-[#1e293b] shadow-sm text-xs font-semibold text-[#2563eb] dark:text-[#60a5fa]"
+              title={`Realtime LLM price: $${llmPrice.toFixed(2)} ($0.50/1M in, $3.00/1M out)`}
+              style={{ minWidth: 60, justifyContent: 'center' }}
+            >
+              <svg width="13" height="13" fill="none" viewBox="0 0 16 16" className="mr-1"><circle cx="8" cy="8" r="7" stroke="#2563eb" strokeWidth="1.5" fill="#e0e7ff" /><path d="M5.5 8.5l2 2 3-3" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              ${llmPrice.toFixed(2)}
+            </span>
+          );
+        })() : null}
         {!isNoOrg && quotaUsage ? (
           <div className="inline-flex items-center gap-1.5">
             <div
