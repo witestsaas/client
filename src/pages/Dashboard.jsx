@@ -250,16 +250,6 @@ export default function DashboardPage() {
         tone: "success",
       },
       {
-        title: "Project Quality Score (Live)",
-        value: `${stats.liveQualityScore}%`,
-        subtitle: stats.liveExecutedTests > 0
-          ? `${stats.liveExecutedTests} tests executed in active runs`
-          : "Waiting for live execution data",
-        icon: TrendingUp,
-        tone: "neutral",
-        progressValue: stats.liveQualityScore,
-      },
-      {
         title: "Failures",
         value: stats.failedRuns,
         subtitle: `${stats.activeRuns} active run${stats.activeRuns === 1 ? "" : "s"}`,
@@ -485,7 +475,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Project Quality Score (Live)
+                    Project Quality Score
                   </h3>
                   <span className="text-[11px] text-[#232323]/60 dark:text-white/70">Auto-refresh 30s</span>
                 </div>
