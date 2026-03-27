@@ -58,9 +58,9 @@ export default function MfaChallengePage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-4">
+    <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-3 sm:px-4 py-6 sm:py-8">
       <div className="w-full max-w-md">
-        <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-8 transition-all duration-500">
+        <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-5 sm:p-8 transition-all duration-500">
           <h1 className="text-2xl font-extrabold text-center mb-2 text-blue-900 dark:text-white tracking-tight">
             Multi-factor verification
           </h1>
@@ -86,7 +86,7 @@ export default function MfaChallengePage() {
             {error ? <p className="text-red-600 text-sm mb-3">{error}</p> : null}
             <button
               disabled={loading || secondsLeft <= 0}
-              className="w-full bg-blue-600 dark:bg-[#FFAA00] text-white dark:text-[#232323] py-2 rounded-md transition hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 disabled:opacity-70"
+              className="w-full bg-[#FFAA00] dark:bg-[#FFAA00] text-white dark:text-[#232323] py-2 rounded-md transition hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 disabled:opacity-70"
             >
               {loading ? 'Verifying...' : 'Verify and continue'}
             </button>

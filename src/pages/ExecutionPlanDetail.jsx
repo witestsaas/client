@@ -778,7 +778,7 @@ export default function ExecutionPlanDetail() {
     try {
       const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
       const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
-      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0) {
+      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0 && !webQuota.hasCouponCredits) {
         setQuotaPopup({
           open: true,
           title: "Quota Required",

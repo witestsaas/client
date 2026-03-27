@@ -30,15 +30,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-4">
-      <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full">
-        <h1 className="text-2xl font-bold text-center mb-4 text-blue-900 dark:text-white">Forgot Password</h1>
+    <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-3 sm:px-4 py-6 sm:py-8">
+      <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-5 sm:p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full">
+        <h1 className="text-2xl font-bold text-center mb-4 text-black dark:text-white">Forgot Password</h1>
         {submitted ? (
           <div className="text-center py-4">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#FFAA00]/10 flex items-center justify-center">
               <Mail className="w-8 h-8 text-[#FFAA00]" />
             </div>
-            <p className="text-green-700 dark:text-green-400 text-center">
+            <p className="text-black dark:text-white text-center">
               If an account exists for <span className="font-medium">{email}</span>, a reset link has been sent.
             </p>
             <div className="mt-6 text-center text-sm">

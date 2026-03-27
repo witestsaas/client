@@ -283,7 +283,7 @@ export default function ExecutionPlans() {
     try {
       const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
       const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
-      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0) {
+      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0 && !webQuota.hasCouponCredits) {
         setQuotaPopup({
           open: true,
           title: "Quota Required",
@@ -380,14 +380,14 @@ export default function ExecutionPlans() {
             </div>
           ) : (
             filteredPlans.map((plan) => (
-              <div key={plan.id} className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-sm hover:shadow-md hover:border-black/20 dark:hover:border-white/20 transition-all p-4">
+              <div key={plan.id} className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-sm hover:shadow-md hover:border-black/20 dark:hover:border-white/20 transition-all p-4 cursor-pointer" onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans/${plan.id}`)}>
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <button type="button" onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans/${plan.id}`)} className="min-w-0 text-left flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="text-base font-semibold text-[#232323] dark:text-white truncate">{plan.name}</p>
                     {plan.description ? <p className="text-sm text-[#232323]/60 dark:text-white/60 truncate mt-0.5">{plan.description}</p> : null}
-                  </button>
+                  </div>
 
-                  <div className="relative inline-flex items-center gap-2">
+                  <div className="relative inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleRunPlan(plan.id)}

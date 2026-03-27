@@ -28,9 +28,12 @@ import {
   Trash2,
   X,
   XCircle,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
+import AiThinkingTree from "../components/AiThinkingTree";
 import { useRequestLiveReplay, useTestRunSocket } from "../hooks/useSocket";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { fetchOrgQuotaUsage } from "../services/organizations";
@@ -354,6 +357,7 @@ function FolderNode({
   node,
   level,
   selectedFolderId,
+  highlightedFolderIds,
   onSelect,
   onCreateChild,
   onEdit,
@@ -366,6 +370,7 @@ function FolderNode({
   const [hovered, setHovered] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const isActive = selectedFolderId === node.id;
+  const isHighlighted = Array.isArray(highlightedFolderIds) && highlightedFolderIds.includes(node.id);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
   return (
@@ -412,6 +417,10 @@ function FolderNode({
         onMouseLeave={() => setHovered(false)}
         onClick={() => onSelect(node.id)}
         className={`w-full flex items-center rounded px-2 py-1.5 text-left text-sm transition-all duration-150 ${
+          isHighlighted
+            ? "animate-[folderHighlight_1s_ease-in-out_5] ring-2 ring-emerald-400/60 bg-emerald-400/15 dark:bg-emerald-400/10"
+            : ""
+        } ${
           isDropTarget
             ? "ring-1 ring-[#FFAA00] bg-[#FFAA00]/10 dark:bg-[#FFAA00]/15 translate-x-0.5"
             : ""
@@ -476,6 +485,7 @@ function FolderNode({
               node={child}
               level={level + 1}
               selectedFolderId={selectedFolderId}
+              highlightedFolderIds={highlightedFolderIds}
               onSelect={onSelect}
               onCreateChild={onCreateChild}
               onEdit={onEdit}
@@ -490,30 +500,30 @@ function FolderNode({
   );
 }
 
-function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerLeading = null, headerActions = null }) {
+function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerLeading = null, headerActions = null, zIndex = "z-50" }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 lg:p-4">
+    <div className={`fixed inset-0 ${zIndex} bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3 lg:p-4 animate-in fade-in duration-150`}>
       <div
-        className={`w-full ${maxWidth} max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-[0_20px_60px_rgba(0,0,0,0.28)] ring-1 ring-black/5 dark:ring-white/10 transition-all duration-200`}
+        className={`w-full ${maxWidth} max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-black/8 dark:border-white/10 bg-card shadow-[0_25px_65px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_65px_rgba(0,0,0,0.55)] transition-all duration-200`}
       >
-        <div className="sticky top-0 z-10 border-b border-black/10 dark:border-white/10 px-6 py-4 bg-gradient-to-r from-card via-card to-card/95 flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 min-w-0">
+        <div className="sticky top-0 z-10 border-b border-black/8 dark:border-white/8 px-5 sm:px-6 py-3.5 bg-card flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2.5 min-w-0">
             {headerLeading}
-            <p className="text-lg font-semibold text-[#232323] dark:text-white truncate">{title}</p>
+            <p className="text-base font-semibold text-[#232323] dark:text-white truncate tracking-tight">{title}</p>
           </div>
           <div className="inline-flex items-center gap-2">
             {headerActions}
             <button
               type="button"
               onClick={onClose}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-[#232323]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 hover:text-[#232323] dark:hover:text-white transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
-        <div className="overflow-y-auto max-h-[calc(100dvh-6.25rem)] sm:max-h-[calc(100dvh-6.75rem)] lg:max-h-[calc(100dvh-7rem)] p-4 sm:p-5 lg:p-6 transition-all duration-200 [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">{children}</div>
+        <div className="overflow-y-auto max-h-[calc(100dvh-6.25rem)] sm:max-h-[calc(100dvh-6.75rem)] lg:max-h-[calc(100dvh-7rem)] p-4 sm:p-5 lg:p-6 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#232323]/70 dark:[&_label]:text-white/60 [&_input]:rounded-lg [&_input]:border-black/12 dark:[&_input]:border-white/12 [&_input]:bg-background/80 [&_input]:shadow-sm [&_input]:transition-all [&_input]:duration-150 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/30 [&_input:focus]:border-[#FFAA00]/50 [&_select]:rounded-lg [&_select]:border-black/12 dark:[&_select]:border-white/12 [&_select]:bg-background/80 [&_select]:shadow-sm [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/30 [&_select:focus]:border-[#FFAA00]/50 [&_textarea]:rounded-lg [&_textarea]:border-black/12 dark:[&_textarea]:border-white/12 [&_textarea]:bg-background/80 [&_textarea]:shadow-sm [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/30 [&_textarea:focus]:border-[#FFAA00]/50">{children}</div>
       </div>
     </div>
   );
@@ -582,6 +592,8 @@ export default function ExecutionProjectTests() {
   const [aiConversations, setAiConversations] = useState([]);
   const [selectedAiConversationId, setSelectedAiConversationId] = useState("");
   const [activeAiConversationId, setActiveAiConversationId] = useState("");
+  const activeAiConversationIdRef = useRef("");
+  const [highlightedFolderIds, setHighlightedFolderIds] = useState([]);
   const aiStorageKey = useMemo(
     () => `witest-ai-conversations:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
     [user?.userId, orgSlug, projectId],
@@ -656,12 +668,15 @@ export default function ExecutionProjectTests() {
       const used = Number(functionalQuota?.used || 0);
       const limit = Number(functionalQuota?.limit ?? 0);
       const remaining = Number(functionalQuota?.remaining ?? (limit >= 0 ? Math.max(0, limit - used) : -1));
+      const couponRemainingUsd = Number(payload?.couponBalance?.totalRemainingUsd || 0);
 
       setAiQuota({
         used,
         limit,
         remaining,
         isUnlimited: limit < 0,
+        hasCouponCredits: couponRemainingUsd > 0,
+        couponRemainingUsd,
       });
     } catch {
       setAiQuota(null);
@@ -1378,6 +1393,11 @@ export default function ExecutionProjectTests() {
 
   const isAiGenerating = selectedAiConversation?.phase === "generating";
 
+  // Keep ref in sync so socket callbacks always have the latest value
+  useEffect(() => {
+    activeAiConversationIdRef.current = activeAiConversationId;
+  }, [activeAiConversationId]);
+
   const updateAiConversation = useCallback((conversationId, updater) => {
     setAiConversations((prev) =>
       prev.map((conversation) =>
@@ -1494,7 +1514,8 @@ export default function ExecutionProjectTests() {
 
   const handleAiLiveEvent = useCallback(
     (event) => {
-      if (!activeAiConversationId) return;
+      const convId = activeAiConversationIdRef.current;
+      if (!convId) return;
       const { type, data } = event || {};
       if (!type) return;
 
@@ -1505,7 +1526,7 @@ export default function ExecutionProjectTests() {
 
       if (shouldCloseStartStep) {
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-start",
           type,
           "Starting generation...",
@@ -1515,43 +1536,43 @@ export default function ExecutionProjectTests() {
       }
 
       if (type === "generation:started") {
-        updateAiConversation(activeAiConversationId, (conversation) => {
+        updateAiConversation(convId, (conversation) => {
           const isTerminal = ["completed", "error", "cancelled"].includes(conversation?.phase);
           return isTerminal ? {} : { phase: "generating" };
         });
-        upsertConversationStep(activeAiConversationId, "gen-start", type, "Starting generation...", "active", data?.message);
+        upsertConversationStep(convId, "gen-start", type, "Starting generation...", "active", data?.message);
       }
 
       if (type === "phase:reading-docs") {
-        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "active", data?.message);
+        upsertConversationStep(convId, "docs", type, "Reading project documentation...", "active", data?.message);
       }
       if (type === "phase:docs-loaded") {
-        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "done", data?.message || "Documentation loaded");
+        upsertConversationStep(convId, "docs", type, "Reading project documentation...", "done", data?.message || "Documentation loaded");
       }
       if (type === "phase:no-docs") {
-        upsertConversationStep(activeAiConversationId, "docs", type, "Reading project documentation...", "done", data?.message || "No documentation available");
+        upsertConversationStep(convId, "docs", type, "Reading project documentation...", "done", data?.message || "No documentation available");
       }
 
       if (type === "phase:analyzing") {
-        upsertConversationStep(activeAiConversationId, "analyze", type, "Analyzing project context...", "active", data?.message);
+        upsertConversationStep(convId, "analyze", type, "Analyzing project context...", "active", data?.message);
       }
       if (type === "phase:analyzed") {
-        upsertConversationStep(activeAiConversationId, "analyze", type, "Analyzing project context...", "done", data?.message || "Context analyzed");
+        upsertConversationStep(convId, "analyze", type, "Analyzing project context...", "done", data?.message || "Context analyzed");
       }
 
       if (type === "phase:checking") {
-        upsertConversationStep(activeAiConversationId, "check", type, "Checking existing test cases...", "active", data?.message);
+        upsertConversationStep(convId, "check", type, "Checking existing test cases...", "active", data?.message);
       }
       if (type === "phase:checked") {
-        upsertConversationStep(activeAiConversationId, "check", type, "Checking existing test cases...", "done", data?.message || "Existing tests checked");
+        upsertConversationStep(convId, "check", type, "Checking existing test cases...", "done", data?.message || "Existing tests checked");
       }
 
       if (type === "browser:analyzing") {
-        upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "active", data?.message);
+        upsertConversationStep(convId, "plan", type, "Planning test cases from prompt...", "active", data?.message);
       }
       if (type === "browser:progress") {
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "plan",
           type,
           "Planning test cases from prompt...",
@@ -1560,12 +1581,67 @@ export default function ExecutionProjectTests() {
         );
       }
       if (type === "browser:analyzed") {
-        upsertConversationStep(activeAiConversationId, "plan", type, "Planning test cases from prompt...", "done", data?.message || "Planning complete");
+        upsertConversationStep(convId, "plan", type, "Planning test cases from prompt...", "done", data?.message || "Planning complete");
+      }
+
+      // ── Thinking events (AI reasoning process visibility) ──
+      if (type === "thinking:prompt-analysis") {
+        upsertConversationStep(convId, "thinking-prompt", type, "Analyzing your prompt...", "done", data?.message || "Understanding requirements");
+      }
+      if (type === "thinking:deduplication") {
+        upsertConversationStep(convId, "thinking-dedup", type, "Deduplication check", "done", data?.message || "Checking for duplicate tests");
+      }
+      if (type === "thinking:url-extraction") {
+        upsertConversationStep(convId, "thinking-url", type, "Extracted reference URL", "done", data?.message || data?.referenceUrl || "URL extracted from docs");
+      }
+      if (type === "thinking:scenario-planning") {
+        upsertConversationStep(convId, "thinking-scenarios", type, "Identifying test scenarios...", "active", data?.message || "AI is planning test scenarios");
+      }
+      if (type === "thinking:agent-reasoning") {
+        upsertConversationStep(convId, `thinking-reason-${data?.stepIndex || "x"}`, type, "AI model reasoning...", "done", data?.message || "Processing next step");
+      }
+      if (type === "thinking:tool-call") {
+        const toolName = data?.toolName || "tool";
+        upsertConversationStep(
+          convId,
+          `thinking-tool-${data?.toolCallIndex || toolName}`,
+          type,
+          `Calling tool: ${toolName}`,
+          "active",
+          data?.message,
+        );
+      }
+      if (type === "thinking:tool-result") {
+        const toolName = data?.toolName || "tool";
+        upsertConversationStep(
+          convId,
+          `thinking-tool-${data?.toolCallIndex || toolName}`,
+          type,
+          `Tool completed: ${toolName}`,
+          "done",
+          data?.message,
+        );
+      }
+      if (type === "thinking:plan-ready") {
+        upsertConversationStep(
+          convId,
+          "thinking-plan-ready",
+          type,
+          `Test plan ready (${data?.plannedCount || "?"} tests)`,
+          "done",
+          data?.testTitles ? data.testTitles.join(", ") : data?.message,
+        );
+      }
+      if (type === "thinking:structuring") {
+        upsertConversationStep(convId, "thinking-structure", type, "Structuring AI output...", "done", data?.message || "Formatting results");
+      }
+      if (type === "thinking:executing") {
+        upsertConversationStep(convId, "thinking-executing", type, "Creating test cases...", "active", data?.message || "Saving tests to project");
       }
 
       if (type === "docs:updated") {
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "docs-update",
           type,
           "Updating project documentation...",
@@ -1577,7 +1653,7 @@ export default function ExecutionProjectTests() {
       if (type === "folder:found" || type === "folder:created") {
         const folderName = data?.folderName || data?.path || "Folder";
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           `folder-${data?.folderId || folderName}`,
           type,
           `${type === "folder:created" ? "Created" : "Using"} folder: ${folderName}`,
@@ -1588,7 +1664,7 @@ export default function ExecutionProjectTests() {
       if (type === "test:creating") {
         const stepId = getLiveEntityStepId("test", data);
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           stepId,
           type,
           `Creating test: ${data?.title || "Test case"}`,
@@ -1598,7 +1674,7 @@ export default function ExecutionProjectTests() {
       if (type === "test:created") {
         const stepId = getLiveEntityStepId("test", data);
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           stepId,
           type,
           `Created test: ${data?.title || "Test case"}`,
@@ -1610,7 +1686,7 @@ export default function ExecutionProjectTests() {
       if (type === "test:updating") {
         const stepId = getLiveEntityStepId("update", data);
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           stepId,
           type,
           `Updating test: ${data?.title || "Test case"}`,
@@ -1620,7 +1696,7 @@ export default function ExecutionProjectTests() {
       if (type === "test:updated") {
         const stepId = getLiveEntityStepId("update", data);
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           stepId,
           type,
           `Updated test: ${data?.title || "Test case"}`,
@@ -1632,7 +1708,7 @@ export default function ExecutionProjectTests() {
       if (type === "test:error") {
         const stepId = getLiveEntityStepId("test", data);
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           stepId,
           type,
           `Failed: ${data?.title || "Test case"}`,
@@ -1643,7 +1719,7 @@ export default function ExecutionProjectTests() {
 
       if (type === "generation:retry") {
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-retry",
           type,
           `Retrying generation${data?.attempt ? ` (attempt ${data.attempt + 1})` : ""}...`,
@@ -1653,7 +1729,7 @@ export default function ExecutionProjectTests() {
       }
 
       if (type === "generation:completed") {
-        updateAiConversation(activeAiConversationId, (conversation) => {
+        updateAiConversation(convId, (conversation) => {
           const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
           return {
             phase: "completed",
@@ -1671,7 +1747,7 @@ export default function ExecutionProjectTests() {
           };
         });
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-done",
           type,
           `Generation completed (${data?.testCasesCount ?? data?.testCount ?? 0} tests)` ,
@@ -1681,7 +1757,7 @@ export default function ExecutionProjectTests() {
 
       if (type === "generation:error") {
         const message = data?.error || data?.message || "Generation failed";
-        updateAiConversation(activeAiConversationId, (conversation) => {
+        updateAiConversation(convId, (conversation) => {
           const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
           return {
             phase: "error",
@@ -1697,11 +1773,11 @@ export default function ExecutionProjectTests() {
             ),
           };
         });
-        upsertConversationStep(activeAiConversationId, "gen-error", type, "Generation failed", "error", message);
+        upsertConversationStep(convId, "gen-error", type, "Generation failed", "error", message);
       }
 
       if (type === "generation:cancelled") {
-        updateAiConversation(activeAiConversationId, (conversation) => {
+        updateAiConversation(convId, (conversation) => {
           const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
           return {
             phase: "cancelled",
@@ -1716,10 +1792,10 @@ export default function ExecutionProjectTests() {
             ),
           };
         });
-        upsertConversationStep(activeAiConversationId, "gen-cancel", type, "Generation cancelled", "error", data?.message);
+        upsertConversationStep(convId, "gen-cancel", type, "Generation cancelled", "error", data?.message);
       }
     },
-    [activeAiConversationId, getLiveEntityStepId, upsertConversationStep, updateAiConversation],
+    [getLiveEntityStepId, upsertConversationStep, updateAiConversation],
   );
 
   useTestRunSocket(aiGenerationId || null, {
@@ -1778,10 +1854,15 @@ export default function ExecutionProjectTests() {
     setIsGenerateModalOpen(false);
     setAiGenerationId("");
     setActiveAiConversationId("");
+    activeAiConversationIdRef.current = "";
+    // Auto-clear folder highlights after 5 seconds
+    if (highlightedFolderIds.length > 0) {
+      window.setTimeout(() => setHighlightedFolderIds([]), 5000);
+    }
   };
 
   const submitGenerateTests = async () => {
-    if (aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0) {
+    if (aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0 && !aiQuota.hasCouponCredits) {
       setQuotaPopup({
         open: true,
         title: "AI Quota Required",
@@ -1878,6 +1959,16 @@ export default function ExecutionProjectTests() {
 
       const result = response?.result || response;
       const testCases = Array.isArray(result?.testCases) ? result.testCases : [];
+
+      // Collect generated folder IDs for highlighting after modal close
+      const generatedFolderIdSet = new Set();
+      for (const tc of testCases) {
+        if (tc?.folderId) generatedFolderIdSet.add(String(tc.folderId));
+      }
+      if (generatedFolderIdSet.size > 0) {
+        setHighlightedFolderIds(Array.from(generatedFolderIdSet));
+      }
+
       updateAiConversation(conversationId, (conversation) => ({
         phase: "completed",
         generatedTests: testCases,
@@ -1893,12 +1984,16 @@ export default function ExecutionProjectTests() {
         "done",
         `Generated ${testCases.length} test case${testCases.length !== 1 ? "s" : ""}`,
       );
+      // Request one final replay to ensure all socket events are captured
+      if (generationId) {
+        try { requestLiveReplay(generationId); } catch {}
+      }
       await loadRepositoryData(false);
     } catch (err) {
       const rawMessage = err?.message || "Failed to generate test cases";
       const isQuotaDenied =
         isQuotaDeniedError(err) ||
-        Boolean(aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0);
+        Boolean(aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0 && !aiQuota.hasCouponCredits);
       const message = isQuotaDenied
         ? AI_QUOTA_UPGRADE_MESSAGE
         : rawMessage;
@@ -1940,8 +2035,12 @@ export default function ExecutionProjectTests() {
         ],
       }));
     } finally {
-      setAiGenerationId("");
-      setActiveAiConversationId("");
+      // Delay clearing so socket replay events can still be processed
+      window.setTimeout(() => {
+        setAiGenerationId("");
+        setActiveAiConversationId("");
+        activeAiConversationIdRef.current = "";
+      }, 3000);
       loadAiQuota();
     }
   };
@@ -2213,7 +2312,7 @@ export default function ExecutionProjectTests() {
   };
 
   const renderRepository = () => (
-    <div className="flex min-h-[calc(100dvh-13rem)] h-full bg-[#F6F6F6] dark:bg-[#0f0f0f]">
+    <div className="flex h-[calc(100dvh-13rem)] bg-[#F6F6F6] dark:bg-[#0f0f0f] overflow-hidden">
       <div
         className="min-w-[240px] max-w-[60vw] bg-card/95 backdrop-blur-sm flex flex-col"
         style={{ width: `${hierarchyWidth}px` }}
@@ -2321,6 +2420,7 @@ export default function ExecutionProjectTests() {
                   node={node}
                   level={0}
                   selectedFolderId={selectedFolderId}
+                  highlightedFolderIds={highlightedFolderIds}
                   onSelect={setSelectedFolderId}
                   onCreateChild={(folder) => openCreateFolderModal(folder.id)}
                   onEdit={openEditFolderModal}
@@ -2350,7 +2450,7 @@ export default function ExecutionProjectTests() {
         />
       </div>
 
-      <div className="flex-1 min-w-0 relative bg-white dark:bg-slate-950">
+      <div className="flex-1 min-w-0 relative bg-white dark:bg-slate-950 overflow-hidden">
         {!selectedFolder ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
             <div className="h-14 w-14 rounded-xl bg-[#232323]/5 dark:bg-white/5 inline-flex items-center justify-center">
@@ -2370,13 +2470,15 @@ export default function ExecutionProjectTests() {
                 Assistant AI
               </span>
             </button>
-            <p className="mt-2 text-xs text-[#232323]/55 dark:text-white/55">
+            {/*<p className="mt-2 text-xs text-[#232323]/55 dark:text-white/55">
               {aiQuota?.isUnlimited
                 ? "AI Remaining: Unlimited"
                 : aiQuota
-                  ? `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
-                  : "AI Remaining: --"}
-            </p>
+                  ? aiQuota.remaining <= 0 && aiQuota.hasCouponCredits
+                    ? `Credits: ${aiQuota.couponRemainingUsd.toFixed(2)}`
+                    : `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
+                    : "AI Remaining: --"}
+            </p>*/}
           </div>
         ) : (
           <div className="h-full flex flex-col">
@@ -2395,7 +2497,9 @@ export default function ExecutionProjectTests() {
                     {aiQuota?.isUnlimited
                       ? "AI Remaining: Unlimited"
                       : aiQuota
-                        ? `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
+                        ? aiQuota.remaining <= 0 && aiQuota.hasCouponCredits
+                          ? `Credits: ${aiQuota.couponRemainingUsd.toFixed(2)}`
+                          : `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
                         : "AI Remaining: --"}
                   </div>
                   {selectedTestCaseIds.length > 0 ? (
@@ -2481,13 +2585,13 @@ export default function ExecutionProjectTests() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
               {!filteredFolderCases.length ? (
                 <div className="h-full flex items-center justify-center text-sm text-[#232323]/55 dark:text-white/55">
                   No test cases match your filters in this folder.
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-[#F8F8F8] dark:bg-slate-900 sticky top-0 z-10">
                     <tr className="border-b border-border">
                       <th className="w-10 px-2 py-2 text-left">
@@ -2504,10 +2608,9 @@ export default function ExecutionProjectTests() {
                         </button>
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Title</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">State</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Priority</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Type</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-[#232323]/60 dark:text-white/60">Actions</th>
+                      <th className="w-[80px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Priority</th>
+                      <th className="w-[90px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Type</th>
+                      <th className="w-[110px] px-3 py-2 text-right text-xs font-semibold text-[#232323]/60 dark:text-white/60">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2530,7 +2633,7 @@ export default function ExecutionProjectTests() {
                             )}
                           </button>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 overflow-hidden">
                           <button
                             type="button"
                             draggable
@@ -2541,16 +2644,11 @@ export default function ExecutionProjectTests() {
                               event.stopPropagation();
                               openEditTestCase(item);
                             }}
-                            className="w-full text-left"
+                            className="w-full text-left min-w-0"
                           >
                             <p className="font-medium text-[#232323] dark:text-white truncate">{item.title || item.name}</p>
                             <p className="text-xs text-[#232323]/50 dark:text-white/50 truncate">{item.description || "No description"}</p>
                           </button>
-                        </td>
-                        <td className="px-3 py-2 align-top">
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                            {(item.status || "Active").replace("InReview", "In Review")}
-                          </span>
                         </td>
                         <td className="px-3 py-2 align-top text-xs text-[#232323]/70 dark:text-white/70">
                           {PRIORITY_LABELS[Number(item.priority ?? 1)] || "Medium"}
@@ -2945,78 +3043,119 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isGenerateModalOpen}
-        title="Assistant AI — Generate Test Cases"
+        title="AI Assistant"
         onClose={closeGenerateModal}
         maxWidth="max-w-[min(96vw,1400px)]"
         headerActions={
-          isAiGenerating ? (
-            <button
-              type="button"
-              onClick={cancelGenerateTests}
-              className="h-9 px-3 rounded-md border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm font-semibold"
-            >
-              Cancel
-            </button>
-          ) : null
-        }
-      >
-        <div className="h-[72dvh] min-h-[620px] grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.35)] bg-card/85 flex flex-col min-h-0 overflow-hidden">
-            <div className="p-3 border-b border-border flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-[#232323]/65 dark:text-white/65 uppercase tracking-wide">Generations</p>
+          <div className="inline-flex items-center gap-2">
+            {isAiGenerating ? (
               <button
                 type="button"
-                onClick={createNewGenerationDraft}
-                className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold hover:border-[#FFAA00]/50"
+                onClick={cancelGenerateTests}
+                className="h-8 px-3 rounded-lg border border-red-400/40 bg-red-500/10 text-red-600 dark:text-red-300 text-xs font-semibold hover:bg-red-500/20 transition-colors"
               >
-                New Generation
+                Cancel Generation
               </button>
+            ) : null}
+          </div>
+        }
+      >
+        <div className="h-[72dvh] min-h-[620px] grid grid-cols-1 lg:grid-cols-12 gap-3">
+          <div className="lg:col-span-4 rounded-xl border border-black/8 dark:border-white/8 bg-card flex flex-col min-h-0 overflow-hidden">
+            <div className="p-3 border-b border-black/6 dark:border-white/6 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60 uppercase tracking-wider inline-flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5" />
+                Generations
+              </p>
+              <div className="inline-flex items-center gap-1">
+                {aiConversations.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiConversations([]);
+                      setSelectedAiConversationId("");
+                      setAiError("");
+                      setAiDraftPrompt("");
+                    }}
+                    className="h-7 px-2 rounded-md text-[11px] font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                    title="Clear all conversations"
+                  >
+                    Clear All
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={createNewGenerationDraft}
+                  className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/15 text-xs font-semibold text-[#232323] dark:text-white hover:bg-[#FFAA00]/25 transition-colors"
+                >
+                  + New
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-auto p-2 space-y-2">
+            <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1.5">
               {!aiConversations.length ? (
-                <div className="h-full flex items-center justify-center text-xs text-[#232323]/55 dark:text-white/55 px-4 text-center">
-                  No conversations yet. Click "New Generation" and send a prompt.
+                <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                  <MessageSquare className="h-8 w-8 text-[#232323]/15 dark:text-white/15 mb-2" />
+                  <p className="text-xs text-[#232323]/50 dark:text-white/50">No conversations yet.</p>
+                  <p className="text-[11px] text-[#232323]/35 dark:text-white/35 mt-1">Click "+ New" to start.</p>
                 </div>
               ) : (
                 aiConversations
                   .slice()
                   .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
                   .map((conversation) => (
-                    <button
+                    <div
                       key={conversation.id}
-                      type="button"
+                      className={`group relative w-full text-left rounded-lg border px-3 py-2.5 transition-all cursor-pointer ${
+                        selectedAiConversationId === conversation.id
+                          ? "border-[#FFAA00]/50 bg-[#FFAA00]/8 shadow-sm"
+                          : "border-transparent hover:border-black/8 dark:hover:border-white/8 hover:bg-black/3 dark:hover:bg-white/3"
+                      }`}
                       onClick={() => {
                         setSelectedAiConversationId(conversation.id);
                         setAiError("");
                       }}
-                      className={`w-full text-left rounded-lg border px-3 py-2.5 transition-all ${
-                        selectedAiConversationId === conversation.id
-                          ? "border-[#FFAA00]/60 bg-[#FFAA00]/10"
-                          : "border-border hover:border-[#FFAA00]/35 bg-background/60"
-                      }`}
                     >
-                      <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{conversation.title || "New Generation"}</p>
+                      <p className="text-sm font-medium text-[#232323] dark:text-white truncate pr-6">{conversation.title || "New Generation"}</p>
                       <div className="mt-1 flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-[#232323]/55 dark:text-white/55 capitalize">{conversation.phase || "idle"}</span>
-                        <span className="text-[10px] text-[#232323]/45 dark:text-white/45">{formatAiTime(conversation.updatedAt)}</span>
+                        <span className={`text-[11px] font-medium capitalize px-1.5 py-0.5 rounded ${
+                          conversation.phase === "done" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                          conversation.phase === "generating" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                          "text-[#232323]/45 dark:text-white/45"
+                        }`}>{conversation.phase || "idle"}</span>
+                        <span className="text-[10px] text-[#232323]/40 dark:text-white/40">{formatAiTime(conversation.updatedAt)}</span>
                       </div>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAiConversations((prev) => prev.filter((c) => c.id !== conversation.id));
+                          if (selectedAiConversationId === conversation.id) {
+                            setSelectedAiConversationId("");
+                          }
+                        }}
+                        className="absolute top-2 right-2 h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/30 dark:text-white/30 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))
               )}
             </div>
           </div>
 
-          <div className="lg:col-span-8 rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_14px_30px_rgba(0,0,0,0.35)] bg-card/80 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-auto p-4 space-y-4">
+          <div className="lg:col-span-8 rounded-xl border border-black/8 dark:border-white/8 bg-card flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
               {!selectedAiConversation ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-6">
-                  <div className="h-14 w-14 rounded-xl bg-[#FFAA00]/15 inline-flex items-center justify-center">
-                    <Sparkles className="h-7 w-7 text-[#FFAA00]" />
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FFAA00]/20 to-[#ff8c00]/10 inline-flex items-center justify-center mb-4">
+                    <Sparkles className="h-8 w-8 text-[#FFAA00]" />
                   </div>
-                  <p className="mt-4 text-lg font-semibold text-[#232323] dark:text-white">Start a new AI generation</p>
-                  <p className="mt-2 text-sm text-[#232323]/55 dark:text-white/55 max-w-xl">
-                    Describe what you want to generate. A conversation entry will be created on the left and preserved.
+                  <p className="text-xl font-semibold text-[#232323] dark:text-white">AI Test Case Generator</p>
+                  <p className="mt-2 text-sm text-[#232323]/50 dark:text-white/50 max-w-lg leading-relaxed">
+                    Describe what you want to test and AI will generate comprehensive test cases for you. Start a new generation or select one from the left.
                   </p>
                 </div>
               ) : (
@@ -3024,72 +3163,50 @@ export default function ExecutionProjectTests() {
                   {(selectedAiConversation.messages || []).map((message) => (
                     <div
                       key={message.id}
-                      className={`max-w-[90%] rounded-xl border px-3 py-2.5 ${
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                         message.role === "user"
-                          ? "ml-auto border-[#FFAA00]/40 bg-[#FFAA00]/10"
-                          : "mr-auto border-border bg-background/70"
+                          ? "ml-auto bg-[#FFAA00]/12 border border-[#FFAA00]/20"
+                          : "mr-auto bg-black/3 dark:bg-white/5 border border-black/5 dark:border-white/8"
                       }`}
                     >
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/55 dark:text-white/55 mb-1">
-                        {message.role === "user" ? "You" : "AI"}
+                      <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                        message.role === "user" ? "text-[#FFAA00]" : "text-[#232323]/45 dark:text-white/45"
+                      }`}>
+                        {message.role === "user" ? "You" : "AI Assistant"}
                       </p>
-                      <p className="text-sm text-[#232323] dark:text-white whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm text-[#232323] dark:text-white whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
                   ))}
 
                   {selectedAiConversation.phase === "generating" ? (
-                    <div className="rounded-md border border-blue-500/25 bg-blue-500/5 p-3 text-sm text-blue-700 dark:text-blue-300">
+                    <div className="rounded-xl border border-blue-500/15 bg-blue-500/5 p-3.5 text-sm text-blue-700 dark:text-blue-300">
                       <span className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        AI is generating test cases...
+                        Generating test cases...
                       </span>
                     </div>
                   ) : null}
 
                   {selectedAiConversation.error ? (
-                    <div className="rounded-md border border-red-500/25 bg-red-500/5 p-3 text-sm text-red-600 dark:text-red-300">
+                    <div className="rounded-xl border border-red-500/15 bg-red-500/5 p-3.5 text-sm text-red-600 dark:text-red-300">
                       {selectedAiConversation.error}
                     </div>
                   ) : null}
 
                   {Array.isArray(selectedAiConversation.steps) && selectedAiConversation.steps.length ? (
-                    <div className="rounded-md border border-border bg-card overflow-hidden">
-                      <div className="px-3 py-2 border-b border-border text-xs font-semibold text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-2">
-                        <Brain className="h-3.5 w-3.5" />
-                        AI Progress Timeline
-                      </div>
-                      <div className="max-h-[260px] overflow-auto divide-y divide-border">
-                        {selectedAiConversation.steps.map((step) => (
-                          <div key={step.id} className="px-3 py-2.5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="inline-flex items-start gap-2 min-w-0">
-                                {step.status === "active" ? <Loader2 className="h-4 w-4 mt-0.5 text-blue-500 animate-spin" /> : null}
-                                {step.status === "done" ? <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-500" /> : null}
-                                {step.status === "error" ? <XCircle className="h-4 w-4 mt-0.5 text-red-500" /> : null}
-                                {step.status !== "active" && step.status !== "done" && step.status !== "error" ? (
-                                  <ListChecks className="h-4 w-4 mt-0.5 text-[#232323]/40 dark:text-white/40" />
-                                ) : null}
-                                <div className="min-w-0">
-                                  <p className="text-sm text-[#232323] dark:text-white truncate">{step.label}</p>
-                                  {step.detail ? (
-                                    <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-0.5 whitespace-pre-wrap">{step.detail}</p>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <span className="text-[10px] text-[#232323]/45 dark:text-white/45 flex-shrink-0">{formatAiTime(step.timestamp)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <AiThinkingTree
+                      steps={selectedAiConversation.steps}
+                      phase={selectedAiConversation.phase}
+                    />
                   ) : null}
 
                   {Array.isArray(selectedAiConversation.generatedTests) && selectedAiConversation.generatedTests.length ? (
-                    <div className="space-y-3">
-                      <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 text-sm text-emerald-700 dark:text-emerald-300">
-                        Generated {selectedAiConversation.generatedTests.length} test case{selectedAiConversation.generatedTests.length !== 1 ? "s" : ""}.
+                    <div className="space-y-2">
+                      <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3.5 text-sm text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Generated {selectedAiConversation.generatedTests.length} test case{selectedAiConversation.generatedTests.length !== 1 ? "s" : ""} successfully
                       </div>
-                      <div className="max-h-[220px] overflow-auto rounded-md border border-border divide-y divide-border">
+                      <div className="max-h-[220px] overflow-auto rounded-xl border border-black/8 dark:border-white/8 divide-y divide-black/5 dark:divide-white/5">
                         {selectedAiConversation.generatedTests.map((testItem, index) => (
                           <div key={`${testItem.title || "test"}-${index}`} className="p-3">
                             <p className="text-sm font-semibold text-[#232323] dark:text-white inline-flex items-center gap-2">
@@ -3106,35 +3223,34 @@ export default function ExecutionProjectTests() {
               )}
             </div>
 
-            <div className="border-t border-border p-3 space-y-2">
-              {aiError ? <div className="text-xs text-red-500">{aiError}</div> : null}
-              <textarea
-                value={aiDraftPrompt}
-                onChange={(event) => setAiDraftPrompt(event.target.value)}
-                placeholder="Describe what AI should generate for this project..."
-                rows={3}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {["Login flow tests", "Checkout flow tests", "Smoke tests", "Role permissions tests"].map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setAiDraftPrompt(item)}
-                      className="h-7 px-2.5 rounded-full border border-border text-[11px] hover:border-[#FFAA00]/50"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
+            <div className="border-t border-black/6 dark:border-white/6 p-3">
+              {aiError ? <div className="text-xs text-red-500 mb-2 px-1">{aiError}</div> : null}
+              <div className="relative">
+                <textarea
+                  value={aiDraftPrompt}
+                  onChange={(event) => setAiDraftPrompt(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey && !isAiGenerating && aiDraftPrompt.trim()) {
+                      event.preventDefault();
+                      submitGenerateTests();
+                    }
+                  }}
+                  placeholder="Describe what to test... (Shift+Enter for new line)"
+                  rows={2}
+                  className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-background/80 pl-4 pr-12 py-3 text-sm resize-none focus:ring-2 focus:ring-[#FFAA00]/30 focus:border-[#FFAA00]/50 transition-all"
+                />
                 <button
                   type="button"
                   onClick={submitGenerateTests}
-                  disabled={isAiGenerating}
-                  className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+                  disabled={isAiGenerating || !aiDraftPrompt.trim()}
+                  className={`absolute right-2.5 bottom-6 h-8 w-8 rounded-lg inline-flex items-center justify-center transition-all ${
+  aiDraftPrompt.trim() && !isAiGenerating
+    ? "bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] shadow-sm"
+    : "bg-black/5 dark:bg-white/5 text-[#232323]/25 dark:text-white/25 cursor-not-allowed"
+}`}
+                  title="Send"
                 >
-                  {isAiGenerating ? "Generating..." : "Generate"}
+                  {isAiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -3254,9 +3370,10 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={submitCreateTestCase}
             disabled={saving}
-            className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5"
           >
-            {saving ? "Creating..." : "Create Test Case"}
+            <Plus className="h-3.5 w-3.5" />
+            {saving ? "Creating..." : "Create"}
           </button>
         }
       >
@@ -3311,20 +3428,22 @@ export default function ExecutionProjectTests() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs text-[#232323]/60 dark:text-white/60">Steps</label>
-                  <div className="inline-flex items-center gap-2">
+                  <label className="block text-xs font-medium text-[#232323]/60 dark:text-white/60">Steps</label>
+                  <div className="inline-flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
                         setSharedStepPickerMode("create");
                         setIsCreateSharedStepsPickerOpen(true);
                       }}
-                      className="h-7 px-2.5 rounded-md border border-border text-xs font-semibold"
+                      className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1"
                     >
-                      + Shared Step
+                      <ListChecks className="h-3 w-3" />
+                      Shared Step
                     </button>
-                    <button type="button" onClick={addStep} className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold">
-                      + Add Step
+                    <button type="button" onClick={addStep} className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1">
+                      <Plus className="h-3 w-3" />
+                      Add Step
                     </button>
                   </div>
                 </div>
@@ -3333,12 +3452,13 @@ export default function ExecutionProjectTests() {
                   {testCaseForm.steps.map((step, index) => (
                     <div key={step.id || `step-${index}`}>
                       <div
-                        className={`rounded-xl border border-black/15 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_2px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.22)] p-3 bg-background/95 transition-all duration-300 ${
+                        className={`rounded-xl border border-black/10 dark:border-white/10 shadow-sm p-3 bg-background/95 transition-all duration-300 ${
                           newlyInsertedStepId && newlyInsertedStepId === step.id ? "ring-1 ring-[#FFAA00] scale-[1.01]" : ""
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 inline-flex items-center gap-2">
+                          <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 inline-flex items-center gap-1.5">
+                            <span className="h-5 w-5 rounded-md bg-[#FFAA00]/15 text-[#FFAA00] inline-flex items-center justify-center text-[10px] font-bold">{index + 1}</span>
                             Step {index + 1}
                             {step.isSharedStep ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-300">
@@ -3350,13 +3470,13 @@ export default function ExecutionProjectTests() {
                             <button
                               type="button"
                               onClick={() => openVariablePicker("create", step.id, "action")}
-                              className="h-6 px-2 rounded border border-border text-[11px]"
+                              className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors"
                             >
-                              $ Variable
+                              {"$"} Var
                             </button>
                             {testCaseForm.steps.length > 1 ? (
-                              <button type="button" onClick={() => removeStep(index)} className="h-6 px-2 rounded text-xs text-red-500 hover:bg-red-500/10">
-                                Remove
+                              <button type="button" onClick={() => removeStep(index)} className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors" title="Remove step">
+                                <Trash2 className="h-3 w-3" />
                               </button>
                             ) : null}
                           </div>
@@ -3519,40 +3639,62 @@ export default function ExecutionProjectTests() {
         title="Add Shared Step"
         onClose={() => setIsCreateSharedStepsPickerOpen(false)}
         maxWidth="max-w-2xl"
+        zIndex="z-[60]"
       >
         <div className="space-y-3">
-          <input
-            value={createSharedStepsSearch}
-            onChange={(event) => setCreateSharedStepsSearch(event.target.value)}
-            placeholder="Search shared steps"
-            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
-          />
-          <div className="max-h-[360px] overflow-auto rounded-md border border-border divide-y divide-border">
-            {(sharedSteps || [])
-              .filter((item) => {
-                const term = createSharedStepsSearch.trim().toLowerCase();
-                if (!term) return true;
-                return (
-                  (item.name || "").toLowerCase().includes(term) ||
-                  (item.action || "").toLowerCase().includes(term) ||
-                  (item.expectedResult || "").toLowerCase().includes(term)
-                );
-              })
-              .map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() =>
-                    sharedStepPickerMode === "edit" ? addSharedStepToEditForm(item) : addSharedStepToCreateForm(item)
-                  }
-                  className="w-full text-left p-3 hover:bg-[#232323]/5 dark:hover:bg-white/5"
-                >
-                  <p className="text-sm font-semibold text-[#232323] dark:text-white">{item.name}</p>
-                  <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1 truncate">{item.action}</p>
-                  <p className="text-xs text-[#232323]/60 dark:text-white/60 truncate">Expected: {item.expectedResult}</p>
-                </button>
-              ))}
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#232323]/35 dark:text-white/35" />
+            <input
+              value={createSharedStepsSearch}
+              onChange={(event) => setCreateSharedStepsSearch(event.target.value)}
+              placeholder="Search shared steps..."
+              className="w-full h-9 rounded-lg border border-black/10 dark:border-white/10 bg-background pl-9 pr-3 text-sm"
+            />
           </div>
+          {(() => {
+            const filtered = (sharedSteps || []).filter((item) => {
+              const term = createSharedStepsSearch.trim().toLowerCase();
+              if (!term) return true;
+              return (
+                (item.name || "").toLowerCase().includes(term) ||
+                (item.action || "").toLowerCase().includes(term) ||
+                (item.expectedResult || "").toLowerCase().includes(term)
+              );
+            });
+            if (!filtered.length) {
+              return (
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <ListChecks className="h-10 w-10 text-[#232323]/15 dark:text-white/15 mb-3" />
+                  <p className="text-sm font-medium text-[#232323]/50 dark:text-white/50">
+                    {(sharedSteps || []).length === 0 ? "No shared steps yet" : "No matching shared steps"}
+                  </p>
+                  <p className="text-xs text-[#232323]/35 dark:text-white/35 mt-1">
+                    {(sharedSteps || []).length === 0
+                      ? "Create shared steps in the Shared Steps tab first, then add them to test cases here."
+                      : "Try a different search term."}
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div className="max-h-[360px] overflow-auto rounded-lg border border-black/8 dark:border-white/8 divide-y divide-black/5 dark:divide-white/5">
+                {filtered.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      sharedStepPickerMode === "edit" ? addSharedStepToEditForm(item) : addSharedStepToCreateForm(item)
+                    }
+                    className="w-full text-left p-3 hover:bg-[#FFAA00]/5 transition-colors group"
+                  >
+                    <p className="text-sm font-medium text-[#232323] dark:text-white group-hover:text-[#FFAA00] transition-colors">{item.name}</p>
+                    <p className="text-xs text-[#232323]/55 dark:text-white/55 mt-1 truncate">Action: {item.action}</p>
+                    <p className="text-xs text-[#232323]/55 dark:text-white/55 truncate">Expected: {item.expectedResult}</p>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </Popup>
 
@@ -3561,6 +3703,7 @@ export default function ExecutionProjectTests() {
         title="Insert Variable"
         onClose={() => setIsVariablePickerOpen(false)}
         maxWidth="max-w-lg"
+        zIndex="z-[60]"
       >
         <div className="space-y-3">
           <input
@@ -3630,8 +3773,9 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={submitEditTestCase}
             disabled={saving}
-            className="h-9 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5"
           >
+            <CheckCircle className="h-3.5 w-3.5" />
             {saving ? "Saving..." : "Save Changes"}
           </button>
         }
@@ -3657,21 +3801,22 @@ export default function ExecutionProjectTests() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs text-[#232323]/60 dark:text-white/60">Steps</label>
-                <div className="inline-flex items-center gap-2">
+                <label className="block text-xs font-medium text-[#232323]/60 dark:text-white/60">Steps</label>
+                <div className="inline-flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
                       setSharedStepPickerMode("edit");
                       setIsCreateSharedStepsPickerOpen(true);
                     }}
-                    className="h-7 px-2.5 rounded-md border border-border text-xs font-semibold"
+                    className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1"
                   >
-                    + Shared Step
+                    <ListChecks className="h-3 w-3" />
+                    Shared Step
                   </button>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-[#FFAA00]"
+                    className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1"
                     onClick={() =>
                       setEditingTestCase((prev) => ({
                         ...(prev || {}),
@@ -3679,23 +3824,27 @@ export default function ExecutionProjectTests() {
                       }))
                     }
                   >
-                    + Add Step
+                    <Plus className="h-3 w-3" />
+                    Add Step
                   </button>
                 </div>
               </div>
               <div className="space-y-3">
                 {(editingTestCase?.steps || []).map((step, index) => (
                   <div key={`edit-step-${index}`}>
-                    <div className="rounded-xl border border-black/15 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_2px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.22)] p-3 bg-background/95">
+                    <div className="rounded-xl border border-black/10 dark:border-white/10 shadow-sm p-3 bg-background/95">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Step {index + 1}</p>
+                        <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 inline-flex items-center gap-1.5">
+                          <span className="h-5 w-5 rounded-md bg-[#FFAA00]/15 text-[#FFAA00] inline-flex items-center justify-center text-[10px] font-bold">{index + 1}</span>
+                          Step {index + 1}
+                        </p>
                         <div className="inline-flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => openVariablePicker("edit", index, "action")}
-                            className="h-6 px-2 rounded border border-border text-[11px]"
+                            className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors"
                           >
-                            $ Variable
+                            {"$"} Var
                           </button>
                           {(editingTestCase?.steps || []).length > 1 ? (
                             <button
@@ -3706,9 +3855,10 @@ export default function ExecutionProjectTests() {
                                   steps: (prev?.steps || []).filter((_, stepIndex) => stepIndex !== index),
                                 }))
                               }
-                              className="text-xs text-red-500"
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              title="Remove step"
                             >
-                              Remove
+                              <Trash2 className="h-3 w-3" />
                             </button>
                           ) : null}
                         </div>

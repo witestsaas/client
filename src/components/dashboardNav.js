@@ -5,7 +5,6 @@ import {
   ClipboardList,
   Layers,
   Play,
-  ShieldCheck,
   Users,
 } from "lucide-react";
 
@@ -33,7 +32,6 @@ export const NAV_SECTIONS = [
     title: "Platform",
     items: [
       { label: "Organizations", icon: Users, href: "platform/organizations", section: "platform" },
-      { label: "Admin Quotas", icon: ShieldCheck, href: "platform/admin-quotas", section: "platform", requiresSuperAdmin: true },
     ],
   },
 ];

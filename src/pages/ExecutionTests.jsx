@@ -58,6 +58,9 @@ export default function ExecutionTests() {
   useEffect(() => {
     if (!orgSlug) return;
 
+    // Skip polling while a modal is open to avoid re-renders that steal input focus
+    if (modalMode || projectToDelete) return;
+
     const intervalId = setInterval(() => {
       loadProjects();
     }, 5000);
@@ -74,7 +77,7 @@ export default function ExecutionTests() {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [orgSlug]);
+  }, [orgSlug, modalMode, projectToDelete]);
 
   useEffect(() => {
     if (!showStatusMenu) return;

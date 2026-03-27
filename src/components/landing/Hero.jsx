@@ -1,291 +1,169 @@
-import React, { useEffect, useState } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Play } from 'lucide-react';
-import Aurora from './ui/Aurora';
-import ParticleNetwork from './ui/ParticleNetwork';
-import MorphBlob from './ui/MorphBlob';
-import FloatingCode from './ui/FloatingCode';
-import { codeLines } from '../../constants/landing';
+import { ArrowRight, Play, Pause, Maximize2 } from 'lucide-react';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
-const floatingItems = [
-  { text: codeLines[0].text, color: codeLines[0].color, style: { top: '20%', left: '4%',   delay: 0,   duration: 7   } },
-  { text: codeLines[1].text, color: codeLines[1].color, style: { top: '35%', left: '2%',   delay: 1.5, duration: 8   } },
-  { text: codeLines[2].text, color: codeLines[2].color, style: { top: '55%', left: '5%',   delay: 3,   duration: 6.5 } },
-  { text: codeLines[3].text, color: codeLines[3].color, style: { top: '22%', right: '3%',  delay: 0.8, duration: 7.5 } },
-  { text: codeLines[4].text, color: codeLines[4].color, style: { top: '40%', right: '2%',  delay: 2.2, duration: 8.5 } },
-  { text: codeLines[5].text, color: codeLines[5].color, style: { top: '60%', right: '4%',  delay: 4,   duration: 6   } },
-  { text: codeLines[6].text, color: codeLines[6].color, style: { top: '70%', left: '8%',   delay: 2,   duration: 9   } },
-  { text: codeLines[7].text, color: codeLines[7].color, style: { top: '75%', right: '6%',  delay: 1,   duration: 7   } },
-];
-
-const mockupStats = [
-  { label: 'Tests Run',    value: '12,840', trend: '+18%', color: '#ffb733', icon: '⚡' },
-  { label: 'Pass Rate',   value: '98.2%',  trend: '+4.1%', color: '#22c55e', icon: '✓' },
-  { label: 'Avg Duration', value: '1.4s',  trend: '-23%',  color: '#60a5fa', icon: '⏱' },
-];
-
-const progressBars = [
-  { label: 'Auth module',   pct: 100, color: '#22c55e' },
-  { label: 'UI rendering',  pct: 78,  color: '#ffb733' },
-  { label: 'API validation', pct: 45, color: '#60a5fa' },
-  { label: 'Edge cases',    pct: 12,  color: '#c084fc' },
-];
-
-const headlineLineOne = 'Test smarter with';
-const headlineLineTwo = 'autonomous AI agents';
-const headlineTypingSpeed = 45;
-
 export default function Hero() {
-  const { scrollY } = useScroll();
-  const heroY = useTransform(scrollY, [0, 600], [0, -120]);
-  const heroOpacity = useTransform(scrollY, [0, 500], [1, 0]);
-  const [typedCharacters, setTypedCharacters] = useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const c = getLandingColors(isDark);
 
-  useEffect(() => {
-    const fullHeadline = `${headlineLineOne} ${headlineLineTwo}`;
-    const timer = window.setInterval(() => {
-      setTypedCharacters((current) => {
-        if (current >= fullHeadline.length) {
-          window.clearInterval(timer);
-          return current;
-        }
-        return current + 1;
-      });
-    }, headlineTypingSpeed);
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
 
-    return () => window.clearInterval(timer);
-  }, []);
+  const handlePlay = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setShowOverlay(true);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
+      setShowOverlay(false);
+    }
+  };
 
-  const lineOneTypedCount = Math.min(typedCharacters, headlineLineOne.length);
-  const lineTwoTypedCount = Math.max(0, typedCharacters - headlineLineOne.length - 1);
-  const typedLineOne = headlineLineOne.slice(0, lineOneTypedCount);
-  const typedLineTwo = headlineLineTwo.slice(0, lineTwoTypedCount);
-  const isHeadlineTypingComplete = typedLineTwo.length === headlineLineTwo.length;
+  const handleFullscreen = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.requestFullscreen) {
+      videoRef.current.requestFullscreen();
+    }
+  };
+
+  const handleVideoEnd = () => {
+    setIsPlaying(false);
+    setShowOverlay(true);
+  };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <Aurora />
-      <ParticleNetwork />
+    <section className="relative pt-24 pb-14 sm:pt-32 sm:pb-18 md:pt-44 md:pb-28 overflow-hidden">
+      {/* Subtle background glow */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[400px] sm:h-[600px] pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse, rgba(255,183,51,0.06) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+        }}
+      />
 
-      <MorphBlob style={{
-        width: 320, height: 320, top: '15%', left: '10%',
-        background: 'radial-gradient(circle, rgba(255,140,30,0.07) 0%, transparent 70%)',
-        filter: 'blur(40px)',
-      }} />
-      <MorphBlob style={{
-        width: 280, height: 280, bottom: '20%', right: '12%',
-        background: 'radial-gradient(circle, rgba(100,130,255,0.08) 0%, transparent 70%)',
-        filter: 'blur(40px)',
-      }} />
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col lg:flex-row items-center gap-8 sm:gap-10 lg:gap-14">
+          {/* Left — Text + CTA */}
+          <div className="lg:w-[45%] shrink-0 text-center lg:text-left">
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.08] tracking-tight mb-4 sm:mb-6"
+              style={{ color: c.textPrimary }}
+            >
+              Ship faster with{' '}
+              <br className="hidden sm:block" />
+              <span
+                className="text-transparent bg-clip-text"
+                style={{ backgroundImage: 'linear-gradient(135deg, #ffb733 0%, #ff8c00 50%, #ffb733 100%)' }}
+              >
+                AI test automation
+              </span>
+            </motion.h1>
 
-      {floatingItems.map((item, i) => (
-        <FloatingCode key={i} text={item.text} color={item.color} style={item.style} />
-      ))}
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="text-base sm:text-lg md:text-xl leading-relaxed max-w-xl mb-8 sm:mb-10"
+              style={{ color: c.textMuted }}
+            >
+              Qalion orchestrates AI agents to generate, execute, and analyse
+              your entire test suite — in real-time, at scale, with zero scripting.
+            </motion.p>
 
-      <motion.div
-        style={{ y: heroY, opacity: heroOpacity, zIndex: 10 }}
-        className="relative text-center max-w-5xl mx-auto px-6 pt-20"
-      >
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full mb-8"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,183,51,0.12) 0%, rgba(255,120,0,0.06) 100%)',
-            border: '1px solid rgba(255,183,51,0.25)',
-            backdropFilter: 'blur(12px)',
-          }}>
-          <motion.span className="w-2 h-2 rounded-full bg-[#ffb733]"
-            animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-            transition={{ duration: 2, repeat: Infinity }} />
-          <span className="text-[#ffb733] text-sm font-semibold">AI-Powered Test Automation</span>
-          <span className="text-[#ffb733]/40">·</span>
-          <span className="text-xs" style={{ color: c.textSubtle }}>v2.0 now with LangGraph</span>
-        </motion.div>
-
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-6xl md:text-8xl font-bold leading-[1.05] tracking-tight mb-6 dark:text-white text-gray-900">
-          {typedLineOne}
-          <motion.span
-            className="inline-block ml-1 w-[0.08em] h-[0.9em] align-[-0.1em] bg-current"
-            animate={{ opacity: [1, 0.1, 1] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            style={{ display: typedLineOne.length < headlineLineOne.length ? 'inline-block' : 'none' }}
-          />
-          <br />
-          <span className="relative inline-block">
-            <motion.span
-              className="text-transparent bg-clip-text"
-              style={{ backgroundImage: 'linear-gradient(135deg, #ffb733 0%, #ff6a00 40%, #ffb733 80%, #ffe066 100%)', backgroundSize: '200% 200%' }}
-              animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
-              {typedLineTwo}
-            </motion.span>
-            <motion.span
-              className="inline-block ml-1 w-[0.08em] h-[0.9em] align-[-0.1em] rounded-sm"
-              style={{
-                background: 'linear-gradient(180deg, #ffb733, #ff6a00)',
-                display: typedLineOne.length === headlineLineOne.length && !isHeadlineTypingComplete ? 'inline-block' : 'none',
-              }}
-              animate={{ opacity: [1, 0.1, 1] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-            />
-            <motion.span
-              className="absolute -bottom-1 left-0 h-px rounded-full"
-              style={{ background: 'linear-gradient(90deg, transparent, #ffb733, #ff6a00, transparent)' }}
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: isHeadlineTypingComplete ? '100%' : 0, opacity: isHeadlineTypingComplete ? 1 : 0 }}
-              transition={{ delay: 0.9, duration: 0.7 }} />
-          </span>
-        </motion.h1>
-
-        {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.42 }}
-          className="text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10"
-          style={{ color: c.textMuted }}>
-          Qalion orchestrates LangGraph agents to generate, execute, and analyse your entire test suite — in real-time, at scale, with zero scripting.
-        </motion.p>
-
-        {/* CTAs */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-          <Link to="/signup">
-            <motion.button
-              whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,183,51,0.5), 0 0 120px rgba(255,100,0,0.2)' }}
-              whileTap={{ scale: 0.96 }}
-              className="relative flex items-center gap-2.5 font-bold px-9 py-4 rounded-xl text-base overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #ffb733 0%, #ff8c00 100%)', color: '#000' }}>
-              <motion.span className="absolute inset-0 bg-white/20"
-                initial={{ x: '-100%', skewX: '-20deg' }}
-                whileHover={{ x: '200%' }}
-                transition={{ duration: 0.5 }} />
-              Start for free <ArrowRight className="w-4 h-4" />
-            </motion.button>
-          </Link>
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2.5 px-9 py-4 rounded-xl text-base transition-all dark:text-white/70 text-gray-500 dark:hover:text-white hover:text-gray-900"
-            style={{ border: `1px solid ${c.ghostBorder}`, background: c.ghostBtn }}>
             <motion.div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(255,183,51,0.15)', border: '1px solid rgba(255,183,51,0.3)' }}
-              animate={{ boxShadow: ['0 0 0px rgba(255,183,51,0)', '0 0 12px rgba(255,183,51,0.4)', '0 0 0px rgba(255,183,51,0)'] }}
-              transition={{ duration: 2.5, repeat: Infinity }}>
-              <Play className="w-3 h-3 fill-[#ffb733] text-[#ffb733] ml-0.5" />
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.38 }}
+              className="flex flex-col sm:flex-row items-center lg:items-start gap-4"
+            >
+              <Link to="/signup">
+                <button className="flex items-center gap-2 font-semibold px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base bg-[#ffb733] hover:bg-[#e5a22e] text-black transition-colors duration-200">
+                  Start for free <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
             </motion.div>
-            Watch demo
-          </motion.button>
-        </motion.div>
+          </div>
 
-        {/* Dashboard mockup */}
-        <motion.div
-          initial={{ opacity: 0, y: 80, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 1, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-          className="relative mx-auto max-w-4xl">
-          <motion.div className="absolute -inset-px rounded-2xl pointer-events-none"
-            style={{ background: 'linear-gradient(135deg, rgba(255,183,51,0.3), rgba(100,130,255,0.15), rgba(255,183,51,0.1))' }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 4, repeat: Infinity }} />
-
+          {/* Right — Video */}
           <motion.div
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative rounded-2xl overflow-hidden"
-            style={{
-              background: c.mockupBg,
-              border: `1px solid ${c.mockupBorder}`,
-              boxShadow: c.mockupShadow,
-              backdropFilter: 'blur(20px)',
-            }}>
-            {/* Browser bar */}
-            <div className="flex items-center gap-2 px-4 py-3"
-              style={{ background: c.mockupBarBg, borderBottom: `1px solid ${c.mockupBorder}` }}>
-              <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-              <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
-              <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-              <div className="flex-1 mx-3">
-                <div className="rounded-md h-6 max-w-xs mx-auto flex items-center justify-center px-3"
-                  style={{ background: c.mockupUrlBg, border: `1px solid ${c.mockupUrlBorder}` }}>
-                  <span className="text-xs font-mono" style={{ color: c.mockupUrlText }}>app.qalion.io/dashboard</span>
-                </div>
-              </div>
-            </div>
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            className="lg:w-[55%] w-full relative"
+          >
+            <div
+              className="rounded-2xl overflow-hidden relative group cursor-pointer"
+              style={{
+                background: '#000',
+                border: `1px solid ${c.mockupBorder}`,
+                boxShadow: isDark
+                  ? '0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+                  : '0 40px 100px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)',
+                aspectRatio: '16 / 9',
+              }}
+            >
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                onEnded={handleVideoEnd}
+                onClick={handlePlay}
+                poster="/uploads/qalion-demo-poster.jpg"
+              >
+                <source src="/uploads/qalion-demo.mp4" type="video/mp4" />
+              </video>
 
-            {/* Dashboard body */}
-            <div className="p-5 grid grid-cols-3 gap-3">
-              {mockupStats.map((stat) => (
-                <motion.div key={stat.label} whileHover={{ scale: 1.03 }}
-                  className="rounded-xl p-4 border relative overflow-hidden"
-                  style={{ background: c.mockupStatBg, borderColor: c.mockupStatBorder }}>
-                  <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl opacity-30"
-                    style={{ background: stat.color, transform: 'translate(40%, -40%)' }} />
-                  <div className="text-xs mb-2" style={{ color: c.mockupLabel }}>{stat.icon} {stat.label}</div>
-                  <div className="font-bold text-xl mb-1" style={{ color: c.textPrimary }}>{stat.value}</div>
-                  <div className="text-xs font-semibold" style={{ color: stat.color }}>{stat.trend}</div>
-                </motion.div>
-              ))}
-
-              {/* Live execution panel */}
-              <div className="col-span-3 rounded-xl p-4 border"
-                style={{ background: c.mockupPanelBg, borderColor: c.mockupPanelBorder }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <motion.div className="w-2 h-2 rounded-full bg-[#22c55e]"
-                      animate={{ opacity: [1, 0.3, 1] }}
-                      transition={{ duration: 1.2, repeat: Infinity }} />
-                    <span className="text-xs font-mono" style={{ color: c.mockupLiveLabel }}>Live execution — login_flow_e2e.spec.ts</span>
+              {/* Play / pause overlay */}
+              {showOverlay && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-black/30"
+                  onClick={handlePlay}
+                >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center bg-[#ffb733] hover:bg-[#e5a22e] transition-colors">
+                    <Play className="w-7 h-7 text-black fill-black ml-1" />
                   </div>
-                  <span className="text-[#ffb733] text-xs font-semibold">AI Agent Running</span>
                 </div>
-                <div className="space-y-2.5">
-                  {progressBars.map((bar) => (
-                    <div key={bar.label} className="flex items-center gap-3">
-                      <span className="text-xs w-24 shrink-0 font-mono" style={{ color: c.mockupLabel }}>{bar.label}</span>
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden"
-                        style={{ background: c.mockupProgressBg }}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${bar.pct}%` }}
-                          transition={{ duration: 1.5, delay: 1.2, ease: 'easeOut' }}
-                          className="h-full rounded-full relative overflow-hidden"
-                          style={{ background: `linear-gradient(90deg, ${bar.color}90, ${bar.color})` }}>
-                          <motion.div className="absolute inset-0 bg-white/30"
-                            animate={{ x: ['-100%', '200%'] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: bar.pct === 100 ? 999 : 0 }} />
-                        </motion.div>
-                      </div>
-                      <span className="text-xs w-8 text-right font-mono" style={{ color: c.mockupPct }}>{bar.pct}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
+              )}
 
-          <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-3/4 h-24 rounded-full blur-3xl pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse, rgba(255,183,51,0.2) 0%, transparent 70%)' }} />
-        </motion.div>
-      </motion.div>
+              {/* Controls bar */}
+              {isPlaying && (
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-end gap-2 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors"
+                  >
+                    <Pause className="w-4 h-4 text-white" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleFullscreen(); }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors"
+                  >
+                    <Maximize2 className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom glow */}
+            <div
+              className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-20 rounded-full blur-3xl pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse, rgba(255,183,51,0.15) 0%, transparent 70%)' }}
+            />
+          </motion.div>
+        </div>
+      </div>
     </section>
   );
 }

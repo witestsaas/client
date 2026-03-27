@@ -8,7 +8,14 @@ RUN npm run build
 
 # Use official Nginx image for serving static files
 FROM nginx:alpine AS runner
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+
+# Prepare directories writable by non-root nginx user
+RUN chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && chown nginx:nginx /var/run/nginx.pid
+
+COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
+
+USER nginx
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

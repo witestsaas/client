@@ -2,7 +2,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
 import Platform from './pages/Platform.jsx';
-import PlatformAdminQuotas from './pages/PlatformAdminQuotas.jsx';
+
 import Analysis from './pages/Analysis.jsx';
 import ExecutionTests from './pages/ExecutionTests.jsx';
 import ExecutionProjectTests from './pages/ExecutionProjectTests.jsx';
@@ -36,6 +36,7 @@ function App() {
       <Route path="/signin" element={<Signin />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/verified" element={<Verified />} />
+      <Route path="/verify-email" element={<Verified />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/reset-password/update" element={<ResetPasswordUpdate />} />
@@ -50,7 +51,7 @@ function App() {
       <Route path="/dashboard/:orgSlug/settings" element={<RequireAuth><RequireOrgAccess section="settings"><Settings /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/platform" element={<RequireAuth><RequireOrgAccess section="platform"><Platform /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/platform/organizations" element={<RequireAuth><RequireOrgAccess section="platform"><Platform /></RequireOrgAccess></RequireAuth>} />
-      <Route path="/dashboard/:orgSlug/platform/admin-quotas" element={<RequireAuth><RequireOrgAccess section="platform"><PlatformAdminQuotas /></RequireOrgAccess></RequireAuth>} />
+
       <Route path="/dashboard/:orgSlug/execution" element={<Navigate to="../execution/tests" replace />} />
       <Route path="/dashboard/:orgSlug/execution/tests" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionTests /></RequireOrgAccess></RequireAuth>} />
       <Route path="/dashboard/:orgSlug/execution/tests/:projectId" element={<RequireAuth><RequireOrgAccess section="execution"><ExecutionProjectTests /></RequireOrgAccess></RequireAuth>} />

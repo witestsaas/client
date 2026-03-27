@@ -43,16 +43,16 @@ export const testimonials = [
 export const plans = [
   {
     name: 'Starter', price: 'Free', period: '', desc: 'Perfect to get started',
-    features: ['Up to 500 tests/month', '1 browser agent', 'Real-time dashboard', 'Community support'],
+    features: ['Up to 50 tests/month', '1 browser agent', 'Real-time dashboard', 'Community support'],
     cta: 'Get started', highlight: false,
   },
   {
-    name: 'Pro', price: '$49', period: '/mo', desc: 'For growing teams',
+    name: 'Pro', price: '$499', period: '/mo', desc: 'For growing teams',
     features: ['Unlimited tests', '5 parallel agents', 'AI test generation', 'Slack & webhook alerts', 'Priority support'],
     cta: 'Start free trial', highlight: true,
   },
   {
-    name: 'Enterprise', price: 'Custom', period: '', desc: 'For large organisations',
+    name: 'Enterprise', price: "Let's talk", period: '', desc: 'For large organisations',
     features: ['Unlimited everything', 'Dedicated agents', 'SSO & audit logs', 'SLA guarantee', 'Dedicated CSM'],
     cta: 'Contact sales', highlight: false,
   },

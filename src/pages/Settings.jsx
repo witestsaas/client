@@ -8,21 +8,26 @@ import {
   CheckCircle,
   Database,
   ExternalLink,
+  Gift,
   GitBranch,
   Key,
   Link as LinkIcon,
   Plug,
   Settings as SettingsIcon,
   Shield,
+  Ticket,
   Users,
   Workflow,
+  Coins,
 } from "lucide-react";
+import { redeemOrgCoupon, fetchOrgCouponBalance } from "../services/organizations";
 
 const TABS = [
+  { key: "credits", label: "Credits", icon: Ticket },
   { key: "integrations", label: "Integrations", icon: Plug },
   { key: "api-keys", label: "API Keys", icon: Key },
   { key: "team", label: "Team", icon: Users },
-  { key: "notifications", label: "Notifications", icon: Bell },
+  //{ key: "notifications", label: "Notifications", icon: Bell },
   { key: "security", label: "Security", icon: Shield },
 ];
 
@@ -87,12 +92,119 @@ function SettingsSectionCard({ title, description, children }) {
 export default function Settings() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("integrations");
+  const [activeTab, setActiveTab] = useState("credits");
   const [selectedIntegrationId, setSelectedIntegrationId] = useState("");
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [redeemingCoupon, setRedeemingCoupon] = useState(false);
+  const [couponMessage, setCouponMessage] = useState(null);
+  const [couponBalance, setCouponBalance] = useState(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
   const selectedIntegration = useMemo(
     () => INTEGRATIONS.find((item) => item.id === selectedIntegrationId) || null,
     [selectedIntegrationId],
+  );
+
+  async function loadCouponBalance() {
+    if (!orgSlug) return;
+    setLoadingBalance(true);
+    try {
+      const data = await fetchOrgCouponBalance(orgSlug);
+      setCouponBalance(data);
+    } catch {
+      setCouponBalance(null);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }
+
+  async function handleRedeemCoupon() {
+    const code = couponCode.trim();
+    if (!code) return;
+    setRedeemingCoupon(true);
+    setCouponMessage(null);
+    try {
+      const result = await redeemOrgCoupon(orgSlug, code);
+      setCouponMessage({ type: "success", text: `Coupon redeemed! ${Number(result.amountUsd || 0).toFixed(2)} credits added.` });
+      setCouponCode("");
+      loadCouponBalance();
+    } catch (e) {
+      setCouponMessage({ type: "error", text: e?.message || "Failed to redeem coupon" });
+    } finally {
+      setRedeemingCoupon(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (activeTab === "credits" && orgSlug) {
+      loadCouponBalance();
+    }
+  }, [activeTab, orgSlug]);
+
+  const renderCredits = () => (
+    <div className="space-y-6">
+      <SettingsSectionCard
+        title="Coupon Balance"
+        description="Your organization's remaining LLM credit balance from redeemed coupons"
+      >
+        {loadingBalance ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : couponBalance ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs text-muted-foreground">Remaining</p>
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalRemainingUsd || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs text-muted-foreground">Total Credits</p>
+              <p className="text-xl font-bold mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalAmountUsd || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs text-muted-foreground">Used</p>
+              <p className="text-xl font-bold text-foreground/70 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalUsedUsd || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs text-muted-foreground">Active Coupons</p>
+              <p className="text-xl font-bold mt-1">{couponBalance.activeCoupons || 0}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No coupon credits found. Redeem a coupon below to get started.</p>
+        )}
+      </SettingsSectionCard>
+
+      <SettingsSectionCard
+        title="Redeem Coupon"
+        description="Enter a coupon code provided by your admin to add LLM credits to this organization"
+      >
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            placeholder="XXXX-XXXX-XXXX-XXXX"
+            maxLength={19}
+            className="flex-1 h-10 rounded-lg border border-border px-4 bg-background text-sm font-mono tracking-wider uppercase"
+          />
+          <button
+            type="button"
+            onClick={handleRedeemCoupon}
+            disabled={redeemingCoupon || !couponCode.trim()}
+            className="h-10 px-5 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2"
+          >
+            <Gift className="h-4 w-4" />
+            {redeemingCoupon ? "Redeeming..." : "Redeem"}
+          </button>
+        </div>
+        {couponMessage ? (
+          <div className={`mt-3 rounded-lg p-3 text-sm ${couponMessage.type === "success" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"}`}>
+            {couponMessage.text}
+          </div>
+        ) : null}
+      </SettingsSectionCard>
+    </div>
   );
 
   const renderIntegrations = () => (
@@ -209,7 +321,7 @@ export default function Settings() {
     </SettingsSectionCard>
   );
 
-  const renderNotifications = () => (
+  {/*const renderNotifications = () => (
     <SettingsSectionCard title="Notifications" description="Choose how your team receives alerts">
       <div className="space-y-3">
         {[
@@ -225,8 +337,7 @@ export default function Settings() {
         ))}
       </div>
     </SettingsSectionCard>
-  );
-
+  );*/}
   const renderSecurity = () => (
     <SettingsSectionCard title="Security" description="Harden organization access and authentication rules">
       <div className="space-y-3">
@@ -300,11 +411,11 @@ export default function Settings() {
             );
           })}
         </div>
-
+        {activeTab === "credits" ? renderCredits() : null}
         {activeTab === "integrations" ? renderIntegrations() : null}
         {activeTab === "api-keys" ? renderApiKeys() : null}
         {activeTab === "team" ? renderTeam() : null}
-        {activeTab === "notifications" ? renderNotifications() : null}
+        {/*{activeTab === "notifications" ? renderNotifications() : null}*/}
         {activeTab === "security" ? renderSecurity() : null}
       </div>
     </DashboardLayout>

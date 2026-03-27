@@ -172,50 +172,7 @@ export default function Platform() {
     };
   }, [orgId]);
 
-  useEffect(() => {
-    let lastActivityAt = Date.now();
-    const idleTimeoutMs = 120000;
-
-    const markActive = () => {
-      lastActivityAt = Date.now();
-    };
-
-    const sendHeartbeat = async () => {
-      if (!orgId) return;
-      const isActive = Date.now() - lastActivityAt < idleTimeoutMs;
-      try {
-        await apiFetch("/presence/heartbeat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentPage: location?.pathname || window.location.pathname,
-            isActive,
-          }),
-        });
-      } catch {
-        // Heartbeat is best-effort only
-      }
-    };
-
-    if (orgId) {
-      sendHeartbeat();
-    }
-
-    const heartbeatIntervalId = window.setInterval(sendHeartbeat, 10000);
-
-    window.addEventListener("mousemove", markActive, { passive: true });
-    window.addEventListener("keydown", markActive, { passive: true });
-    window.addEventListener("click", markActive, { passive: true });
-    window.addEventListener("scroll", markActive, { passive: true });
-
-    return () => {
-      window.clearInterval(heartbeatIntervalId);
-      window.removeEventListener("mousemove", markActive);
-      window.removeEventListener("keydown", markActive);
-      window.removeEventListener("click", markActive);
-      window.removeEventListener("scroll", markActive);
-    };
-  }, [orgId, location?.pathname]);
+  // Heartbeat is now handled globally by usePresenceHeartbeat in DashboardLayout
 
   async function inviteMember(e) {
     e.preventDefault();

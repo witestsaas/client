@@ -66,7 +66,7 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (isMutating && !headers['x-csrf-token'] && !headers['X-CSRF-Token']) {
-    const csrfToken = getCookieValue('qualion_csrf_token');
+    const csrfToken = getCookieValue('qalion_csrf_token');
     if (csrfToken) {
       headers['x-csrf-token'] = csrfToken;
     }

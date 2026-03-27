@@ -35,18 +35,18 @@ function formatDuration(ms) {
 function statusBadge(status) {
   const normalized = String(status || "Pending");
   if (normalized === "Completed" || normalized === "Passed") {
-    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-green-100 text-green-700 text-xs font-semibold"><CheckCircle2 className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold"><CheckCircle2 className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
   }
   if (normalized === "Failed") {
-    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-red-100 text-red-700 text-xs font-semibold"><XCircle className="h-3.5 w-3.5 mr-1" />Failed</span>;
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-semibold"><XCircle className="h-3.5 w-3.5 mr-1" />Failed</span>;
   }
   if (normalized === "Running") {
-    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-blue-100 text-blue-700 text-xs font-semibold"><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Running</span>;
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold"><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Running</span>;
   }
   if (normalized === "Queued") {
-    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-amber-100 text-amber-700 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />Queued</span>;
+    return <span className="inline-flex items-center h-6 px-2 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />Queued</span>;
   }
-  return <span className="inline-flex items-center h-6 px-2 rounded-md bg-gray-100 text-gray-700 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
+  return <span className="inline-flex items-center h-6 px-2 rounded-md bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 text-xs font-semibold"><Clock className="h-3.5 w-3.5 mr-1" />{normalized}</span>;
 }
 
 function resolveRunId(run) {
@@ -176,6 +176,11 @@ function buildArtifactUrlCandidates(value) {
 
     if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
       candidates.push(normalized);
+      // Extract the /test-artifacts/ path for same-origin fallback
+      const testArtifactsMatch = normalized.match(/\/test-artifacts\/.+/);
+      if (testArtifactsMatch) {
+        candidates.push(testArtifactsMatch[0]);
+      }
       return;
     }
 
@@ -184,12 +189,14 @@ function buildArtifactUrlCandidates(value) {
       const asKey = normalized.replace(/^\/uploads\//, "");
       const minio = buildMinioPublicUrl(asKey);
       if (minio) candidates.push(minio);
+      candidates.push(`/test-artifacts/${asKey}`);
       return;
     }
 
     candidates.push(`/uploads/${normalized.replace(/^\/+/, "")}`);
     const minio = buildMinioPublicUrl(normalized);
     if (minio) candidates.push(minio);
+    candidates.push(`/test-artifacts/${normalized.replace(/^\/+/, "")}`);
   });
 
   return Array.from(new Set(candidates.filter(Boolean)));
@@ -884,22 +891,22 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
                                 return (
                               <div className="flex items-start gap-3">
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 overflow-hidden">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-semibold text-[#232323] dark:text-white">{step?.name || `Step ${index + 1}`}</p>
-                                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
+                                    <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{step?.name || `Step ${index + 1}`}</p>
+                                    <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
                                       {isPassed ? <CheckCircle2 className="h-3 w-3" /> : null}
                                       {isFailed ? <XCircle className="h-3 w-3" /> : null}
                                       {String(step?.status || "pending")}
                                     </span>
                                   </div>
 
-                                  <div className="mt-1.5 rounded-md border border-black/10 dark:border-white/10 bg-card/70 px-2.5 py-2">
+                                  <div className="mt-1.5 rounded-md border border-black/10 dark:border-white/10 bg-card/70 px-2.5 py-2 overflow-hidden">
                                     <p className="text-[11px] font-semibold text-[#232323]/75 dark:text-white/75">AI Note</p>
-                                    <p className="text-xs text-[#232323]/65 dark:text-white/65 mt-0.5 leading-relaxed">{noteText}</p>
+                                    <p className="text-xs text-[#232323]/65 dark:text-white/65 mt-0.5 leading-relaxed break-words">{noteText}</p>
                                   </div>
 
-                                  {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1.5">{step.error}</p> : null}
+                                  {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1.5 break-words">{step.error}</p> : null}
                                 </div>
 
                                 <div className="w-52 flex-shrink-0">
@@ -1083,6 +1090,7 @@ export default function ExecutionRuns() {
   const [projectId, setProjectId] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -1285,24 +1293,40 @@ export default function ExecutionRuns() {
           </div>
 
           <div className="relative">
-            <button type="button" className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
+            <button type="button" onClick={() => setStatusDropdownOpen((v) => !v)} className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
               <Filter className="h-3.5 w-3.5" />
               {status || "Status"}
             </button>
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-            >
-              <option value="">All statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Queued">Queued</option>
-              <option value="Running">Running</option>
-              <option value="Completed">Completed</option>
-              <option value="Failed">Failed</option>
-              <option value="Aborted">Aborted</option>
-              <option value="Error">Error</option>
-            </select>
+            {statusDropdownOpen ? (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setStatusDropdownOpen(false)} />
+                <div className="absolute right-0 top-10 z-20 w-40 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
+                  {[
+                    { value: "", label: "All statuses" },
+                    { value: "Pending", label: "Pending" },
+                    { value: "Queued", label: "Queued" },
+                    { value: "Running", label: "Running" },
+                    { value: "Completed", label: "Completed" },
+                    { value: "Failed", label: "Failed" },
+                    { value: "Aborted", label: "Aborted" },
+                    { value: "Error", label: "Error" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setStatus(opt.value); setStatusDropdownOpen(false); }}
+                      className={`w-full h-8 px-2.5 rounded-md text-left text-xs font-medium ${
+                        status === opt.value
+                          ? "bg-[#FFAA00]/15 text-[#FFAA00] dark:text-[#FFAA00]"
+                          : "text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
 

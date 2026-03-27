@@ -1,5 +1,5 @@
 let accessTokenGetter = null;
-const SESSION_BOOTSTRAP_TOKEN_KEY = 'qualion_bootstrap_token';
+const SESSION_BOOTSTRAP_TOKEN_KEY = 'qalion_bootstrap_token';
 
 export function setAccessTokenGetter(getter) {
   accessTokenGetter = getter;

@@ -10,7 +10,7 @@ export default function ResetPasswordConfirmPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4">
+    <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 px-3 sm:px-4 py-6 sm:py-8">
       <div className="bg-white/90 border border-blue-100 rounded-2xl shadow-2xl p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full text-center">
         <h1 className="text-2xl font-bold mb-4 text-blue-900">Confirm Password Reset</h1>
         {confirmed ? (

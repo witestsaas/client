@@ -1,10 +1,15 @@
 
 import React, { useState } from "react";
+import { useParams } from "react-router-dom";
 import DashboardHeader from "./DashboardHeader";
 import Sidebar from "./Sidebar";
+import { usePresenceHeartbeat } from "../hooks/useOrganizationPresence.ts";
 
 export default function DashboardLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { orgSlug } = useParams();
+
+  usePresenceHeartbeat(orgSlug);
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F6F6F6] dark:bg-[#232323]">

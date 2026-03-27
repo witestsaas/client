@@ -13,7 +13,7 @@ import {
 import { NAV_SECTIONS } from "./dashboardNav";
 import { useTheme } from "../utils/theme-context";
 import { useAuth } from "../auth/AuthProvider.jsx";
-import { fetchAdminQuotaAccess, fetchOrganization, fetchUserOrganizations } from "../services/organizations";
+import { fetchOrganization, fetchUserOrganizations } from "../services/organizations";
 
 function getInitials(user) {
   const first = user?.firstName?.[0] || "";
@@ -32,7 +32,6 @@ export default function Sidebar({ collapsed, onToggle }) {
   const [organizations, setOrganizations] = useState([]);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     if (!orgSlug || orgSlug === "no-org") return;
@@ -45,24 +44,6 @@ export default function Sidebar({ collapsed, onToggle }) {
     fetchUserOrganizations()
       .then((data) => setOrganizations(Array.isArray(data?.organizations) ? data.organizations : []))
       .catch(() => setOrganizations([]));
-  }, [orgSlug]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchAdminQuotaAccess()
-      .then((data) => {
-        if (cancelled) return;
-        setIsSuperAdmin(Boolean(data?.isSuperAdmin));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setIsSuperAdmin(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, [orgSlug]);
 
   useEffect(() => {
@@ -195,7 +176,6 @@ export default function Sidebar({ collapsed, onToggle }) {
             {section.items
               .filter((item) => {
                 if (!section.title && item.label === "Dashboard") return true;
-                if (item.requiresSuperAdmin && !isSuperAdmin) return false;
                 if (item.section) return allowedSections.includes(item.section);
                 return true;
               })
@@ -264,8 +244,12 @@ export default function Sidebar({ collapsed, onToggle }) {
             onClick={() => !collapsed && setProfileMenuOpen((open) => !open)}
             className={`w-full flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 ${collapsed ? "justify-center" : ""}`}
           >
-            <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold">
-              {getInitials(user)}
+            <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold overflow-hidden">
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                getInitials(user)
+              )}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0 text-left">

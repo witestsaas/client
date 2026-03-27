@@ -18,9 +18,10 @@ export function isQuotaDeniedError(error) {
 export function getFeatureQuotaSnapshot(payload, feature) {
   const usageRows = Array.isArray(payload?.usage) ? payload.usage : [];
   const row = usageRows.find((item) => item?.feature === feature) || null;
+  const couponRemainingUsd = Number(payload?.couponBalance?.totalRemainingUsd || 0);
 
   if (!row) {
-    return { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true };
+    return { used: 0, limit: 0, remaining: 0, isUnlimited: false, isUnknown: true, hasCouponCredits: couponRemainingUsd > 0, couponRemainingUsd };
   }
 
   const used = Number(row?.used || 0);
@@ -33,5 +34,7 @@ export function getFeatureQuotaSnapshot(payload, feature) {
     remaining,
     isUnlimited: limit < 0,
     isUnknown: false,
+    hasCouponCredits: couponRemainingUsd > 0,
+    couponRemainingUsd,
   };
 }

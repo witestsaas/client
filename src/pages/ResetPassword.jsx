@@ -78,7 +78,7 @@ export default function ResetPasswordPage() {
 
   if (tokenValid === null) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-4">
+      <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-3 sm:px-4 py-6 sm:py-8">
         <div className="text-center text-sm text-[#232323]/60 dark:text-white/60 inline-flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Checking reset link...
@@ -89,8 +89,8 @@ export default function ResetPasswordPage() {
 
   if (!tokenValid) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-4">
-        <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full text-center">
+      <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-3 sm:px-4 py-6 sm:py-8">
+        <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-5 sm:p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-blue-900 dark:text-white mb-3">Link expired</h1>
           <p className="text-sm text-[#232323]/65 dark:text-white/65 mb-5">This reset link is invalid or has expired.</p>
           <Link to="/forgot-password" className="inline-block bg-blue-600 dark:bg-[#FFAA00] hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 text-white dark:text-[#232323] font-semibold py-2 px-5 rounded-md transition-colors">
@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-4">
+    <main className="flex min-h-screen min-h-dvh items-center justify-center bg-gradient-to-br from-[#F6F6F6] via-[#F6F6F6] to-[#F6F6F6] dark:from-[#232323] dark:via-[#232323] dark:to-[#232323] px-3 sm:px-4 py-6 sm:py-8">
       <div className="bg-white/90 dark:bg-[#2A2A2A] border border-blue-100 dark:border-white/10 rounded-2xl shadow-2xl p-8 animate-fade-in-up transition-all duration-500 max-w-md w-full">
         <h1 className="text-2xl font-bold text-center mb-4 text-blue-900 dark:text-white">Reset Password</h1>
         <form onSubmit={handleSubmit} className="space-y-4">

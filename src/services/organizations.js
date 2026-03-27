@@ -101,44 +101,17 @@ export async function fetchOrgQuotaUsage(orgSlug) {
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-export async function fetchAdminQuotaOrganizations(options = {}) {
-  const params = new URLSearchParams();
-  if (options?.search) {
-    params.set('search', String(options.search));
-  }
-  if (typeof options?.limit === 'number') {
-    params.set('limit', String(options.limit));
-  }
-  const query = params.toString();
-  const response = await apiFetch(`/admin/quotas/organizations${query ? `?${query}` : ''}`);
-  return parseJson(response);
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-export async function fetchAdminQuotaAccess() {
-  const response = await apiFetch('/admin/quotas/access');
-  return parseJson(response);
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-export async function updateAdminOrgQuota(orgSlug, payload) {
-  const response = await apiFetch(`/admin/quotas/organizations/${encodeURIComponent(orgSlug)}/subscription`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload || {}),
-  });
-  return parseJson(response);
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-export async function resetAllAdminQuotas(payload = {}) {
-  const response = await apiFetch('/admin/quotas/reset-all', {
+export async function redeemOrgCoupon(orgSlug, code) {
+  const response = await apiFetch(`/organizations/${encodeURIComponent(orgSlug)}/quotas/redeem-coupon`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload || {}),
+    body: JSON.stringify({ code }),
   });
   return parseJson(response);
 }
+
+export async function fetchOrgCouponBalance(orgSlug) {
+  const response = await apiFetch(`/organizations/${encodeURIComponent(orgSlug)}/quotas/coupon-balance`);
+  return parseJson(response);
+}
+

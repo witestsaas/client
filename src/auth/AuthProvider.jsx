@@ -33,6 +33,7 @@ const PUBLIC_AUTH_ROUTES = new Set([
   '/signup',
   '/auth/mfa',
   '/verified',
+  '/verify-email',
   '/forgot-password',
   '/reset-password',
   '/reset-password/update',

@@ -8,14 +8,14 @@ import { cancelRun, createRunActivity, getRun, listRunActivities, rerunRun } fro
 import { RunDetailsModal } from "./ExecutionRuns.jsx";
 
 const resultStatusClass = {
-  Pending: "bg-gray-100 text-gray-700",
-  Queued: "bg-amber-100 text-amber-700",
-  Running: "bg-blue-100 text-blue-700",
-  Passed: "bg-green-100 text-green-700",
-  Failed: "bg-red-100 text-red-700",
-  Error: "bg-red-100 text-red-700",
-  Skipped: "bg-gray-100 text-gray-700",
-  Cancelled: "bg-orange-100 text-orange-700",
+  Pending: "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300",
+  Queued: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+  Running: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+  Passed: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
+  Failed: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+  Error: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+  Skipped: "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300",
+  Cancelled: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
 };
 
 function statusIcon(status) {
