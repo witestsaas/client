@@ -1,0 +1,308 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, ArrowRight } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_CHAT_WEBHOOK_URL || "";
+
+const SUGGESTED_QUESTIONS = [
+  "What is Qalion and how does it work?",
+  "How does AI-powered test automation differ from traditional testing?",
+  "What kind of teams benefit most from Qalion?",
+  "Can I see a quick overview of pricing?",
+  "How do I get started with my first test?",
+];
+
+function generateSessionId() {
+  return "sess_" + crypto.randomUUID();
+}
+
+export default function AIChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Hi! I'm the Qalion AI assistant. Ask me anything about our platform — features, pricing, integrations, or how to get started.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sessionId] = useState(generateSessionId);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
+  const sendSuggested = useCallback(
+    (question) => {
+      setInput(question);
+      setTimeout(() => {
+        const fakeEvent = { trim: () => question };
+        // Directly push the message and trigger send logic
+        setMessages((prev) => [...prev, { role: "user", content: question }]);
+        setLoading(true);
+
+        (async () => {
+          try {
+            if (!N8N_WEBHOOK_URL) {
+              await new Promise((r) => setTimeout(r, 1200));
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content:
+                    "Thanks for your question! The n8n webhook isn't configured yet. Set `VITE_N8N_CHAT_WEBHOOK_URL` in your environment to connect the AI agent.",
+                },
+              ]);
+              return;
+            }
+            const res = await fetch(N8N_WEBHOOK_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId, message: question }),
+            });
+            if (!res.ok) throw new Error("Request failed");
+            const data = await res.json();
+            const obj = Array.isArray(data) ? data[0] : data;
+            const reply =
+              obj?.output || obj?.response || obj?.text || obj?.message || "I couldn't process that. Please try again.";
+            setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+          } catch {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: "Sorry, I'm having trouble connecting right now. Please try again in a moment." },
+            ]);
+          } finally {
+            setLoading(false);
+            setInput("");
+          }
+        })();
+      }, 0);
+    },
+    [sessionId]
+  );
+
+  const sendMessage = useCallback(async () => {
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+
+    const userMsg = { role: "user", content: trimmed };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      if (!N8N_WEBHOOK_URL) {
+        // Demo fallback when no webhook configured
+        await new Promise((r) => setTimeout(r, 1200));
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "Thanks for your question! The n8n webhook isn't configured yet. Set `VITE_N8N_CHAT_WEBHOOK_URL` in your environment to connect the AI agent.",
+          },
+        ]);
+        return;
+      }
+
+      const res = await fetch(N8N_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          message: trimmed,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
+
+      const data = await res.json();
+      // n8n may return an array or a plain object
+      const obj = Array.isArray(data) ? data[0] : data;
+      const reply = obj?.output || obj?.response || obj?.text || obj?.message || "I couldn't process that. Please try again.";
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sorry, I'm having trouble connecting right now. Please try again in a moment." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, sessionId]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <>
+      {/* Chat panel */}
+      <div
+        className={`fixed bottom-20 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] sm:w-[400px] transition-all duration-300 origin-bottom-right ${
+          open ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#141419] shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col h-[min(520px,calc(100dvh-7rem))]">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-black/8 dark:border-white/8 bg-gradient-to-r from-[#FFAA00]/10 to-transparent">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-[#FFAA00]/15 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-[#FFAA00]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#232323] dark:text-white leading-tight">Qalion Assistant</p>
+                <p className="text-[11px] text-[#232323]/50 dark:text-white/50">Ask anything about our platform</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="h-6 w-6 rounded-md bg-[#FFAA00]/12 flex-shrink-0 flex items-center justify-center mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-[#FFAA00]" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-[#FFAA00] text-white rounded-br-md"
+                      : "bg-[#f4f4f5] dark:bg-white/8 text-[#232323] dark:text-white/90 rounded-bl-md"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown
+                      components={{
+                        h3: ({ children }) => <h3 className="font-semibold text-[13.5px] mt-2 mb-1">{children}</h3>,
+                        h4: ({ children }) => <h4 className="font-semibold text-[13px] mt-1.5 mb-0.5">{children}</h4>,
+                        p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                        ol: ({ children }) => <ol className="list-decimal list-outside pl-4 mb-1.5 space-y-1">{children}</ol>,
+                        ul: ({ children }) => <ul className="list-disc list-outside pl-4 mb-1.5 space-y-1">{children}</ul>,
+                        li: ({ children }) => <li className="pl-0.5">{children}</li>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#FFAA00] underline hover:text-[#e69900]">
+                            {children}
+                          </a>
+                        ),
+                        code: ({ children }) => (
+                          <code className="bg-black/5 dark:bg-white/10 rounded px-1 py-0.5 text-[12px] font-mono">{children}</code>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+                {msg.role === "user" && (
+                  <div className="h-6 w-6 rounded-md bg-[#232323]/8 dark:bg-white/10 flex-shrink-0 flex items-center justify-center mt-0.5">
+                    <User className="h-3.5 w-3.5 text-[#232323]/60 dark:text-white/60" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* Suggested questions — only shown before user's first message */}
+            {messages.length === 1 && !loading && (
+              <div className="space-y-1.5 ml-8.5">
+                {SUGGESTED_QUESTIONS.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => sendSuggested(q)}
+                    className="group w-full text-left px-3 py-2 rounded-lg border border-black/6 dark:border-white/6 bg-white dark:bg-white/[0.03] hover:border-[#FFAA00]/30 hover:bg-[#FFAA00]/[0.04] transition-all duration-200 flex items-center justify-between gap-2"
+                  >
+                    <span className="text-[12.5px] text-[#232323]/70 dark:text-white/60 group-hover:text-[#232323] dark:group-hover:text-white/90 transition-colors leading-snug">
+                      {q}
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-[#232323]/20 dark:text-white/20 group-hover:text-[#FFAA00] transition-colors flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {loading && (
+              <div className="flex gap-2.5">
+                <div className="h-6 w-6 rounded-md bg-[#FFAA00]/12 flex-shrink-0 flex items-center justify-center mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-[#FFAA00]" />
+                </div>
+                <div className="bg-[#f4f4f5] dark:bg-white/8 rounded-2xl rounded-bl-md px-4 py-3">
+                  <div className="flex gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:0ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:300ms]" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input area */}
+          <div className="border-t border-black/8 dark:border-white/8 px-3 py-3">
+            <div className="flex items-end gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-[#f9f9f9] dark:bg-white/5 px-3 py-2 focus-within:ring-2 focus-within:ring-[#FFAA00]/30 focus-within:border-[#FFAA00]/40 transition-all">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about Qalion..."
+                rows={1}
+                className="flex-1 resize-none bg-transparent text-sm text-[#232323] dark:text-white placeholder:text-[#232323]/35 dark:placeholder:text-white/35 outline-none max-h-24 leading-relaxed"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || loading}
+                className="h-8 w-8 rounded-lg flex-shrink-0 flex items-center justify-center bg-[#FFAA00] text-white disabled:opacity-40 hover:bg-[#e69900] transition-colors"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-[10px] text-center text-[#232323]/30 dark:text-white/30 mt-2">
+              Powered by Qalion AI
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating trigger button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`fixed bottom-4 right-4 sm:right-6 z-[9999] h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+          open
+            ? "bg-[#232323] dark:bg-white/15 rotate-0"
+            : "bg-[#FFAA00] hover:bg-[#e69900] shadow-[0_4px_20px_rgba(255,170,0,0.4)]"
+        }`}
+        aria-label={open ? "Close chat" : "Open chat"}
+      >
+        {open ? (
+          <X className="h-5 w-5 text-white" />
+        ) : (
+          <MessageSquare className="h-5 w-5 text-white" />
+        )}
+      </button>
+    </>
+  );
+}

@@ -93,7 +93,7 @@ export default function MfaChallengePage() {
           </form>
 
           <p className="mt-4 text-center text-sm text-gray-600 dark:text-white/70">
-            <Link to="/signin" className="text-blue-600 dark:text-[#FFAA00] hover:underline font-medium">
+            <Link to="/signin" className="text-[#FFAA00] dark:text-[#FFAA00] hover:underline font-medium">
               Back to sign in
             </Link>
           </p>

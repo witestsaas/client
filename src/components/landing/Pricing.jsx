@@ -53,7 +53,7 @@ export default function Pricing() {
               }
             >
               {plan.highlight && (
-                <div
+               <div
                   className="absolute -top-3 left-1/2 -translate-x-1/2 text-[#ffb733] text-xs font-bold px-3 py-1 rounded-full"
                   style={{
                     background: isDark ? '#0a0a0f' : '#ffffff',

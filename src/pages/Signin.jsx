@@ -7,6 +7,7 @@ import { GoogleButton } from "../components/GoogleButton";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import AIChatWidget from "../components/AIChatWidget";
 
 const highlights = [
   { icon: Bot, stat: "10x", label: "Faster test creation" },
@@ -117,6 +118,7 @@ export default function SigninPage() {
   }
 
   return (
+    <>
     <main className="flex h-screen h-[100dvh] overflow-hidden bg-white dark:bg-[#08080d]">
       {/* Left branding panel */}
       <div
@@ -299,5 +301,7 @@ export default function SigninPage() {
         </div>
       </div>
     </main>
+    <AIChatWidget />
+    </>
   );
 }

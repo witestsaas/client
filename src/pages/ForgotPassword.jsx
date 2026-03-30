@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
               If an account exists for <span className="font-medium">{email}</span>, a reset link has been sent.
             </p>
             <div className="mt-6 text-center text-sm">
-              <Link to="/signin" className="text-blue-600 dark:text-[#FFAA00] hover:underline">Back to Sign In</Link>
+              <Link to="/signin" className="text-[#FFAA00] dark:text-[#FFAA00] hover:underline">Back to Sign In</Link>
             </div>
           </div>
         ) : (
@@ -56,12 +56,12 @@ export default function ForgotPasswordPage() {
               required
             />
             {error && <div className="text-red-600 text-sm text-center">{error}</div>}
-            <button type="submit" className="w-full bg-blue-600 dark:bg-[#FFAA00] hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 text-white dark:text-[#232323] font-semibold py-2 px-4 rounded-md transition-colors">Send Reset Link</button>
+            <button type="submit" className="w-full bg-[#FFAA00] dark:bg-[#FFAA00] hover:bg-[#FFAA00]/90 dark:hover:bg-[#FFAA00]/90 text-white dark:text-[#232323] font-semibold py-2 px-4 rounded-md transition-colors">Send Reset Link</button>
           </form>
         )}
         {!submitted ? (
           <div className="mt-6 text-center text-sm">
-            <Link to="/signin" className="text-blue-600 dark:text-[#FFAA00] hover:underline">Back to Sign In</Link>
+            <Link to="/signin" className="text-[#FFAA00] dark:text-[#FFAA00] hover:underline">Back to Sign In</Link>
           </div>
         ) : null}
       </div>

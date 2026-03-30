@@ -12,12 +12,12 @@ export const codeLines = [
 ];
 
 export const features = [
-  { icon: Bot,       title: 'Autonomous AI Agents',    desc: 'LangGraph agents navigate, interact, and self-heal — zero scripting.', accent: '#ffb733' },
-  { icon: Globe,     title: 'Real Browser Automation', desc: 'Full Playwright for cross-browser E2E with screenshots & recordings.',   accent: '#3b82f6' },
-  { icon: Zap,       title: 'Parallel Execution',      desc: 'Bull queues + real-time Socket.IO streams across unlimited agents.',     accent: '#22c55e' },
-  { icon: BarChart3, title: 'Deep AI Analytics',       desc: 'Coverage, flakiness, and performance trends powered by AI.',            accent: '#a855f7' },
-  { icon: Shield,    title: 'Secure by Design',        desc: 'Auth0 SSO, JWT, per-org isolation, encrypted API key boundaries.',      accent: '#ef4444' },
-  { icon: GitBranch, title: 'CI/CD Native',            desc: 'GitHub Actions, GitLab CI, or any webhook. Status before merge.',      accent: '#f97316' },
+  { icon: Bot,       title: 'Autonomous AI Agents',    desc: 'Smart agents that can move around, take actions, and fix issues on their own — no coding needed.', accent: '#ffb733' },
+  { icon: Globe,     title: 'Real Browser Automation', desc: 'Works across all major browsers, with screenshots and recordings of what happens.',   accent: '#3b82f6' },
+  { icon: Zap,       title: 'Parallel Execution',      desc: 'Handles lots of tasks at once and streams updates live, even with many agents running.',     accent: '#22c55e' },
+  { icon: BarChart3, title: 'Deep AI Analytics',       desc: 'Uses AI to track test coverage, spot unstable tests, and monitor performance over time.',            accent: '#a855f7' },
+  { icon: Shield,    title: 'Secure by Design',        desc: 'Secure login system with protected access and separate spaces for each organization.',      accent: '#ef4444' },
+  { icon: GitBranch, title: 'CI/CD Native',            desc: 'Connects with tools like GitHub or GitLab and checks everything before changes are approved.',      accent: '#f97316' },
 ];
 
 export const steps = [
