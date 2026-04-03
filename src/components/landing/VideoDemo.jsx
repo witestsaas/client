@@ -46,7 +46,7 @@ export default function VideoDemo() {
         <div className="text-center mb-14">
           <motion.p
             variants={fadeUp}
-            className="text-[#ffb733] font-semibold text-xs uppercase tracking-[0.2em] mb-4"
+            className="text-[#F29F05] font-semibold text-xs uppercase tracking-[0.2em] mb-4"
           >
             See it in action
           </motion.p>

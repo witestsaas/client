@@ -2,11 +2,6 @@ import React from 'react';
 import {
   AnimatePresence,
   motion,
-  useMotionValueEvent,
-  useScroll,
-  useSpring,
-  useTransform,
-  useInView,
 } from 'framer-motion';
 import Section from './ui/Section';
 import { useTheme } from '../../utils/theme-context.tsx';
@@ -188,7 +183,7 @@ function Scene01Generate({ c, accent, isDark }) {
       </motion.div>
 
       {/* Generated items */}
-      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto">
+      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto scene-scroll">
         {items.map((item, i) => (
           <motion.div
             key={item.label}
@@ -560,7 +555,7 @@ function Scene04Insights({ c, accent, isDark }) {
       </div>
 
       {/* AI insight cards */}
-      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto">
+      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto scene-scroll">
         {insights.map((ins, i) => (
           <motion.div
             key={ins.title}
@@ -639,7 +634,7 @@ const demoScenes = [
     step: '01',
     title: 'AI generates test cases',
     desc: 'The agent explores your app and auto-generates comprehensive test scenarios with full coverage.',
-    accent: '#ffb733',
+    accent: '#F29F05',
     icon: Brain,
     tags: ['Coverage map', 'Edge scenarios', 'Persona paths'],
     Scene: Scene01Generate,
@@ -649,7 +644,7 @@ const demoScenes = [
     step: '02',
     title: 'Build an execution plan',
     desc: 'Bundle cases into smart plans with browser targets, retries, and release gates.',
-    accent: '#60a5fa',
+    accent: '#ffffff',
     icon: ListChecks,
     tags: ['Multi-environment', 'Risk scoring', 'Parallel-ready'],
     Scene: Scene02Plan,
@@ -659,7 +654,7 @@ const demoScenes = [
     step: '03',
     title: 'Execute with live signals',
     desc: 'Runs dispatch across agents in real-time with traces, screenshots, and logs.',
-    accent: '#22c55e',
+    accent: '#F29F05',
     icon: Zap,
     tags: ['Live stream', 'Parallel agents', 'Auto evidence'],
     Scene: Scene03Execute,
@@ -669,7 +664,7 @@ const demoScenes = [
     step: '04',
     title: 'Get AI-powered insights',
     desc: 'AI summarises failures, detects flaky patterns, and suggests actionable fixes instantly.',
-    accent: '#a855f7',
+    accent: '#ffffff',
     icon: BarChart3,
     tags: ['Root cause', 'Flaky detector', 'Suggested fixes'],
     Scene: Scene04Insights,
@@ -678,70 +673,76 @@ const demoScenes = [
 
 /* ── Main component ────────────────────────────────────────────── */
 export default function HowItWorks() {
-  const containerRef = React.useRef(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const c = getLandingColors(isDark);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end end'],
-  });
-  const smooth = useSpring(scrollYProgress, { stiffness: 110, damping: 26, mass: 0.4 });
 
-  useMotionValueEvent(smooth, 'change', (v) => {
-    const idx = Math.min(demoScenes.length - 1, Math.max(0, Math.floor(v * demoScenes.length)));
-    setActiveIndex((cur) => (cur === idx ? cur : idx));
-  });
+  const handleStepClick = (index) => {
+    setActiveIndex(index);
+  };
 
-  const scene = demoScenes[activeIndex];
+  const themedScenes = demoScenes.map(s => ({ ...s, accent: isDark ? '#ffffff' : '#0D0D0D' }));
+  const scene = themedScenes[activeIndex];
   const SceneComponent = scene.Scene;
 
   return (
     <Section
       id="how-it-works"
-      className="px-4 sm:px-6 pt-16 sm:pt-28 pb-8"
-      style={{ background: c.sectionBg2 }}
+      className="px-4 sm:px-6 pt-20 sm:pt-32 pb-16 relative"
     >
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-10 sm:mb-16">
-          <motion.p
-            className="font-semibold text-xs uppercase tracking-[0.2em] mb-4"
-            style={{ color: '#ffb733' }}
-            initial={{ opacity: 0, y: 10 }}
+      {/* Background layer that doesn't interfere with sticky */}
+      <div
+        className="absolute inset-0 -z-10 pointer-events-none"
+        style={{ background: c.sectionBg2 }}
+      />
+      
+      <div className="max-w-6xl mx-auto">
+        {/* Section Header */}
+        <div className="max-w-2xl mb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 mb-6"
           >
-            How it works
-          </motion.p>
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: scene.accent }}
+            />
+            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: c.textMuted }}>
+              How it works
+            </span>
+          </motion.div>
+          
           <motion.h2
-            className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4"
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
             style={{ color: c.textPrimary }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            Four steps to full coverage
+            Four simple steps
           </motion.h2>
           <motion.p
-            className="text-base max-w-xl mx-auto"
+            className="text-base sm:text-lg"
             style={{ color: c.textMuted }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            From test generation to actionable insights — scroll to explore each stage.
+            From test generation to actionable insights. Watch how Qalion transforms your testing workflow.
           </motion.p>
         </div>
 
-        <div ref={containerRef} className="relative h-[260vh] sm:h-[300vh] lg:h-[340vh]">
-          <div className="sticky top-16 sm:top-20 lg:top-24 h-[80vh] sm:h-[78vh]">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 h-full items-stretch">
+        <div className="relative">
+          <div className="h-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start lg:items-stretch">
               {/* Step indicators — enhanced with icons, connector line, glow */}
-              <div className="lg:col-span-4 flex lg:flex-col gap-2 sm:gap-0 self-center overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 relative lg:pl-4">
+              <div className="lg:col-span-4 flex lg:flex-col gap-2 sm:gap-0 self-start lg:self-center overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 relative lg:pl-4">
                 {/* Vertical connector line (desktop only) */}
                 <div
                   className="hidden lg:block absolute left-0 top-4 bottom-4 w-[2px] rounded-full"
@@ -749,72 +750,54 @@ export default function HowItWorks() {
                 >
                   <motion.div
                     className="w-full rounded-full"
-                    style={{ background: scene.accent }}
-                    animate={{ height: `${((activeIndex + 1) / demoScenes.length) * 100}%` }}
+                    style={{ background: '#F29F05' }}
+                    animate={{ height: `${((activeIndex + 1) / themedScenes.length) * 100}%` }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
 
-                {demoScenes.map((s, i) => {
+                {themedScenes.map((s, i) => {
                   const active = i === activeIndex;
                   const done = i < activeIndex;
                   const IconEl = s.icon;
                   return (
                     <motion.div
                       key={s.id}
+                      onClick={() => handleStepClick(i)}
                       animate={{
                         opacity: active ? 1 : done ? 0.7 : 0.35,
                         x: active ? 0 : -4,
                       }}
                       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-xl p-3 sm:p-4 border transition-colors duration-300 min-w-[160px] lg:min-w-0 shrink-0 lg:shrink relative"
+                      className="rounded-lg p-3 sm:p-4 border transition-colors duration-300 min-w-[160px] lg:min-w-0 shrink-0 lg:shrink relative cursor-pointer hover:opacity-100"
                       style={{
-                        borderColor: active ? `${s.accent}55` : done ? `${s.accent}25` : c.borderSm,
-                        background: active ? `${s.accent}08` : 'transparent',
-                        boxShadow: active ? `0 0 24px ${s.accent}15` : 'none',
+                        borderColor: active ? 'rgba(242,159,5,0.35)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        background: active ? 'rgba(242,159,5,0.06)' : 'transparent',
+                        boxShadow: 'none',
                       }}
                     >
-                      {/* Glow backdrop */}
-                      {active && (
-                        <motion.div
-                          className="absolute inset-0 rounded-xl pointer-events-none"
-                          style={{
-                            background: `radial-gradient(ellipse at 30% 50%, ${s.accent}10, transparent 70%)`,
-                          }}
-                          layoutId="stepGlow"
-                          transition={{ duration: 0.5 }}
-                        />
-                      )}
                       <div className="flex items-center gap-3 relative z-10">
                         <div
-                          className="w-[44px] h-[44px] rounded-xl flex items-center justify-center shrink-0 relative"
+                          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 relative font-semibold text-white text-sm"
                           style={{
-                            background: active ? `${s.accent}18` : done ? `${s.accent}10` : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-                            border: `1.5px solid ${active ? s.accent : done ? `${s.accent}40` : 'transparent'}`,
+                            background: active ? '#F29F05' : done ? 'rgba(242,159,5,0.4)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
                           }}
                         >
                           {done ? (
-                            <CheckCircle2 className="w-5 h-5" style={{ color: s.accent }} />
-                          ) : active ? (
-                            <motion.div
-                              animate={{ scale: [1, 1.15, 1] }}
-                              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                            >
-                              <IconEl className="w-5 h-5" style={{ color: s.accent }} />
-                            </motion.div>
+                            <CheckCircle2 className="w-5 h-5" style={{ color: '#F29F05' }} />
                           ) : (
-                            <IconEl className="w-5 h-5" style={{ color: c.textSubtle }} />
+                            i + 1
                           )}
                         </div>
                         <div>
                           <p
-                            className="text-[10px] uppercase tracking-[0.15em] mb-0.5 font-bold"
-                            style={{ color: active ? s.accent : c.textSubtle }}
+                            className="text-xs uppercase tracking-wider font-semibold mb-0.5"
+                            style={{ color: active ? '#F29F05' : c.textSubtle }}
                           >
-                            Step {s.step}
+                            {s.step}
                           </p>
                           <h3
-                            className="text-sm font-semibold leading-tight"
+                            className="text-sm font-semibold leading-snug"
                             style={{ color: active || done ? c.textPrimary : c.textMuted }}
                           >
                             {s.title}
@@ -826,109 +809,109 @@ export default function HowItWorks() {
                 })}
               </div>
 
-              {/* Demo canvas — enhanced with gradient border, background effects */}
-              <div className="lg:col-span-8 h-full min-h-[300px] sm:min-h-[400px]">
+              {/* Demo canvas — clean and professional */}
+              <div className="lg:col-span-8 h-[500px] sm:h-[600px]">
                 <motion.div
                   className="rounded-2xl h-full border overflow-hidden relative"
                   style={{
-                    borderColor: `${scene.accent}33`,
+                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
                     background: c.mockupBg,
                     boxShadow: isDark
-                      ? `0 30px 80px rgba(0,0,0,0.4), 0 0 60px ${scene.accent}08`
-                      : `0 30px 80px rgba(0,0,0,0.08), 0 0 60px ${scene.accent}06`,
-                  }}
-                  animate={{
-                    boxShadow: isDark
-                      ? `0 30px 80px rgba(0,0,0,0.4), 0 0 60px ${scene.accent}12`
-                      : `0 30px 80px rgba(0,0,0,0.08), 0 0 60px ${scene.accent}08`,
+                      ? `0 16px 48px rgba(0,0,0,0.28), 0 0 32px ${scene.accent}05`
+                      : `0 16px 48px rgba(0,0,0,0.06), 0 0 32px ${scene.accent}03`,
                   }}
                   transition={{ duration: 0.6 }}
                 >
-                  {/* Subtle gradient accent at top */}
+                  {/* Subtle top accent line */}
                   <motion.div
-                    className="absolute top-0 left-0 right-0 h-[2px]"
-                    style={{ background: `linear-gradient(90deg, transparent, ${scene.accent}, transparent)` }}
+                    className="absolute top-0 left-0 right-0 h-[1px]"
+                    style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(242,159,5,0.4) 50%, transparent 100%)' }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4 }}
                   />
 
-                  {/* Browser bar */}
+                  {/* Browser bar — minimal design */}
                   <div
-                    className="h-10 px-4 flex items-center gap-2"
-                    style={{ background: c.mockupBarBg, borderBottom: `1px solid ${c.mockupBorder}` }}
+                    className="h-9 px-4 flex items-center gap-2.5"
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
+                    }}
                   >
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-                    <div
-                      className="flex-1 max-w-[260px] ml-3 rounded-md px-3 py-1 flex items-center gap-2"
-                      style={{
-                        background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-                      }}
-                    >
-                      <div className="w-3 h-3 rounded-full" style={{ background: `${scene.accent}30` }}>
-                        <div className="w-3 h-3 rounded-full" style={{ background: `${scene.accent}`, transform: 'scale(0.5)' }} />
+                    <div className="flex gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-[#ff5f57]" />
+                      <div className="w-2 h-2 rounded-full bg-[#febc2e]" />
+                      <div className="w-2 h-2 rounded-full bg-[#28c840]" />
+                    </div>
+                    <div className="flex-1 max-w-xs ml-2">
+                      <div
+                        className="rounded px-2.5 py-1.5 flex items-center gap-2"
+                        style={{
+                          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
+                        }}
+                      >
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: `${scene.accent}30` }}>
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: `${scene.accent}`, transform: 'scale(0.5)' }} />
+                        </div>
+                        <span className="text-[10px] font-mono" style={{ color: c.textMuted }}>
+                          app.qalion.io
+                        </span>
                       </div>
-                      <span className="text-[11px] font-mono" style={{ color: c.mockupUrlText }}>
-                        app.qalion.io
-                      </span>
                     </div>
                   </div>
 
                   {/* Scene content with header + immersive component */}
-                  <div className="pt-4 sm:pt-5 px-4 sm:px-5 md:px-6 pb-4 sm:pb-5 h-[calc(100%-2.5rem)] flex flex-col">
+                  <div className="pt-5 px-5 md:px-6 pb-5 h-[calc(100%-2.25rem)] flex flex-col">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={scene.id}
-                        initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
-                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, y: -16, filter: 'blur(4px)' }}
-                        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                         className="h-full flex flex-col"
                       >
                         {/* Header area */}
-                        <div className="flex items-start justify-between mb-3 sm:mb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span
-                                className="text-[10px] uppercase tracking-[0.15em] font-bold px-2 py-0.5 rounded-md"
-                                style={{ color: scene.accent, background: `${scene.accent}12` }}
-                              >
-                                Step {scene.step}
-                              </span>
-                              <div className="flex gap-1">
-                                {scene.tags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="text-[9px] px-1.5 py-0.5 rounded-md hidden sm:inline-block"
-                                    style={{
-                                      color: `${scene.accent}cc`,
-                                      background: `${scene.accent}08`,
-                                      border: `1px solid ${scene.accent}15`,
-                                    }}
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <h3
-                              className="text-base sm:text-lg md:text-xl font-bold mb-0.5"
-                              style={{ color: c.textPrimary }}
+                        <div className="mb-3 sm:mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className="text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded"
+                              style={{ color: scene.accent, background: `${scene.accent}10` }}
                             >
-                              {scene.title}
-                            </h3>
-                            <p className="text-[11px] sm:text-xs max-w-md" style={{ color: c.textMuted }}>
-                              {scene.desc}
-                            </p>
+                              {scene.step}
+                            </span>
+                            <div className="flex gap-1.5">
+                              {scene.tags.slice(0, 2).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="text-[8px] px-2 py-0.5 rounded hidden sm:inline-block"
+                                  style={{
+                                    color: `${scene.accent}88`,
+                                    background: `${scene.accent}08`,
+                                    border: `1px solid ${scene.accent}15`,
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
                           </div>
+                          <h3
+                            className="text-base sm:text-lg font-semibold mb-1"
+                            style={{ color: c.textPrimary }}
+                          >
+                            {scene.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm max-w-lg" style={{ color: c.textMuted }}>
+                            {scene.desc}
+                          </p>
                         </div>
 
                         {/* Immersive scene content */}
-                        <div className="flex-1 min-h-0">
-                          <SceneComponent c={c} accent={scene.accent} isDark={isDark} />
+                        <div className="flex-1 min-h-0 overflow-y-auto scene-scroll">
+                          <SceneComponent c={c} accent={isDark ? '#ffffff' : '#0D0D0D'} isDark={isDark} />
                         </div>
                       </motion.div>
                     </AnimatePresence>

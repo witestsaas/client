@@ -5,11 +5,11 @@
 export function getLandingColors(isDark) {
   return {
     // ── Page backgrounds ──────────────────────────────────────────────────
-    heroBg:      isDark ? '#020205'                 : '#f8f8fc',
-    sectionBg1:  isDark ? '#020205'                 : '#ffffff',
-    sectionBg2:  isDark ? '#05050a'                 : '#f4f5fb',
-    sectionBg3:  isDark ? '#0a0a0a'                 : '#f0f1f8',
-    stripBg:     isDark ? 'rgba(8,8,12,0.95)'       : '#eeeef6',
+    heroBg:      isDark ? 'transparent'                      : '#f8f8fc',
+    sectionBg1:  isDark ? 'transparent'                      : '#ffffff',
+    sectionBg2:  isDark ? 'rgba(255,255,255,0.02)'           : '#f4f5fb',
+    sectionBg3:  isDark ? 'rgba(255,255,255,0.03)'           : '#f0f1f8',
+    stripBg:     isDark ? 'rgba(19,17,42,0.75)'              : '#eeeef6',
 
     // ── Cards ─────────────────────────────────────────────────────────────
     cardBg:      isDark ? 'rgba(255,255,255,0.03)'  : '#ffffff',
@@ -28,7 +28,7 @@ export function getLandingColors(isDark) {
     borderTop:   isDark ? 'rgba(255,255,255,0.05)'  : 'rgba(0,0,0,0.06)',
 
     // ── Navbar ────────────────────────────────────────────────────────────
-    navScrollBg: isDark ? 'rgba(2,2,5,0.85)'        : 'rgba(255,255,255,0.9)',
+    navScrollBg: isDark ? 'rgba(19,17,42,0.85)'      : 'rgba(255,255,255,0.9)',
     navScrollBorder: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)',
 
     // ── Misc interactive ─────────────────────────────────────────────────

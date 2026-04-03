@@ -33,7 +33,7 @@ export default function Navbar() {
             className="flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all duration-300"
             style={{
               background: scrolled
-                ? isDark ? 'rgba(8,8,13,0.88)' : 'rgba(255,255,255,0.92)'
+                ? isDark ? 'rgba(19,17,42,0.88)' : 'rgba(255,255,255,0.92)'
                 : 'transparent',
               backdropFilter: scrolled ? 'blur(20px)' : 'none',
               WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
@@ -48,7 +48,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5">
               <div
-                className="w-8 h-8 rounded-lg bg-[#ffb733] flex items-center justify-center"
+                className="w-8 h-8 rounded-lg bg-[#F29F05] flex items-center justify-center"
                 style={{ boxShadow: '0 2px 8px rgba(255,183,51,0.3)' }}
               >
                 <Zap className="w-4 h-4 text-black" strokeWidth={2.5} />
@@ -90,7 +90,7 @@ export default function Navbar() {
                 Sign in
               </Link>
               <Link to="/signup">
-                <button className="text-sm font-semibold bg-[#ffb733] hover:bg-[#e5a22e] text-black px-5 py-2 rounded-lg transition-colors duration-200">
+                <button className="text-sm font-semibold bg-[#F29F05] hover:bg-[#e5a22e] text-black px-5 py-2 rounded-lg transition-colors duration-200">
                   Get started
                 </button>
               </Link>
@@ -107,7 +107,7 @@ export default function Navbar() {
         className="fixed top-0 left-0 right-0 z-50 md:hidden flex items-center justify-between px-4 sm:px-5 h-14"
         style={{
           background: mobileOpen || scrolled
-            ? isDark ? 'rgba(8,8,13,0.95)' : 'rgba(255,255,255,0.95)'
+            ? isDark ? 'rgba(19,17,42,0.95)' : 'rgba(255,255,255,0.95)'
             : 'transparent',
           backdropFilter: 'blur(16px)',
           borderBottom: scrolled || mobileOpen ? `1px solid ${c.borderSm}` : 'none',
@@ -115,7 +115,7 @@ export default function Navbar() {
         }}
       >
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#ffb733] flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-[#F29F05] flex items-center justify-center">
             <Zap className="w-3.5 h-3.5 text-black" strokeWidth={2.5} />
           </div>
           <span className="font-bold text-sm" style={{ color: c.textPrimary }}>Qalion</span>
@@ -140,7 +140,7 @@ export default function Navbar() {
             transition={{ duration: 0.2 }}
             className="fixed top-14 left-0 right-0 z-40 md:hidden px-4 sm:px-5 py-4 flex flex-col gap-1 max-h-[calc(100vh-3.5rem)] overflow-y-auto"
             style={{
-              background: isDark ? 'rgba(8,8,13,0.98)' : 'rgba(255,255,255,0.98)',
+              background: isDark ? 'rgba(19,17,42,0.98)' : 'rgba(255,255,255,0.98)',
               backdropFilter: 'blur(24px)',
               borderBottom: `1px solid ${c.borderSm}`,
             }}
@@ -160,7 +160,7 @@ export default function Navbar() {
               <Link to="/signin" className="text-sm py-2.5 text-center rounded-lg" style={{ color: c.textMuted, border: `1px solid ${c.ghostBorder}` }}>
                 Sign in
               </Link>
-              <Link to="/signup" className="text-sm font-semibold bg-[#ffb733] text-black py-2.5 rounded-lg text-center">
+              <Link to="/signup" className="text-sm font-semibold bg-[#F29F05] text-black py-2.5 rounded-lg text-center">
                 Get started
               </Link>
             </div>

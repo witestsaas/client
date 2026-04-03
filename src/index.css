@@ -1,5 +1,21 @@
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/Aeonik-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aeonik';
+  src: url('/fonts/Aeonik-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Aeonik', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -63,4 +79,146 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Animated Bubbles Keyframes */
+@keyframes float-bubble {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(20px, -30px) scale(1.08);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(-15px, 25px) scale(1);
+    opacity: 0.6;
+  }
+}
+
+@keyframes float-bubble-lg {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  33% {
+    transform: translate(40px, -60px) scale(1.05);
+    opacity: 0.75;
+  }
+  66% {
+    transform: translate(-30px, 45px) scale(1.02);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+}
+
+@keyframes float-bubble-md {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-35px, 50px) scale(1.06);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+}
+
+/* Bubble Animation Classes */
+.bubble-1-anim {
+  animation: float-bubble-lg 20s ease-in-out infinite 0s !important;
+}
+
+.bubble-2-anim {
+  animation: float-bubble-md 18s ease-in-out infinite 2s !important;
+}
+
+.bubble-3-anim {
+  animation: float-bubble-lg 22s ease-in-out infinite 4s !important;
+}
+
+/* Enhanced Section Styling */
+section {
+  position: relative;
+  z-index: 5;
+}
+
+/* Card Enhancement - specific to feature cards only */
+.feature-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+}
+
+/* Text Enhancement for Better Contrast */
+h1, h2, h3, h4, h5, h6 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Feature Cards Glow Effect - only on feature cards */
+.feature-card.rounded-2xl {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.feature-card.rounded-2xl:hover {
+  box-shadow: 0 12px 40px rgba(94, 0, 255, 0.15), 0 4px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px);
+}
+
+/* Button Enhancement */
+button {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 183, 51, 0.2);
+}
+
+button:hover {
+  box-shadow: 0 8px 30px rgba(255, 183, 51, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Section Dividers */
+section + section {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Text Gradient for Headlines */
+.text-transparent {
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* ── Scene card vertical scrollbar — Chrome, Safari, Edge, Firefox ── */
+
+/* Standard (Chrome 121+, Firefox) */
+.scene-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #F29F05 transparent;
+}
+
+/* Legacy webkit (Chrome <121, Safari, Edge legacy) */
+.scene-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scene-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+.scene-scroll::-webkit-scrollbar-thumb {
+  background: #F29F05;
+  border-radius: 999px;
+  min-height: 24px;
+}
+.scene-scroll::-webkit-scrollbar-thumb:hover {
+  background: #d98e04;
+}
+.scene-scroll::-webkit-scrollbar-corner {
+  background: transparent;
 }

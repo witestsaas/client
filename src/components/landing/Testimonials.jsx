@@ -15,7 +15,7 @@ export default function Testimonials() {
     <Section className="py-28 md:py-36 px-6" style={{ background: c.sectionBg1 }}>
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
-          <motion.p variants={fadeUp} className="text-[#ffb733] font-semibold text-xs uppercase tracking-[0.2em] mb-4">
+          <motion.p variants={fadeUp} className="text-[#F29F05] font-semibold text-xs uppercase tracking-[0.2em] mb-4">
             Testimonials
           </motion.p>
           <motion.h2 variants={fadeUp} className="text-3xl md:text-5xl font-bold" style={{ color: c.textPrimary }}>
@@ -34,7 +34,7 @@ export default function Testimonials() {
             >
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-[#ffb733] text-[#ffb733]" />
+                  <Star key={i} className="w-4 h-4 fill-[#F29F05] text-[#F29F05]" />
                 ))}
               </div>
               <p className="text-sm leading-relaxed flex-1" style={{ color: c.textMuted }}>

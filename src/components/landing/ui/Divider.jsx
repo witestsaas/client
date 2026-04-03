@@ -10,7 +10,7 @@ export default function Divider() {
     : 'linear-gradient(90deg, transparent, rgba(100,100,200,0.15), rgba(80,100,220,0.12), transparent)';
 
   const orbColor = isDark
-    ? 'linear-gradient(90deg, transparent, #ffb733, transparent)'
+    ? 'linear-gradient(90deg, transparent, #F29F05, transparent)'
     : 'linear-gradient(90deg, transparent, rgba(80,100,220,0.5), transparent)';
 
   return (
