@@ -39,7 +39,7 @@ export default function Stats() {
         >
           {stats.map((s) => (
             <motion.div key={s.label} variants={fadeUp} className="flex flex-col items-center">
-              <span className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2" style={{ color: s.color }}>
+              <span className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2" style={{ color: isDark ? '#ffffff' : '#0D0D0D' }}>
                 <Counter to={s.value} suffix={s.suffix} duration={2.5} />
               </span>
               <span className="text-sm" style={{ color: c.textMuted }}>{s.label}</span>
