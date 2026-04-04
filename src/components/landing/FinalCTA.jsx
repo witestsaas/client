@@ -6,7 +6,7 @@ import { fadeUp } from '../../utils/motion';
 
 export default function FinalCTA() {
   return (
-    <Section className="py-20 sm:py-32 md:py-40 px-4 sm:px-6 relative overflow-hidden" style={{ background: 'transparent', backdropFilter: 'blur(10px)' }}>
+    <Section className="py-20 sm:py-32 md:py-40 px-4 sm:px-6 relative overflow-hidden" style={{ background: 'rgba(19,17,42,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
       {/* Enhanced glows */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[600px] h-[400px] pointer-events-none"
