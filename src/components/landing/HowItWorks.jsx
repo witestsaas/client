@@ -691,19 +691,9 @@ export default function HowItWorks() {
       id="how-it-works"
       className="px-4 sm:px-6 pt-20 sm:pt-32 pb-16 relative"
       style={{
-        background: isDark ? 'rgba(19,17,42,0.88)' : 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
       }}
     >
-      {/* Decorative overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at top right, rgba(242,183,5,0.08) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(242,183,5,0.05) 0%, transparent 50%)',
-        }}
-      />
-      
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div className="max-w-2xl mb-20">

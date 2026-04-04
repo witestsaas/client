@@ -12,7 +12,7 @@ export default function Footer() {
   return (
     <footer
       className="px-4 sm:px-6 py-10 sm:py-14"
-      style={{ background: isDark ? 'rgba(19,17,42,0.88)' : 'rgba(255,255,255,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderTop: `1px solid ${c.borderTop}` }}
+      style={{ background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)' }}
     >
       <div className="max-w-5xl mx-auto">
         <motion.div 
@@ -81,7 +81,6 @@ export default function Footer() {
 
         <div
           className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4"
-          style={{ borderTop: `1px solid ${c.borderTop}` }}
         >
           <p className="text-xs" style={{ color: c.textTiny }}>
             &copy; 2026 Qalion. All rights reserved.

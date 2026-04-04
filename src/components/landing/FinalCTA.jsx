@@ -3,34 +3,14 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Section from './ui/Section';
 import { fadeUp } from '../../utils/motion';
+import { useTheme } from '../../utils/theme-context.tsx';
 
 export default function FinalCTA() {
-  return (
-    <Section className="py-20 sm:py-32 md:py-40 px-4 sm:px-6 relative overflow-hidden" style={{ background: 'rgba(19,17,42,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-      {/* Enhanced glows */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[600px] h-[400px] pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse, rgba(255,183,51,0.12) 0%, rgba(94, 0, 255, 0.08) 40%, transparent 70%)',
-          filter: 'blur(80px)',
-        }}
-      />
-      {/* Accent glows */}
-      <div
-        className="absolute -top-40 left-1/4 w-[300px] h-[300px] rounded-full pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(242, 183, 5, 0.15) 0%, transparent 70%)',
-          filter: 'blur(100px)',
-        }}
-      />
-      <div
-        className="absolute -bottom-40 right-1/4 w-[300px] h-[300px] rounded-full pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle, rgba(94, 0, 255, 0.12) 0%, transparent 70%)',
-          filter: 'blur(100px)',
-        }}
-      />
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
+  return (
+    <Section className="py-20 sm:py-32 md:py-40 px-4 sm:px-6 relative overflow-hidden" style={{ background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)' }}>
       <div className="relative z-10 max-w-3xl mx-auto text-center">
         <motion.h2 
           variants={fadeUp} 

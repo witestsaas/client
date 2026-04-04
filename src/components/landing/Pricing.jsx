@@ -28,19 +28,9 @@ export default function Pricing() {
       id="pricing"
       className="py-16 sm:py-24 md:py-36 px-4 sm:px-6 relative overflow-hidden"
       style={{
-        background: isDark ? 'rgba(19,17,42,0.88)' : 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
       }}
     >
-      {/* Decorative overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at top right, rgba(242,183,5,0.08) 0%, transparent 55%), radial-gradient(ellipse at bottom left, rgba(242,183,5,0.05) 0%, transparent 55%)',
-        }}
-      />
-
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-10">

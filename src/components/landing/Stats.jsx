@@ -15,20 +15,9 @@ export default function Stats() {
     <Section
       className="py-14 sm:py-20 px-4 sm:px-6 relative"
       style={{
-        background: c.sectionBg1,
-        backdropFilter: 'blur(10px)',
-        borderTop: `1px solid ${c.borderTop}`,
-        borderBottom: `1px solid ${c.borderTop}`,
+        background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
       }}
     >
-      {/* Subtle background overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at center, rgba(242, 183, 5, 0.1) 0%, transparent 70%)',
-        }}
-      />
-
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div 
           variants={staggerContainer} 

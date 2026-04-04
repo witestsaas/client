@@ -15,19 +15,9 @@ export default function Features() {
       id="features"
       className="py-16 sm:py-24 md:py-36 px-4 sm:px-6 relative"
       style={{
-        background: isDark ? 'rgba(19,17,42,0.88)' : 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
       }}
     >
-      {/* Subtle background overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at top right, rgba(242, 183, 5, 0.08) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(94, 0, 255, 0.06) 0%, transparent 50%)',
-        }}
-      />
-
       <div className="max-w-5xl mx-auto relative z-10">
         <div className="text-center mb-16">
           <motion.p 

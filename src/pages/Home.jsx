@@ -15,7 +15,7 @@ export default function Home() {
   const isDark = theme === 'dark';
 
   return (
-    <div className="relative min-h-screen bg-[#fafafa] dark:bg-[#13112a] transition-colors duration-500" style={{ overflow: 'hidden' }}>
+    <div className="relative min-h-screen bg-[#fafafa] dark:bg-[#13112a] transition-colors duration-500">
       {/* Animated background blobs */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
 
