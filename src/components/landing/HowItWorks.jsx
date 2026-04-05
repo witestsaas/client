@@ -25,6 +25,103 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+/* ── Custom scrollbar (hides OS scrollbar, shows styled one) ───── */
+function SceneScroll({ children, className = '' }) {
+  const trackRef = React.useRef(null);
+  const thumbRef = React.useRef(null);
+  const contentRef = React.useRef(null);
+  const isDragging = React.useRef(false);
+  const dragStartY = React.useRef(0);
+  const dragStartScroll = React.useRef(0);
+
+  const updateThumb = React.useCallback(() => {
+    const el = contentRef.current;
+    const thumb = thumbRef.current;
+    const track = trackRef.current;
+    if (!el || !thumb || !track) return;
+    const ratio = el.scrollTop / (el.scrollHeight - el.clientHeight);
+    const trackH = track.clientHeight;
+    const thumbH = Math.max(32, (el.clientHeight / el.scrollHeight) * trackH);
+    const maxTop = trackH - thumbH;
+    thumb.style.height = `${thumbH}px`;
+    thumb.style.transform = `translateY(${ratio * maxTop}px)`;
+    const showBar = el.scrollHeight > el.clientHeight + 2;
+    track.style.opacity = showBar ? '1' : '0';
+  }, []);
+
+  React.useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    updateThumb();
+    el.addEventListener('scroll', updateThumb);
+    const ro = new ResizeObserver(updateThumb);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', updateThumb); ro.disconnect(); };
+  }, [updateThumb]);
+
+  const onMouseDown = (e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartY.current = e.clientY;
+    dragStartScroll.current = contentRef.current.scrollTop;
+    const onMove = (e) => {
+      if (!isDragging.current) return;
+      const el = contentRef.current;
+      const track = trackRef.current;
+      if (!el || !track) return;
+      const dy = e.clientY - dragStartY.current;
+      const ratio = dy / track.clientHeight;
+      el.scrollTop = dragStartScroll.current + ratio * (el.scrollHeight - el.clientHeight);
+    };
+    const onUp = () => { isDragging.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, { once: true });
+  };
+
+  return (
+    <div className={`flex-1 min-h-0 relative flex ${className}`} style={{ overflow: 'hidden' }}>
+      {/* Content — native scrollbar pushed off-screen via marginRight */}
+      <div
+        ref={contentRef}
+        style={{ flex: 1, overflowY: 'scroll', marginRight: -20, paddingRight: 24 }}
+      >
+        {children}
+      </div>
+      {/* Custom scrollbar track */}
+      <div
+        ref={trackRef}
+        style={{
+          width: 4,
+          borderRadius: 999,
+          background: 'rgba(155,111,255,0.12)',
+          margin: '6px 0',
+          flexShrink: 0,
+          position: 'relative',
+          transition: 'opacity 0.2s',
+        }}
+      >
+        <div
+          ref={thumbRef}
+          onMouseDown={onMouseDown}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            borderRadius: 999,
+            background: 'linear-gradient(180deg, #9ca3af 0%, #6b7280 100%)',
+            cursor: 'grab',
+            minHeight: 32,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(180deg, #d1d5db 0%, #9ca3af 100%)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(180deg, #9ca3af 0%, #6b7280 100%)')}
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ── Floating particles component ──────────────────────────────── */
 function FloatingParticles({ color, count = 6 }) {
   return (
@@ -183,7 +280,8 @@ function Scene01Generate({ c, accent, isDark }) {
       </motion.div>
 
       {/* Generated items */}
-      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto scene-scroll">
+      <SceneScroll>
+        <div className="space-y-2 sm:space-y-2.5">
         {items.map((item, i) => (
           <motion.div
             key={item.label}
@@ -233,7 +331,8 @@ function Scene01Generate({ c, accent, isDark }) {
             </motion.div>
           </motion.div>
         ))}
-      </div>
+        </div>
+      </SceneScroll>
 
       {/* Bottom summary */}
       <motion.div
@@ -555,7 +654,8 @@ function Scene04Insights({ c, accent, isDark }) {
       </div>
 
       {/* AI insight cards */}
-      <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto scene-scroll">
+      <SceneScroll>
+        <div className="space-y-2 sm:space-y-2.5">
         {insights.map((ins, i) => (
           <motion.div
             key={ins.title}
@@ -596,7 +696,8 @@ function Scene04Insights({ c, accent, isDark }) {
             />
           </motion.div>
         ))}
-      </div>
+        </div>
+      </SceneScroll>
 
       {/* AI summary */}
       <motion.div
@@ -907,7 +1008,7 @@ export default function HowItWorks() {
                         </div>
 
                         {/* Immersive scene content */}
-                        <div className="flex-1 min-h-0 overflow-y-auto scene-scroll">
+                        <div className="flex-1 min-h-0 overflow-hidden">
                           <SceneComponent c={c} accent={isDark ? '#ffffff' : '#0D0D0D'} isDark={isDark} />
                         </div>
                       </motion.div>

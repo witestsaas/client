@@ -37,7 +37,7 @@ export function getLandingColors(isDark) {
     ghostBorder: isDark ? 'rgba(255,255,255,0.12)'  : 'rgba(0,0,0,0.12)',
 
     // ── Hero mockup dashboard ────────────────────────────────────────
-    mockupBg:          isDark ? 'rgba(12,12,16,0.9)'      : 'rgba(250,250,255,0.97)',
+    mockupBg:          isDark ? '#16132a'                  : '#f5f3ff',
     mockupBorder:      isDark ? 'rgba(255,255,255,0.08)'  : 'rgba(0,0,0,0.09)',
     mockupShadow:      isDark
       ? '0 40px 120px rgba(0,0,0,0.7), 0 0 80px rgba(255,183,51,0.06)'

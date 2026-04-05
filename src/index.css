@@ -199,26 +199,21 @@ section + section {
 /* Standard (Chrome 121+, Firefox) */
 .scene-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #F29F05 transparent;
+  scrollbar-color: rgba(242,159,5,0.6) rgba(155,111,255,0.1);
 }
-
-/* Legacy webkit (Chrome <121, Safari, Edge legacy) */
 .scene-scroll::-webkit-scrollbar {
   width: 4px;
-  height: 4px;
 }
 .scene-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(155,111,255,0.1);
   border-radius: 999px;
+  margin: 8px 0;
 }
 .scene-scroll::-webkit-scrollbar-thumb {
-  background: #F29F05;
+  background: linear-gradient(180deg, #F29F05 0%, #d97706 100%);
   border-radius: 999px;
-  min-height: 24px;
+  min-height: 28px;
 }
 .scene-scroll::-webkit-scrollbar-thumb:hover {
-  background: #d98e04;
-}
-.scene-scroll::-webkit-scrollbar-corner {
-  background: transparent;
+  background: linear-gradient(180deg, #fbbf24 0%, #F29F05 100%);
 }
