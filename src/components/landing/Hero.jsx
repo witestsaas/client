@@ -89,7 +89,7 @@ export default function Hero() {
             >
               <Link to="/signup">
                 <button
-                  className="inline-flex items-center gap-2 font-semibold px-7 py-3.5 rounded-xl text-sm sm:text-base transition-colors duration-200"
+                  className="inline-flex items-center gap-2 font-semibold px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base transition-colors duration-200"
                   style={{ background: '#F2B705', color: '#000' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#d9a400'}
                   onMouseLeave={e => e.currentTarget.style.background = '#F2B705'}

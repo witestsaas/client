@@ -178,7 +178,7 @@ export default function Pricing() {
                 variants={fadeUp}
                 whileHover={{ y: -5 }}
                 className={`relative rounded-2xl flex flex-col gap-5 transition-all duration-300 ${
-                  isHighlight ? 'p-7 sm:p-9 -my-8' : 'p-6 sm:p-7'
+                  isHighlight ? 'p-6 sm:p-9 sm:-my-8' : 'p-6 sm:p-7'
                 }`}
                 style={cardStyle}
               >

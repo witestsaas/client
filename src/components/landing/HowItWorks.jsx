@@ -524,7 +524,7 @@ function Scene04Insights({ c, accent, isDark }) {
   return (
     <div className="flex flex-col h-full">
       {/* Metrics ribbon */}
-      <div className="grid grid-cols-3 gap-2 mb-3 sm:mb-4">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
@@ -766,7 +766,7 @@ export default function HowItWorks() {
                         x: active ? 0 : -4,
                       }}
                       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-lg p-3 sm:p-4 border transition-colors duration-300 min-w-[160px] lg:min-w-0 shrink-0 lg:shrink relative cursor-pointer hover:opacity-100"
+                      className="rounded-lg p-2.5 sm:p-3 lg:p-4 border transition-colors duration-300 min-w-[120px] sm:min-w-[145px] lg:min-w-0 shrink-0 lg:shrink relative cursor-pointer hover:opacity-100"
                       style={{
                         borderColor: active ? 'rgba(242,159,5,0.35)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                         background: active ? 'rgba(242,159,5,0.06)' : 'transparent',
@@ -807,7 +807,7 @@ export default function HowItWorks() {
               </div>
 
               {/* Demo canvas — clean and professional */}
-              <div className="lg:col-span-8 h-[500px] sm:h-[600px]">
+              <div className="lg:col-span-8 h-[360px] sm:h-[480px] lg:h-[560px]">
                 <motion.div
                   className="rounded-2xl h-full border overflow-hidden relative"
                   style={{

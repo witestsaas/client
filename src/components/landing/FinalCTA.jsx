@@ -38,21 +38,21 @@ export default function FinalCTA() {
         >
           Join engineering teams shipping faster with confidence.
         </motion.p>
-        <motion.div 
-          variants={fadeUp} 
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+        <motion.div
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <Link to="/signup">
-            <button className="flex items-center gap-2 font-semibold px-7 sm:px-10 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base bg-[#F29F05] hover:bg-[#e5a22e] text-black transition-colors duration-200">
+          <Link to="/signup" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto flex items-center justify-center gap-2 font-semibold px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base bg-[#F29F05] hover:bg-[#e5a22e] text-black transition-colors duration-200">
               Get started free <ArrowRight className="w-4 h-4" />
             </button>
           </Link>
-          <Link to="/signin">
-            <button className="px-7 sm:px-10 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base text-white/50 hover:text-white/80 transition-colors duration-200" style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
+          <Link to="/signin" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto flex items-center justify-center px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base text-white/50 hover:text-white/80 transition-colors duration-200" style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
               Sign in
             </button>
           </Link>
