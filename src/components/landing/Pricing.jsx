@@ -1,14 +1,49 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Zap } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Section from './ui/Section';
 import { fadeUp, staggerContainer } from '../../utils/motion';
-import { plans } from '../../constants/landing';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
-const annualDiscount = 0.2; // 20% off
+const annualDiscount = 0.2;
+
+const plans = [
+  {
+    name: 'Starter',
+    price: null,
+    priceLabel: 'Free',
+    period: '',
+    desc: 'Perfect to get started',
+    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert'],
+    cta: 'Get started',
+    ctaLink: '/signup',
+    highlight: false,
+  },
+  {
+    name: 'Pro',
+    price: 499,
+    priceLabel: null,
+    period: '/month',
+    desc: 'Recommended for growing teams',
+    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert', 'Priority support'],
+    cta: 'Get started',
+    ctaLink: '/signup',
+    highlight: true,
+  },
+  {
+    name: 'Enterprise',
+    price: null,
+    priceLabel: "Let's talk",
+    period: '',
+    desc: 'For larger organisations',
+    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert', 'Priority support'],
+    cta: 'Contact sales',
+    ctaLink: '/signup',
+    highlight: false,
+  },
+];
 
 export default function Pricing() {
   const { theme } = useTheme();
@@ -16,12 +51,15 @@ export default function Pricing() {
   const c = getLandingColors(isDark);
   const [annual, setAnnual] = useState(false);
 
-  function getPrice(plan) {
-    if (plan.price === 'Free' || plan.price === "Let's talk") return plan.price;
-    const base = parseFloat(plan.price.replace('$', ''));
-    const discounted = annual ? Math.round(base * (1 - annualDiscount)) : base;
-    return `$${discounted}`;
+  function getDisplayPrice(plan) {
+    if (plan.priceLabel) return { label: plan.priceLabel, numeric: null };
+    const base = plan.price;
+    const val = annual ? Math.round(base * (1 - annualDiscount)) : base;
+    return { label: null, numeric: val };
   }
+
+  const cardBg    = isDark ? '#18152d' : '#ffffff';
+  const cardBgAlt = isDark ? '#1e1828' : '#f8f6ff';
 
   return (
     <Section
@@ -32,8 +70,9 @@ export default function Pricing() {
       }}
     >
       <div className="max-w-5xl mx-auto relative z-10">
+
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-12">
           <motion.p
             className="text-[#F29F05] font-semibold text-xs uppercase tracking-[0.2em] mb-4"
             initial={{ opacity: 0, y: 20 }}
@@ -64,12 +103,12 @@ export default function Pricing() {
             No hidden fees. Cancel anytime.
           </motion.p>
 
-          {/* Toggle mensuel / annuel */}
+          {/* Toggle */}
           <motion.div
-            className="inline-flex items-center gap-3 px-1.5 py-1.5 rounded-full relative"
+            className="inline-flex items-center gap-1 p-1 rounded-full"
             style={{
-              background: c.cardBg,
-              border: `1px solid ${c.cardBorder}`,
+              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
             }}
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -78,32 +117,30 @@ export default function Pricing() {
           >
             <button
               onClick={() => setAnnual(false)}
-              className="relative px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 z-10"
-              style={{ color: !annual ? (isDark ? '#000' : '#fff') : c.textMuted }}
+              className="relative px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+              style={{
+                background: !annual ? '#F29F05' : 'transparent',
+                color: !annual ? '#000' : c.textMuted,
+              }}
             >
-              {!annual && (
-                <motion.span
-                  layoutId="billing-pill"
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: '#F29F05' }}
-                />
-              )}
-              <span className="relative z-10">Monthly</span>
+              Monthly
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className="relative px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 z-10 flex items-center gap-2"
-              style={{ color: annual ? (isDark ? '#000' : '#fff') : c.textMuted }}
+              className="relative flex items-center gap-2 px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+              style={{
+                background: annual ? '#F29F05' : 'transparent',
+                color: annual ? '#000' : c.textMuted,
+              }}
             >
-              {annual && (
-                <motion.span
-                  layoutId="billing-pill"
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: '#F29F05' }}
-                />
-              )}
-              <span className="relative z-10">Annual</span>
-              <span className="relative z-10 text-xs font-bold text-[#F29F05] bg-[#F29F05]/10 px-1.5 py-0.5 rounded-full leading-none">
+              Annual
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+                style={{
+                  background: annual ? 'rgba(0,0,0,0.15)' : 'rgba(242,159,5,0.15)',
+                  color: annual ? '#000' : '#F29F05',
+                }}
+              >
                 -20%
               </span>
             </button>
@@ -113,146 +150,125 @@ export default function Pricing() {
         {/* Cards */}
         <motion.div
           variants={staggerContainer}
-          className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 items-start"
+          className="grid sm:grid-cols-3 gap-4 sm:gap-6 items-center py-8"
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
+          viewport={{ once: true, amount: 0.15 }}
         >
-          {plans.map((plan, i) => {
+          {plans.map((plan) => {
+            const { label, numeric } = getDisplayPrice(plan);
             const isHighlight = plan.highlight;
-            const displayPrice = getPrice(plan);
+            const isEnterprise = plan.name === 'Enterprise';
 
-            return (
+            const cardStyle = isHighlight
+              ? {
+                  background: cardBg,
+                  border: '1.5px solid rgba(155,111,255,0.6)',
+                  boxShadow: '0 0 0 1px rgba(94,0,255,0.2), 0 0 50px rgba(94,0,255,0.28), 0 12px 60px rgba(94,0,255,0.15)',
+                }
+              : {
+                  background: isEnterprise ? cardBgAlt : cardBg,
+                  border: '1px solid rgba(155,111,255,0.35)',
+                  boxShadow: '0 0 20px rgba(94,0,255,0.12)',
+                };
+
+            const cardContent = (
               <motion.div
                 key={plan.name}
                 variants={fadeUp}
-                whileHover={{ y: -10 }}
-                whileTap={{ scale: 0.98 }}
-                className="relative rounded-2xl p-5 sm:p-7 flex flex-col gap-5 transition-all duration-300 cursor-pointer"
-                style={
-                  isHighlight
-                    ? {
-                        background: 'linear-gradient(140deg, #F29F05 0%, #ff8c00 55%, #f5a623 100%)',
-                        border: '1px solid rgba(255,183,51,0.6)',
-                        boxShadow: '0 20px 60px rgba(242,183,5,0.25)',
-                      }
-                    : {
-                        background: c.cardBg,
-                        border: `1px solid ${c.cardBorder}`,
-                        boxShadow: c.cardShadow,
-                      }
-                }
+                whileHover={{ y: -5 }}
+                className={`relative rounded-2xl flex flex-col gap-5 transition-all duration-300 ${
+                  isHighlight ? 'p-7 sm:p-9 -my-8' : 'p-6 sm:p-7'
+                }`}
+                style={cardStyle}
               >
-                {/* Badge Most Popular */}
-                {isHighlight && (
-                  <div
-                    className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full"
-                    style={{
-                      background: isDark ? '#13112a' : '#ffffff',
-                      border: '1px solid rgba(242,183,5,0.4)',
-                      color: '#F29F05',
-                    }}
-                  >
-                    <Zap className="w-3 h-3" />
-                    Most popular
-                  </div>
-                )}
-
-                {/* Plan name + desc */}
+                {/* Plan name */}
                 <div>
                   <p
-                    className="font-semibold text-xs uppercase tracking-widest mb-3"
-                    style={{ color: isHighlight ? 'rgba(0,0,0,0.5)' : c.textSubtle }}
+                    className="text-xs font-semibold uppercase tracking-widest mb-3"
+                    style={{ color: c.textSubtle }}
                   >
                     {plan.name}
                   </p>
 
-                  {/* Prix avec animation */}
-                  <div className="flex items-end gap-1 mb-2">
+                  {/* Price */}
+                  <div className="flex items-start gap-0.5 mb-2">
                     <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`${plan.name}-${annual}`}
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        transition={{ duration: 0.25 }}
-                        className="text-4xl font-bold tracking-tight"
-                        style={{ color: isHighlight ? '#000' : c.textPrimary }}
-                      >
-                        {displayPrice}
-                      </motion.span>
+                      {label ? (
+                        <motion.span
+                          key={`${plan.name}-label`}
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 6 }}
+                          transition={{ duration: 0.2 }}
+                          className="text-3xl sm:text-4xl font-bold tracking-tight"
+                          style={{ color: c.textPrimary }}
+                        >
+                          {label}
+                        </motion.span>
+                      ) : (
+                        <motion.div
+                          key={`${plan.name}-${annual}`}
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 6 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex items-start"
+                        >
+                          <span
+                            className="text-base font-bold mt-1.5 mr-0.5"
+                            style={{ color: c.textPrimary }}
+                          >
+                            $
+                          </span>
+                          <span
+                            className="text-3xl sm:text-4xl font-bold tracking-tight"
+                            style={{ color: c.textPrimary }}
+                          >
+                            {numeric}
+                          </span>
+                          <span
+                            className="text-sm self-end mb-1 ml-1"
+                            style={{ color: c.textSubtle }}
+                          >
+                            {annual ? '/mo billed annually' : plan.period}
+                          </span>
+                        </motion.div>
+                      )}
                     </AnimatePresence>
-                    {plan.period && (
-                      <span
-                        className="text-sm mb-1.5"
-                        style={{ color: isHighlight ? 'rgba(0,0,0,0.45)' : c.textSubtle }}
-                      >
-                        {annual ? '/mo billed annually' : plan.period}
-                      </span>
-                    )}
                   </div>
 
-                  <p
-                    className="text-sm"
-                    style={{ color: isHighlight ? 'rgba(0,0,0,0.55)' : c.textSubtle }}
-                  >
+                  <p className="text-sm" style={{ color: c.textSubtle }}>
                     {plan.desc}
                   </p>
                 </div>
 
-                {/* Divider */}
-                <div
-                  className="h-px w-full"
-                  style={{
-                    background: isHighlight
-                      ? 'rgba(0,0,0,0.1)'
-                      : isDark
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'rgba(0,0,0,0.06)',
-                  }}
-                />
-
                 {/* Features */}
-                <ul className="flex flex-col gap-3 flex-1">
+                <ul className="flex flex-col gap-2.5 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2.5 text-sm">
-                      <CheckCircle
+                      <Check
                         className="w-4 h-4 shrink-0"
-                        style={{ color: isHighlight ? 'rgba(0,0,0,0.6)' : '#F29F05' }}
+                        style={{ color: '#F29F05' }}
+                        strokeWidth={2.5}
                       />
-                      <span style={{ color: isHighlight ? 'rgba(0,0,0,0.75)' : c.textMuted }}>
-                        {f}
-                      </span>
+                      <span style={{ color: c.textMuted }}>{f}</span>
                     </li>
                   ))}
                 </ul>
 
                 {/* CTA */}
-                <Link to="/signup" className="mt-1">
+                <Link to={plan.ctaLink} className="mt-1">
                   <motion.button
-                    whileHover={
-                      isHighlight
-                        ? { scale: 1.02, backgroundColor: 'rgba(0,0,0,0.12)', borderColor: 'rgba(0,0,0,0.6)' }
-                        : { scale: 1.02 }
-                    }
+                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
                     className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200"
                     style={
                       isHighlight
-                        ? {
-                            background: 'transparent',
-                            border: '1.5px solid rgba(0,0,0,0.35)',
-                            color: '#000',
-                          }
-                        : i === 2
-                        ? {
-                            background: '#F29F05',
-                            color: isDark ? '#000' : '#fff',
-                            border: 'none',
-                          }
+                        ? { background: '#F29F05', color: '#000', border: 'none' }
                         : {
-                            background: c.ghostBtn,
-                            border: `1px solid ${c.ghostBorder}`,
+                            background: 'transparent',
+                            border: '1px solid rgba(155,111,255,0.4)',
                             color: c.textPrimary,
                           }
                     }
@@ -262,10 +278,12 @@ export default function Pricing() {
                 </Link>
               </motion.div>
             );
+
+            return cardContent;
           })}
         </motion.div>
 
-        {/* Note bas de page */}
+        {/* Footer note */}
         <motion.p
           className="text-center text-xs mt-8"
           style={{ color: c.textSubtle }}
