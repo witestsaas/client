@@ -5,7 +5,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Cl
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
 import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
-import { useTestRunGlobalUpdates, useTestRunSocket } from "../hooks/useSocket";
+import { useTestRunGlobalUpdates, useTestRunSocket, useOrgSlots } from "../hooks/useSocket";
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
@@ -185,18 +185,21 @@ function buildArtifactUrlCandidates(value) {
     }
 
     if (normalized.startsWith("/uploads/")) {
-      candidates.push(normalized);
       const asKey = normalized.replace(/^\/uploads\//, "");
+      // Prefer S3/MinIO over local filesystem
+      candidates.push(`/test-artifacts/${asKey}`);
       const minio = buildMinioPublicUrl(asKey);
       if (minio) candidates.push(minio);
-      candidates.push(`/test-artifacts/${asKey}`);
+      candidates.push(normalized);
       return;
     }
 
-    candidates.push(`/uploads/${normalized.replace(/^\/+/, "")}`);
+    // Raw S3 key — try MinIO / test-artifacts first, /uploads last
+    const clean = normalized.replace(/^\/+/, "");
+    candidates.push(`/test-artifacts/${clean}`);
     const minio = buildMinioPublicUrl(normalized);
     if (minio) candidates.push(minio);
-    candidates.push(`/test-artifacts/${normalized.replace(/^\/+/, "")}`);
+    candidates.push(`/uploads/${clean}`);
   });
 
   return Array.from(new Set(candidates.filter(Boolean)));
@@ -1174,6 +1177,9 @@ export default function ExecutionRuns() {
     refreshRuns().catch(() => undefined);
   });
 
+  // Real-time org slot counter
+  const orgSlotsData = useOrgSlots(orgSlug);
+
   useEffect(() => {
     const onProjectChange = (event) => {
       const nextOrgSlug = event?.detail?.orgSlug;
@@ -1260,14 +1266,25 @@ export default function ExecutionRuns() {
             <p className="text-sm text-[#232323]/60 dark:text-white/60">View and manage test execution history</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
-            className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5"
-          >
-            <Play className="h-3.5 w-3.5" />
-            Run a Plan
-          </button>
+          <div className="flex items-center gap-3">
+            {/*{orgSlotsData && (
+              <div className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/70 px-3 py-1.5">
+                <div className={`h-2 w-2 rounded-full ${orgSlotsData.available > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className="text-xs font-medium text-[#232323]/70 dark:text-white/70">
+                  Slots: <span className={`font-semibold ${orgSlotsData.available > 0 ? 'text-green-600' : 'text-red-500'}`}>{orgSlotsData.available}</span>
+                  <span className="text-[#232323]/40 dark:text-white/40">/{orgSlotsData.limit}</span>
+                </span>
+              </div>
+            )} */}
+            <button
+              type="button"
+              onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
+              className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+            >
+              <Play className="h-3.5 w-3.5" />
+              Run a Plan
+            </button>
+          </div>
         </div>
 
         <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3">

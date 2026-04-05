@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "../components/Input";
 import { GoogleButton } from "../components/GoogleButton";
+import { MicrosoftButton } from "../components/MicrosoftButton";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { CheckCircle, Mail, Zap, Bot, Globe, Shield } from "lucide-react";
@@ -17,7 +18,7 @@ const highlights = [
 ];
 
 export default function SignupPage() {
-  const { signup, startGoogleAuth, getCaptchaChallenge } = useAuth();
+  const { signup, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
@@ -227,12 +228,19 @@ export default function SignupPage() {
               </div>
             ) : (
               <>
+                <div className="space-y-3">
                 <GoogleButton
                   label="Sign up with Google"
                   disabled={loading}
                   onClick={startGoogleAuth}
                 />
 
+                <MicrosoftButton
+                  label="Sign up with Microsoft"
+                  disabled={loading}
+                  onClick={startMicrosoftAuth}
+                />
+                </div>
                 <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-200 dark:border-white/10" />

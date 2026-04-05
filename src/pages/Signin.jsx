@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "../components/Input";
 import { GoogleButton } from "../components/GoogleButton";
+import { MicrosoftButton } from "../components/MicrosoftButton";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -18,7 +19,7 @@ const highlights = [
 export default function SigninPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, startGoogleAuth, getCaptchaChallenge } = useAuth();
+  const { login, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -209,11 +210,19 @@ export default function SigninPage() {
               </div>
             ) : null}
 
-            <GoogleButton
-              label="Sign in with Google"
-              disabled={loading}
-              onClick={startGoogleAuth}
-            />
+            <div className="space-y-3">
+  <GoogleButton
+    label="Sign in with Google"
+    disabled={loading}
+    onClick={startGoogleAuth}
+  />
+
+  <MicrosoftButton
+    label="Sign in with Microsoft"
+    disabled={loading}
+    onClick={startMicrosoftAuth}
+  />
+</div>
 
             <div className="relative my-5">
               <div className="absolute inset-0 flex items-center">
