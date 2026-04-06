@@ -101,12 +101,12 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   return (
     <aside
-      className={`h-[100dvh] bg-[#232323] dark:bg-[#232323] text-[#F6F6F6] border-r border-white/10 shadow-sm transition-all duration-300 flex flex-col overflow-hidden ${
+      className={`h-[100dvh] bg-[#1c1a2e] dark:bg-[#1c1a2e] text-[#F6F6F6] border-r border-white/10 shadow-sm transition-all duration-300 flex flex-col overflow-hidden ${
         collapsed ? "w-16" : "w-[260px]"
       }`}
     >
       <div className="h-11 flex items-center px-3 border-b border-white/10 shrink-0">
-        <span className="flex items-center justify-center h-9 w-9 rounded-full bg-[#232323] border border-[#FFAA00]/60 shadow-sm">
+        <span className="flex items-center justify-center h-9 w-9 rounded-full bg-[#13112a] border border-[#F29F05]/60 shadow-sm">
           <img src="/image.png" alt="Logo" className="h-7 w-7 object-contain" />
         </span>
         {!collapsed && (
@@ -137,7 +137,7 @@ export default function Sidebar({ collapsed, onToggle }) {
               <ChevronDown className="h-4 w-4 text-white/70" />
             </button>
             {switcherOpen ? (
-              <div className="absolute left-0 right-0 mt-2 z-20 rounded-lg border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-1 max-h-56 overflow-y-auto">
+              <div className="absolute left-0 right-0 mt-2 z-20 rounded-lg border border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] shadow-2xl p-1 max-h-56 overflow-y-auto">
                 {organizations.length === 0 ? (
                   <p className="px-2 py-2 text-xs text-white/60">No organizations</p>
                 ) : (
@@ -229,7 +229,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         <button
           onClick={toggleTheme}
           type="button"
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#232323] border border-white/15 text-white hover:bg-[#FFAA00] hover:text-[#232323] font-semibold shadow-md transition-colors duration-200 py-1.5"
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#1c1a2e] border border-white/15 text-white hover:bg-[#FFAA00] hover:text-[#232323] font-semibold shadow-md transition-colors duration-200 py-1.5"
           title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -263,7 +263,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           </button>
 
           {!collapsed && profileMenuOpen ? (
-            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-1 z-20">
+            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] shadow-2xl p-1 z-20">
               <button
                 type="button"
                 onClick={() => {

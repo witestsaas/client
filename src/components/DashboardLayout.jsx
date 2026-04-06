@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }) {
   usePresenceHeartbeat(orgSlug);
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F6F6F6] dark:bg-[#232323]">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-[#fafafa] dark:bg-[#13112a]">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
       <div
         className={`flex-1 min-w-0 flex flex-col h-[100dvh] overflow-hidden transition-all duration-300 ${
@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }) {
         }`}
       >
         <DashboardHeader />
-        <main className="flex-1 min-h-0 overflow-y-auto bg-[#F6F6F6] dark:bg-[#232323] [scrollbar-gutter:stable] p-4 lg:p-6">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto bg-[#fafafa] dark:bg-[#13112a] [scrollbar-gutter:stable] p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );
