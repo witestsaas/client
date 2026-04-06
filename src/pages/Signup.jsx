@@ -11,6 +11,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { CheckCircle, Mail, Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import AIChatWidget from "../components/AIChatWidget";
+import { useTheme } from "../utils/theme-context";
 
 const highlights = [
   { icon: Bot, stat: "10x", label: "Faster test creation" },
@@ -18,17 +19,27 @@ const highlights = [
   { icon: Shield, stat: "10x", label: "Faster test runs" },
 ];
 
-const inputStyle = {
-  base: {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    caretColor: "#F29F05",
-  },
-  focus: { border: "1px solid rgba(242,159,5,0.6)", boxShadow: "0 0 0 3px rgba(242,159,5,0.1)" },
-  blur: { border: "1px solid rgba(255,255,255,0.12)", boxShadow: "none" },
-};
-
 export default function SignupPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const mainBg      = isDark ? "#0e0c1e"                : "#f4f5fb";
+  const textPrimary = isDark ? "#ffffff"                : "#0f0f1a";
+  const textMuted   = isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.52)";
+  const textSubtle  = isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.45)";
+  const textTiny    = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.30)";
+  const borderSm    = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
+  const borderMd    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)";
+  const inputBg     = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+  const inputBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
+  const captchaBg   = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+
+  const inputStyle = {
+    base:  { background: inputBg, border: `1px solid ${inputBorder}`, caretColor: "#F29F05", color: textPrimary },
+    focus: { border: "1px solid rgba(242,159,5,0.6)", boxShadow: "0 0 0 3px rgba(242,159,5,0.1)" },
+    blur:  { border: `1px solid ${inputBorder}`, boxShadow: "none" },
+  };
+
   const { signup, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -109,7 +120,7 @@ export default function SignupPage() {
 
   return (
     <>
-    <main className="flex h-screen h-[100dvh] overflow-hidden" style={{ background: "#0e0c1e" }}>
+    <main className="flex h-screen h-[100dvh] overflow-hidden" style={{ background: mainBg }}>
 
       {/* ── Left branding panel ── */}
       <div className="hidden lg:flex lg:w-[45%] xl:w-[48%] relative flex-col justify-between overflow-hidden"
@@ -122,7 +133,7 @@ export default function SignupPage() {
             width: "700px", height: "700px",
             top: "calc(50% - 350px)", left: "-220px",
             background: "radial-gradient(circle at 55% 45%, #9B6FFF 0%, #5E00FF 30%, #3B00CC 55%, transparent 78%)",
-            opacity: 0.45, filter: "blur(80px)", mixBlendMode: "screen",
+            opacity: isDark ? 0.45 : 0.25, filter: "blur(80px)", mixBlendMode: "screen",
           }}
           animate={{ scale: [1, 1.07, 0.96, 1.04, 1], x: [0, 25, -12, 16, 0], y: [0, -35, 20, -10, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
@@ -133,7 +144,7 @@ export default function SignupPage() {
             width: "550px", height: "550px",
             top: "-80px", right: "-120px",
             background: "radial-gradient(circle at 42% 52%, #FDE68A 0%, #F29F05 20%, #D97706 45%, transparent 75%)",
-            opacity: 0.38, filter: "blur(70px)", mixBlendMode: "screen",
+            opacity: isDark ? 0.38 : 0.60, filter: "blur(70px)", mixBlendMode: "screen",
           }}
           animate={{ scale: [1, 1.1, 0.94, 1.06, 1], x: [0, -25, 15, -10, 0], y: [0, 40, -22, 16, 0] }}
           transition={{ duration: 17, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
@@ -224,16 +235,16 @@ export default function SignupPage() {
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto" style={{ background: "#0e0c1e" }}>
+      <div className="flex-1 flex flex-col h-full overflow-y-auto" style={{ background: mainBg }}>
 
         {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-between px-4 sm:px-6 py-4"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          style={{ borderBottom: `1px solid ${borderSm}` }}>
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F29F05" }}>
               <Zap className="w-4 h-4 text-black" strokeWidth={2.5} />
             </div>
-            <span className="font-bold text-sm text-white">Qalion</span>
+            <span className="font-bold text-sm" style={{ color: textPrimary }}>Qalion</span>
           </Link>
           <Link to="/signin" className="text-sm font-medium hover:underline" style={{ color: "#F29F05" }}>
             Sign in
@@ -248,7 +259,8 @@ export default function SignupPage() {
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             <motion.h1
-              className="text-2xl sm:text-3xl font-bold mb-1 text-white tracking-tight"
+              className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight"
+              style={{ color: textPrimary }}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.25, ease: "easeOut" }}
@@ -257,7 +269,7 @@ export default function SignupPage() {
             </motion.h1>
             <motion.p
               className="text-sm mb-6"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: textSubtle }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.32, ease: "easeOut" }}
@@ -278,16 +290,16 @@ export default function SignupPage() {
                     style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)" }}>
                     <Mail className="w-8 h-8" style={{ color: "#34d399" }} />
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Check your email</h3>
-                  <p className="text-sm mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: textPrimary }}>Check your email</h3>
+                  <p className="text-sm mb-4" style={{ color: textMuted }}>
                     We sent a verification link to{" "}
-                    <span className="font-medium text-white">{email}</span>
+                    <span className="font-medium" style={{ color: textPrimary }}>{email}</span>
                   </p>
                   <div className="flex items-center gap-2 justify-center" style={{ color: "#34d399" }}>
                     <CheckCircle className="w-4 h-4" />
                     <span className="text-sm font-medium">Account created successfully</span>
                   </div>
-                  <p className="mt-5 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  <p className="mt-5 text-sm" style={{ color: textSubtle }}>
                     After verification, continue to{" "}
                     <Link to="/signin" className="font-medium hover:underline" style={{ color: "#F29F05" }}>Sign in</Link>
                   </p>
@@ -311,10 +323,10 @@ export default function SignupPage() {
     </div>
     <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }} />
+                    <div className="w-full" style={{ borderTop: `1px solid ${borderMd}` }} />
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="px-3" style={{ background: "#0e0c1e", color: "rgba(255,255,255,0.3)" }}>or sign up with email</span>
+                    <span className="px-3" style={{ background: mainBg, color: textSubtle }}>or sign up with email</span>
                   </div>
                  </div>
 
@@ -327,20 +339,20 @@ export default function SignupPage() {
                     transition={{ duration: 0.4, delay: 0.48, ease: "easeOut" }}
                   >
                     <div>
-                      <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>First name</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>First name</label>
                       <input
                         type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
-                        className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                        className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors"
                         style={inputStyle.base}
                         onFocus={e => Object.assign(e.target.style, inputStyle.focus)}
                         onBlur={e => Object.assign(e.target.style, inputStyle.blur)}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>Last name</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>Last name</label>
                       <input
                         type="text" value={lastName} onChange={e => setLastName(e.target.value)}
-                        className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                        className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors"
                         style={inputStyle.base}
                         onFocus={e => Object.assign(e.target.style, inputStyle.focus)}
                         onBlur={e => Object.assign(e.target.style, inputStyle.blur)}
@@ -355,10 +367,10 @@ export default function SignupPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.53, ease: "easeOut" }}
                   >
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>Username</label>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>Username</label>
                     <input
                       type="text" value={username} onChange={e => setUsername(e.target.value)}
-                      className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                      className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors"
                       style={inputStyle.base}
                       onFocus={e => Object.assign(e.target.style, inputStyle.focus)}
                       onBlur={e => Object.assign(e.target.style, inputStyle.blur)}
@@ -372,10 +384,10 @@ export default function SignupPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.58, ease: "easeOut" }}
                   >
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>Email</label>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>Email</label>
                     <input
                       type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                      className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors"
                       style={inputStyle.base}
                       onFocus={e => Object.assign(e.target.style, inputStyle.focus)}
                       onBlur={e => Object.assign(e.target.style, inputStyle.blur)}
@@ -389,21 +401,21 @@ export default function SignupPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.63, ease: "easeOut" }}
                   >
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>Password</label>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>Password</label>
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password} onChange={e => setPassword(e.target.value)}
                       onFocus={e => { Object.assign(e.target.style, inputStyle.focus); setShowPasswordRequirements(true); }}
                       onBlur={e => { Object.assign(e.target.style, inputStyle.blur); setShowPasswordRequirements(false); }}
-                      className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors pr-10"
+                      className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors pr-10"
                       style={inputStyle.base}
                     />
                     <button
                       type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 bottom-[9px] transition-colors"
-                      style={{ color: "rgba(255,255,255,0.35)" }}
-                      onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.65)"}
-                      onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
+                      style={{ color: textSubtle }}
+                      onMouseEnter={e => e.currentTarget.style.color = textMuted}
+                      onMouseLeave={e => e.currentTarget.style.color = textSubtle}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -418,21 +430,21 @@ export default function SignupPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.68, ease: "easeOut" }}
                   >
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>Confirm password</label>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>Confirm password</label>
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)}
                       onFocus={e => { Object.assign(e.target.style, inputStyle.focus); setShowConfirmPasswordRequirements(true); }}
                       onBlur={e => { Object.assign(e.target.style, inputStyle.blur); setShowConfirmPasswordRequirements(false); }}
-                      className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors pr-10"
+                      className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors pr-10"
                       style={inputStyle.base}
                     />
                     <button
                       type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 bottom-[9px] transition-colors"
-                      style={{ color: "rgba(255,255,255,0.35)" }}
-                      onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.65)"}
-                      onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
+                      style={{ color: textSubtle }}
+                      onMouseEnter={e => e.currentTarget.style.color = textMuted}
+                      onMouseLeave={e => e.currentTarget.style.color = textSubtle}
                       aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                     >
                       {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -443,7 +455,7 @@ export default function SignupPage() {
                   {/* Already have an account */}
                   <motion.p
                     className="mt-1 mb-4 text-center text-sm"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    style={{ color: textSubtle }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4, delay: 0.7 }}
@@ -462,10 +474,10 @@ export default function SignupPage() {
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.35 }}
                         className="mb-4 rounded-lg p-3 overflow-hidden"
-                        style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+                        style={{ border: `1px solid ${borderMd}`, background: captchaBg }}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>Solve the CAPTCHA puzzle</p>
+                          <p className="text-xs font-medium" style={{ color: textMuted }}>Solve the CAPTCHA puzzle</p>
                           <button
                             type="button" onClick={refreshCaptcha}
                             disabled={captchaLoading || loading}
@@ -477,10 +489,10 @@ export default function SignupPage() {
                         </div>
                         {captchaImage ? (
                           <img src={captchaImage} alt="CAPTCHA challenge" className="h-16 w-full rounded-md object-contain"
-                            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }} />
+                            style={{ border: `1px solid ${borderMd}`, background: inputBg }} />
                         ) : (
                           <div className="h-16 w-full rounded-md flex items-center justify-center text-xs"
-                            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.35)" }}>
+                            style={{ border: `1px solid ${borderMd}`, color: textSubtle }}>
                             {captchaLoading ? "Loading CAPTCHA..." : "CAPTCHA unavailable"}
                           </div>
                         )}
@@ -488,8 +500,8 @@ export default function SignupPage() {
                           type="text" value={captchaAnswer}
                           onChange={e => setCaptchaAnswer(e.target.value)}
                           placeholder="Enter characters shown"
-                          className="mt-3 w-full rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#F29F05]"
-                          style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}
+                          className="mt-3 w-full rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F29F05]"
+                          style={{ border: `1px solid ${inputBorder}`, background: inputBg, color: textPrimary }}
                         />
                       </motion.div>
                     )}
@@ -529,14 +541,14 @@ export default function SignupPage() {
 
                 <motion.p
                   className="mt-5 text-center text-xs"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  style={{ color: textTiny }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: 0.78 }}
                 >
                   By signing up, you agree to our{" "}
-                  <a href="#" className="hover:underline" style={{ color: "rgba(255,255,255,0.45)" }}>Terms</a> and{" "}
-                  <a href="#" className="hover:underline" style={{ color: "rgba(255,255,255,0.45)" }}>Privacy Policy</a>.
+                  <a href="#" className="hover:underline" style={{ color: textSubtle }}>Terms</a> and{" "}
+                  <a href="#" className="hover:underline" style={{ color: textSubtle }}>Privacy Policy</a>.
                 </motion.p>
 
               </>

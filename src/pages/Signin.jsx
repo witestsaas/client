@@ -10,6 +10,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import AIChatWidget from "../components/AIChatWidget";
+import { useTheme } from "../utils/theme-context";
 
 const highlights = [
   { icon: Bot, stat: "10x", label: "Faster test creation" },
@@ -18,6 +19,20 @@ const highlights = [
 ];
 
 export default function SigninPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const mainBg       = isDark ? "#0e0c1e"                      : "#f4f5fb";
+  const leftBg       = "#13112a";
+  const textPrimary  = isDark ? "#ffffff"                      : "#0f0f1a";
+  const textMuted    = isDark ? "rgba(255,255,255,0.50)"       : "rgba(0,0,0,0.52)";
+  const textSubtle   = isDark ? "rgba(255,255,255,0.40)"       : "rgba(0,0,0,0.45)";
+const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)";
+  const borderMd     = isDark ? "rgba(255,255,255,0.10)"       : "rgba(0,0,0,0.10)";
+  const inputBg      = isDark ? "rgba(255,255,255,0.06)"       : "rgba(0,0,0,0.04)";
+  const inputBorder  = isDark ? "rgba(255,255,255,0.12)"       : "rgba(0,0,0,0.12)";
+  const captchaBg    = isDark ? "rgba(255,255,255,0.04)"       : "rgba(0,0,0,0.03)";
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
@@ -121,10 +136,10 @@ export default function SigninPage() {
 
   return (
     <>
-    <main className="flex h-screen h-[100dvh] overflow-hidden" style={{ background: "#0e0c1e" }}>
-      {/* Left branding panel — landing page style */}
+    <main className="flex h-screen h-[100dvh] overflow-hidden" style={{ background: mainBg }}>
+      {/* Left branding panel */}
       <div className="hidden lg:flex lg:w-[45%] xl:w-[48%] relative flex-col justify-between overflow-hidden"
-        style={{ background: "#13112a" }}
+        style={{ background: leftBg }}
       >
         {/* Animated blobs */}
         <motion.div
@@ -133,7 +148,7 @@ export default function SigninPage() {
             width: "700px", height: "700px",
             top: "calc(50% - 350px)", left: "-220px",
             background: "radial-gradient(circle at 55% 45%, #9B6FFF 0%, #5E00FF 30%, #3B00CC 55%, transparent 78%)",
-            opacity: 0.45, filter: "blur(80px)", mixBlendMode: "screen",
+            opacity: isDark ? 0.45 : 0.25, filter: "blur(80px)", mixBlendMode: "screen",
           }}
           animate={{ scale: [1, 1.07, 0.96, 1.04, 1], x: [0, 25, -12, 16, 0], y: [0, -35, 20, -10, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
@@ -144,7 +159,7 @@ export default function SigninPage() {
             width: "550px", height: "550px",
             top: "-80px", right: "-120px",
             background: "radial-gradient(circle at 42% 52%, #FDE68A 0%, #F29F05 20%, #D97706 45%, transparent 75%)",
-            opacity: 0.38, filter: "blur(70px)", mixBlendMode: "screen",
+            opacity: isDark ? 0.38 : 0.60, filter: "blur(70px)", mixBlendMode: "screen",
           }}
           animate={{ scale: [1, 1.1, 0.94, 1.06, 1], x: [0, -25, 15, -10, 0], y: [0, 40, -22, 16, 0] }}
           transition={{ duration: 17, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
@@ -235,16 +250,16 @@ export default function SigninPage() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto" style={{ background: "#0e0c1e" }}>
+      <div className="flex-1 flex flex-col h-full overflow-y-auto" style={{ background: mainBg }}>
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between px-4 sm:px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="lg:hidden flex items-center justify-between px-4 sm:px-6 py-4" style={{ borderBottom: `1px solid ${borderSm}` }}>
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F29F05" }}>
               <Zap className="w-4 h-4 text-black" strokeWidth={2.5} />
             </div>
-            <span className="font-bold text-sm text-white">Qalion</span>
+            <span className="font-bold text-sm" style={{ color: textPrimary }}>Qalion</span>
           </Link>
-          <Link to="/signup" className="text-sm text-[#F29F05] hover:underline font-medium">
+          <Link to="/signup" className="text-sm hover:underline font-medium" style={{ color: "#F29F05" }}>
             Sign up
           </Link>
         </div>
@@ -257,7 +272,8 @@ export default function SigninPage() {
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             <motion.h1
-              className="text-2xl sm:text-3xl font-bold mb-1 text-white tracking-tight"
+              className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight"
+              style={{ color: textPrimary }}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.25, ease: "easeOut" }}
@@ -266,7 +282,7 @@ export default function SigninPage() {
             </motion.h1>
             <motion.p
               className="text-sm mb-6"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: textSubtle }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.32, ease: "easeOut" }}
@@ -320,10 +336,10 @@ export default function SigninPage() {
               transition={{ duration: 0.4, delay: 0.44 }}
             >
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }} />
+                <div className="w-full" style={{ borderTop: `1px solid ${borderMd}` }} />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="px-3" style={{ background: "#0e0c1e", color: "rgba(255,255,255,0.3)" }}>or sign in with email</span>
+                <span className="px-3" style={{ background: mainBg, color: textSubtle }}>or sign in with email</span>
               </div>
             </motion.div>
 
@@ -335,17 +351,17 @@ export default function SigninPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.5, ease: "easeOut" }}
               >
-                <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>
                   Username or email
                 </label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", caretColor: "#F29F05" }}
+                  className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors"
+                  style={{ background: inputBg, border: `1px solid ${inputBorder}`, color: textPrimary, caretColor: "#F29F05" }}
                   onFocus={e => { e.target.style.border = "1px solid rgba(242,159,5,0.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(242,159,5,0.1)"; }}
-                  onBlur={e => { e.target.style.border = "1px solid rgba(255,255,255,0.12)"; e.target.style.boxShadow = "none"; }}
+                  onBlur={e => { e.target.style.border = `1px solid ${inputBorder}`; e.target.style.boxShadow = "none"; }}
                 />
               </motion.div>
 
@@ -356,25 +372,25 @@ export default function SigninPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.57, ease: "easeOut" }}
               >
-                <label className="block text-sm font-medium mb-1.5" style={{ color: "rgba(255,255,255,0.65)" }}>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: textMuted }}>
                   Password
                 </label>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none transition-colors pr-10"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", caretColor: "#F29F05" }}
+                  className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors pr-10"
+                  style={{ background: inputBg, border: `1px solid ${inputBorder}`, color: textPrimary, caretColor: "#F29F05" }}
                   onFocus={e => { e.target.style.border = "1px solid rgba(242,159,5,0.6)"; e.target.style.boxShadow = "0 0 0 3px rgba(242,159,5,0.1)"; }}
-                  onBlur={e => { e.target.style.border = "1px solid rgba(255,255,255,0.12)"; e.target.style.boxShadow = "none"; }}
+                  onBlur={e => { e.target.style.border = `1px solid ${inputBorder}`; e.target.style.boxShadow = "none"; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 bottom-[9px] transition-colors"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.65)"}
-                  onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
+                  style={{ color: textSubtle }}
+                  onMouseEnter={e => e.currentTarget.style.color = textMuted}
+                  onMouseLeave={e => e.currentTarget.style.color = textSubtle}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -387,7 +403,7 @@ export default function SigninPage() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.63 }}
               >
-                <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <span className="text-sm" style={{ color: textSubtle }}>
                   Don't have an account?{" "}
                   <Link to="/signup" className="font-semibold hover:underline" style={{ color: "#F29F05" }}>Sign up</Link>
                 </span>
@@ -405,10 +421,10 @@ export default function SigninPage() {
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.35 }}
                     className="mb-4 rounded-lg p-3 overflow-hidden"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+                    style={{ border: `1px solid ${borderMd}`, background: captchaBg }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>Solve the CAPTCHA puzzle</p>
+                      <p className="text-xs font-medium" style={{ color: textMuted }}>Solve the CAPTCHA puzzle</p>
                       <button
                         type="button"
                         onClick={refreshCaptcha}
@@ -420,9 +436,9 @@ export default function SigninPage() {
                       </button>
                     </div>
                     {captchaImage ? (
-                      <img src={captchaImage} alt="CAPTCHA challenge" className="h-16 w-full rounded-md object-contain" style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }} />
+                      <img src={captchaImage} alt="CAPTCHA challenge" className="h-16 w-full rounded-md object-contain" style={{ border: `1px solid ${borderMd}`, background: inputBg }} />
                     ) : (
-                      <div className="h-16 w-full rounded-md flex items-center justify-center text-xs" style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.35)" }}>
+                      <div className="h-16 w-full rounded-md flex items-center justify-center text-xs" style={{ border: `1px solid ${borderMd}`, color: textSubtle }}>
                         {captchaLoading ? "Loading CAPTCHA..." : "CAPTCHA unavailable"}
                       </div>
                     )}
@@ -431,8 +447,8 @@ export default function SigninPage() {
                       value={captchaAnswer}
                       onChange={(e) => setCaptchaAnswer(e.target.value)}
                       placeholder="Enter characters shown"
-                      className="mt-3 w-full rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#F29F05]"
-                      style={{ border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}
+                      className="mt-3 w-full rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F29F05]"
+                      style={{ border: `1px solid ${inputBorder}`, background: inputBg, color: textPrimary }}
                     />
                   </motion.div>
                 )}

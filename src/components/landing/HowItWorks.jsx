@@ -797,23 +797,23 @@ export default function HowItWorks() {
     >
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
-        <div className="max-w-2xl mb-20">
+        <div className="max-w-2xl mx-auto text-center mb-20">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-6"
+            className="inline-flex items-center justify-center  mb-6"
           >
-            <div
+            {/* <div
               className="w-1.5 h-1.5 rounded-full"
               style={{ background: scene.accent }}
-            />
-            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: c.textMuted }}>
+            /> */}
+            <span className="text-xs font-medium uppercase tracking-wider text-[#F29F05]" style={{ color: "c.textMuted" }}>
               How it works
             </span>
           </motion.div>
-          
+
           <motion.h2
             className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
             style={{ color: c.textPrimary }}
