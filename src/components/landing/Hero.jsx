@@ -214,7 +214,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="relative min-h-screen flex items-center overflow-hidden pt-14 md:pt-0"
       style={{ background: 'transparent' }}
     >
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16">
@@ -226,12 +226,12 @@ export default function Hero() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-              className="font-bold leading-[1.0] tracking-tight mb-6 sm:mb-8"
+              className="font-bold leading-[1.1] tracking-tight mb-6 sm:mb-8"
               style={{
                 fontFamily: "'Aeonik', sans-serif",
                 fontWeight: 700,
                 color: isDark ? '#ffffff' : c.textPrimary,
-                fontSize: 'clamp(3rem, 5vw, 4.5rem)',
+                fontSize: 'clamp(2.25rem, 7vw, 4.5rem)',
               }}
             >
               Ship faster<br />
