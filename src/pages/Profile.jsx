@@ -305,7 +305,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6">
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6">
           <form onSubmit={handleSave} className="space-y-6">
             <div className="flex items-center gap-4">
               <button
@@ -369,7 +369,7 @@ export default function Profile() {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6 space-y-4">
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6 space-y-4">
           <div>
             <h3 className="text-xl font-semibold text-[#232323] dark:text-white">Multi-factor authentication</h3>
             <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">

@@ -97,7 +97,7 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '' }: V
       </div>
       
       {/* Video element - flexible container that fills available space */}
-      <div className="relative flex-1 min-h-0 bg-[#1e1e1e] dark:bg-[#232323] flex items-center justify-center">
+      <div className="relative flex-1 min-h-0 bg-[#13112a] dark:bg-[#232323] flex items-center justify-center">
         <video
           id="artifact-video"
           src={src}

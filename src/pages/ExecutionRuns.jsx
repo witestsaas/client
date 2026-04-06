@@ -958,7 +958,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
                     {activeTab === "video" ? (
                       selectedVideoUrl ? (
-                        <video controls src={selectedVideoUrl} className="w-full max-h-[55vh] rounded-xl border border-black/10 dark:border-white/10 bg-[#1e1e1e] dark:bg-[#232323]" />
+                        <video controls src={selectedVideoUrl} className="w-full max-h-[55vh] rounded-xl border border-black/10 dark:border-white/10 bg-[#13112a] dark:bg-[#232323]" />
                       ) : (
                         <p className="text-sm text-[#232323]/60 dark:text-white/60">Video not available yet.</p>
                       )
@@ -966,7 +966,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
                     {activeTab === "console" ? (
                       selectedLogs.length ? (
-                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#1e1e1e] dark:bg-[#232323] text-white p-3 font-mono text-xs space-y-1.5 max-h-[55vh] overflow-auto">
+                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#13112a] dark:bg-[#232323] text-white p-3 font-mono text-xs space-y-1.5 max-h-[55vh] overflow-auto">
                           {selectedLogs.map((entry, index) => (
                             <div key={`${index}-${entry.timestamp || ""}`}>
                               <span className="text-[#FFAA00]">[{entry.type}]</span>

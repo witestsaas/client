@@ -79,7 +79,7 @@ function statusIcon(status) {
 
 function SettingsSectionCard({ title, description, children }) {
   return (
-    <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
+    <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
       <div className="px-5 py-4 border-b border-black/10 dark:border-white/10">
         <p className="font-semibold text-[#232323] dark:text-white">{title}</p>
         {description ? <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{description}</p> : null}
@@ -274,7 +274,7 @@ export default function Settings() {
             </div>
           </SettingsSectionCard>
         ) : (
-          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-8 text-center">
+          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-8 text-center">
             <Plug className="w-11 h-11 text-[#232323]/30 dark:text-white/30 mx-auto mb-4" />
             <p className="font-semibold text-[#232323] dark:text-white">Select an Integration</p>
             <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-2">Choose a platform from the list to configure its integration settings</p>
@@ -390,7 +390,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#1e1e1e] p-1 grid grid-cols-5 gap-1">
+        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] p-1 grid grid-cols-5 gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;

@@ -222,7 +222,7 @@ export default function ExecutionTests() {
 
   return (
     <DashboardLayout>
-      <div className="bg-background dark:bg-[#1e1e1e] [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
+      <div className="bg-background dark:bg-[#13112a] [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
         <div className="border-b bg-card border-black/10 dark:border-white/10 shadow-[0_8px_26px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.22)]">
           <div className="w-full px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-1">
@@ -302,7 +302,7 @@ export default function ExecutionTests() {
               </p>
             </div>
           ) : (
-            <div className="mt-2 border border-black/10 dark:border-white/10 rounded-xl bg-card dark:bg-[#1e1e1e] divide-y divide-black/10 dark:divide-white/10 shadow-sm">
+            <div className="mt-2 border border-black/10 dark:border-white/10 rounded-xl bg-card dark:bg-[#13112a] divide-y divide-black/10 dark:divide-white/10 shadow-sm">
               {filtered.map((project) => (
                 <button
                   key={project.id}
