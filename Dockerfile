@@ -1,6 +1,15 @@
 # Use official Node image for build
 FROM node:20-slim AS builder
 WORKDIR /app
+
+# Declare build args so docker-compose can pass them in
+ARG VITE_API_BASE_URL
+ARG VITE_SAAS_PLATFORM_URL
+
+# Make them available to the Vite build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_SAAS_PLATFORM_URL=$VITE_SAAS_PLATFORM_URL
+
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
