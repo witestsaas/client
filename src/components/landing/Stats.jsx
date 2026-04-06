@@ -13,11 +13,16 @@ export default function Stats() {
 
   return (
     <Section
-      className="py-14 sm:py-20 px-4 sm:px-6 relative"
+      className="py-14 sm:py-20 px-4 sm:px-6 relative overflow-hidden"
       style={{
-        background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
+        background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.45)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+        borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
       }}
     >
+
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div 
           variants={staggerContainer} 
