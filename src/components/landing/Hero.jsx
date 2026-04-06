@@ -1,207 +1,277 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, XCircle, Loader2, Zap, BarChart3, Globe } from 'lucide-react';
+import {
+  ArrowRight, ChevronDown, Zap,
+  BarChart3, ClipboardList, Layers, Play,
+  Bot, Activity, Users, FolderOpen,
+} from 'lucide-react';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
-/* ── Pulse dot ─────────────────────────────────────────────────── */
-function PulseDot({ color = '#22c55e', size = 8 }) {
-  return (
-    <span className="relative inline-flex" style={{ width: size, height: size }}>
-      <motion.span
-        className="absolute inline-flex rounded-full"
-        style={{ width: size, height: size, background: color, opacity: 0.4 }}
-        animate={{ scale: [1, 2.2, 1], opacity: [0.4, 0, 0.4] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <span className="relative inline-flex rounded-full" style={{ width: size, height: size, background: color }} />
-    </span>
-  );
-}
+/* ── Dashboard mockup ───────────────────────────────────────────── */
+function HeroCanvas() {
+  const accent   = '#FFAA00';
+  const bg       = '#13112a';
+  const sidebarBg = '#1c1a2e';
+  const cardBg   = '#1e1c32';
+  const border   = 'rgba(255,255,255,0.07)';
 
-/* ── Agent row ─────────────────────────────────────────────────── */
-function AgentRow({ name, progress, passed, total, live, accent, c, delay }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, delay }}
-      className="rounded-lg px-3 py-2 border flex items-center gap-3"
-      style={{
-        borderColor: live ? `${accent}25` : 'transparent',
-        background: live ? `${accent}06` : (c.mockupBg ?? 'transparent'),
-      }}
-    >
-      <Globe className="w-3.5 h-3.5 shrink-0" style={{ color: c.textMuted }} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] font-medium truncate" style={{ color: c.textPrimary }}>{name}</span>
-          <span className="text-[10px] font-mono ml-2 shrink-0" style={{ color: c.textMuted }}>
-            {passed}/{total}
-          </span>
-        </div>
-        <div className="h-1 rounded-full overflow-hidden" style={{ background: `${accent}15` }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: accent }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress * 100}%` }}
-            transition={{ duration: 0.9, delay: delay + 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          />
-        </div>
-      </div>
-      {live
-        ? <PulseDot color={accent} size={7} />
-        : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: '#22c55e' }} />
-      }
-    </motion.div>
-  );
-}
-
-/* ── Hero mockup canvas ─────────────────────────────────────────── */
-function HeroCanvas({ c, isDark }) {
-  const accent = '#F2B705';
-  const agents = [
-    { name: 'Chrome Desktop', progress: 1, passed: 12, total: 12, live: false },
-    { name: 'Firefox macOS', progress: 1, passed: 11, total: 12, live: false },
-    { name: 'Safari Mobile', progress: 0.65, passed: 5, total: 8, live: true },
-    { name: 'Edge Windows', progress: 0.82, passed: 9, total: 12, live: true },
+  const navItems = [
+    { label: 'Dashboard', icon: BarChart3, active: true },
+    { label: 'Test Cases',  icon: ClipboardList },
+    { label: 'Test Plans',  icon: Layers },
+    { label: 'Test Runs',   icon: Play },
+    { label: 'Reports',     icon: BarChart3 },
   ];
 
-  const stats = [
-    { label: 'Tests passed', value: '37', icon: CheckCircle2, color: '#22c55e' },
-    { label: 'Running', value: '7', icon: Loader2, color: accent, spin: true },
-    { label: 'Failed', value: '2', icon: XCircle, color: '#ef4444' },
+  const analysisItems = [
+    { label: 'Insights',  icon: Bot },
+    { label: 'Coverage',  icon: Activity },
+  ];
+
+  const statCards = [
+    { label: 'PROJECTS',     value: '12',  color: '#F29F05', bg: '#F29F0518' },
+    { label: 'TEST CASES',   value: '248', color: '#3b82f6', bg: '#3b82f618' },
+    { label: 'SUCCESS RATE', value: '94%', color: '#22c55e', bg: '#22c55e18' },
+    { label: 'FAILURES',     value: '17',  color: '#ef4444', bg: '#ef444418' },
+  ];
+
+  const bars = [30, 52, 42, 68, 58, 78, 62, 74, 56, 70];
+
+  const recentRuns = [
+    { name: 'E2E Suite',  pct: '94%', color: '#22c55e' },
+    { name: 'API Tests',  pct: '67%', color: accent },
+    { name: 'Unit Tests', pct: '100%', color: '#22c55e' },
   ];
 
   return (
     <motion.div
-      className="rounded-2xl border overflow-hidden relative w-full h-full"
+      className="rounded-2xl overflow-hidden relative w-full h-full flex flex-col"
       style={{
-        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-        background: c.mockupBg,
-        boxShadow: isDark
-          ? '0 20px 60px rgba(0,0,0,0.32), 0 0 40px rgba(242,183,5,0.04)'
-          : '0 20px 60px rgba(0,0,0,0.08), 0 0 40px rgba(242,183,5,0.04)',
+        background: bg,
+        border: `1px solid ${border}`,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.55), 0 0 40px rgba(255,170,0,0.04)',
       }}
     >
       {/* Top accent line */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[1px]"
-        style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(242,159,5,0.5) 50%, transparent 100%)' }}
+      <div className="absolute top-0 left-0 right-0 h-[1px] z-10"
+        style={{ background: 'linear-gradient(90deg,transparent,rgba(255,170,0,0.45),transparent)' }}
       />
 
-      {/* Browser bar */}
-      <div
-        className="h-9 px-4 flex items-center gap-2.5"
-        style={{
-          background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}`,
-        }}
-      >
-        <div className="flex gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-[#ff5f57]" />
-          <div className="w-2 h-2 rounded-full bg-[#febc2e]" />
-          <div className="w-2 h-2 rounded-full bg-[#28c840]" />
-        </div>
-        <div className="flex-1 max-w-xs ml-2">
-          <div
-            className="rounded px-2.5 py-1.5 flex items-center gap-2"
-            style={{
-              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
-            }}
-          >
-            <div className="w-2 h-2 rounded-full" style={{ background: `${accent}60` }} />
-            <span className="text-[10px] font-mono" style={{ color: c.textMuted }}>app.qalion.io/runs/latest</span>
-          </div>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <PulseDot color="#22c55e" size={6} />
-          <span className="text-[10px] font-mono" style={{ color: c.textMuted }}>Live</span>
-        </div>
-      </div>
+      {/* Body: sidebar + main */}
+      <div className="flex flex-1 min-h-0">
 
-      {/* Content */}
-      <div className="p-4 flex flex-col gap-3 h-[calc(100%-2.25rem)]">
-
-        {/* Run header */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center justify-between"
+        {/* ── Sidebar ── */}
+        <div className="w-[130px] shrink-0 flex flex-col h-full"
+          style={{ background: sidebarBg, borderRight: `1px solid ${border}` }}
         >
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4" style={{ color: accent }} />
-            <span className="text-sm font-semibold" style={{ color: c.textPrimary }}>
-              Run #142 — E2E Suite
-            </span>
-          </div>
-          <span
-            className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded"
-            style={{ color: accent, background: `${accent}12` }}
-          >
-            In Progress
-          </span>
-        </motion.div>
-
-        {/* Stats row */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="grid grid-cols-3 gap-2"
-        >
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl p-2.5 flex flex-col gap-1 border"
-              style={{
-                borderColor: `${s.color}20`,
-                background: `${s.color}08`,
-              }}
+          {/* Logo */}
+          <div className="px-3 py-2.5 flex items-center gap-2 border-b" style={{ borderColor: border }}>
+            <div className="h-5 w-5 rounded-md flex items-center justify-center shrink-0"
+              style={{ background: `${accent}20`, boxShadow: `0 0 8px ${accent}30` }}
             >
-              <div className="flex items-center gap-1.5">
-                {s.spin
-                  ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}>
-                      <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
-                    </motion.div>
-                  : <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
-                }
-                <span className="text-[10px]" style={{ color: c.textMuted }}>{s.label}</span>
-              </div>
-              <span className="text-xl font-bold font-mono" style={{ color: s.color }}>{s.value}</span>
+              <Zap className="w-3 h-3" style={{ color: accent }} />
             </div>
-          ))}
-        </motion.div>
+            <span className="text-[11px] font-bold tracking-widest text-white">QALION</span>
+          </div>
 
-        {/* Agent lanes */}
-        <div className="flex flex-col gap-1.5 flex-1">
-          {agents.map((a, i) => (
-            <AgentRow key={a.name} {...a} accent={accent} c={c} delay={0.3 + i * 0.12} />
-          ))}
+          {/* Org switcher */}
+          <div className="px-2 py-2 border-b" style={{ borderColor: border }}>
+            <p className="text-[7px] uppercase tracking-widest mb-1 px-1" style={{ color: 'rgba(255,255,255,0.28)' }}>Organization</p>
+            <div className="rounded-md px-2 py-1 flex items-center justify-between gap-1"
+              style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${border}` }}
+            >
+              <span className="text-[9px] text-white truncate">Wirky Group</span>
+              <ChevronDown className="w-2.5 h-2.5 shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} />
+            </div>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 px-2 py-2 space-y-0.5">
+            {navItems.map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5 rounded-md px-2 py-1"
+                style={{ background: item.active ? accent : 'transparent' }}
+              >
+                <item.icon className="w-2.5 h-2.5 shrink-0"
+                  style={{ color: item.active ? '#1a1826' : 'rgba(255,255,255,0.35)' }}
+                />
+                <span className="text-[9px] font-medium"
+                  style={{ color: item.active ? '#1a1826' : 'rgba(255,255,255,0.5)' }}
+                >
+                  {item.label}
+                </span>
+              </div>
+            ))}
+
+            <p className="text-[7px] uppercase tracking-widest px-2 pt-2 pb-0.5"
+              style={{ color: 'rgba(255,255,255,0.22)' }}
+            >Analysis</p>
+
+            {analysisItems.map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5 rounded-md px-2 py-1">
+                <item.icon className="w-2.5 h-2.5 shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{item.label}</span>
+              </div>
+            ))}
+
+            <p className="text-[7px] uppercase tracking-widest px-2 pt-2 pb-0.5"
+              style={{ color: 'rgba(255,255,255,0.22)' }}
+            >Platform</p>
+            <div className="flex items-center gap-1.5 rounded-md px-2 py-1">
+              <Users className="w-2.5 h-2.5 shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} />
+              <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Organizations</span>
+            </div>
+          </nav>
         </div>
 
-        {/* Bottom bar */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="rounded-lg px-3 py-2 flex items-center justify-between"
-          style={{ background: `${accent}10`, border: `1px solid ${accent}25` }}
-        >
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-3.5 h-3.5" style={{ color: accent }} />
-            <span className="text-[11px] font-semibold" style={{ color: accent }}>
-              44 tests · 4 agents · avg 1.8s
-            </span>
-          </div>
-          <motion.div animate={{ x: [0, 4, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>
-            <ArrowRight className="w-3.5 h-3.5" style={{ color: accent }} />
-          </motion.div>
-        </motion.div>
+        {/* ── Main content ── */}
+        <div className="flex-1 flex flex-col min-w-0">
 
+          {/* Top bar */}
+          <div className="h-9 px-3 flex items-center justify-between shrink-0"
+            style={{ borderBottom: `1px solid ${border}`, background: 'rgba(255,255,255,0.01)' }}
+          >
+            <div className="flex items-center gap-1.5 rounded-md px-2 py-1"
+              style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${border}` }}
+            >
+              <FolderOpen className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.35)' }} />
+              <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.45)' }}>Select Project</span>
+              <ChevronDown className="w-2.5 h-2.5" style={{ color: 'rgba(255,255,255,0.25)' }} />
+            </div>
+            <motion.div
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[9px] font-bold"
+              style={{ background: accent, color: '#1a1826' }}
+              animate={{ boxShadow: [`0 0 0px ${accent}00`, `0 0 10px ${accent}55`, `0 0 0px ${accent}00`] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Zap className="w-2.5 h-2.5" />
+              Quick Run
+            </motion.div>
+          </div>
+
+          {/* Page content */}
+          <div className="flex-1 p-3 flex flex-col gap-2 min-h-0 overflow-hidden">
+
+            {/* Title row */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="flex items-center justify-between"
+            >
+              <div>
+                <h3 className="text-xs font-bold text-white leading-none">Dashboard</h3>
+                <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                  Overview of your testing suite performance.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="rounded-md px-2 py-1 text-[9px] font-semibold"
+                  style={{ background: accent, color: '#1a1826' }}
+                >Open Projects</div>
+                <div className="rounded-md px-2 py-1 text-[9px] font-medium"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: `1px solid ${border}` }}
+                >Team Access</div>
+              </div>
+            </motion.div>
+
+            {/* Stat cards */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="grid grid-cols-4 gap-1.5"
+            >
+              {statCards.map((s) => (
+                <div key={s.label} className="rounded-xl p-2"
+                  style={{ background: cardBg, border: `1px solid ${border}` }}
+                >
+                  <div className="w-5 h-5 rounded-lg flex items-center justify-center mb-1.5"
+                    style={{ background: s.bg }}
+                  >
+                    <div className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+                  </div>
+                  <div className="text-sm font-bold text-white leading-none">{s.value}</div>
+                  <div className="text-[7px] mt-0.5 uppercase tracking-wide"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                  >{s.label}</div>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Bottom panels */}
+            <div className="grid grid-cols-5 gap-1.5 flex-1 min-h-0">
+
+              {/* Velocity chart */}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="col-span-3 rounded-xl p-2.5 flex flex-col"
+                style={{ background: cardBg, border: `1px solid ${border}` }}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[9px] font-semibold text-white">Organization Velocity (Last 30h)</span>
+                  <span className="text-[8px]" style={{ color: 'rgba(255,255,255,0.3)' }}>0 runs · 0% success</span>
+                </div>
+                <div className="flex-1 flex items-end gap-0.5 px-1">
+                  {bars.map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col justify-end" style={{ height: '100%' }}>
+                      <motion.div
+                        className="w-full rounded-sm relative overflow-hidden"
+                        style={{ background: 'rgba(255,170,0,0.12)' }}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${h}%` }}
+                        transition={{ duration: 0.7, delay: 0.35 + i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+                      >
+                        <div className="absolute bottom-0 left-0 right-0 h-[3px] rounded-sm"
+                          style={{ background: accent }}
+                        />
+                      </motion.div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
+                    <span className="text-[7px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Runs volume</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+                    <span className="text-[7px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Success ratio</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Recent runs */}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+                className="col-span-2 rounded-xl p-2.5 flex flex-col"
+                style={{ background: cardBg, border: `1px solid ${border}` }}
+              >
+                <span className="text-[9px] font-semibold text-white mb-2">Recent Test Runs</span>
+                <div className="space-y-2 flex-1">
+                  {recentRuns.map((run, i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[8px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{run.name}</span>
+                        <span className="text-[8px] font-bold" style={{ color: run.color }}>{run.pct}</span>
+                      </div>
+                      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ background: run.color }}
+                          initial={{ width: 0 }}
+                          animate={{ width: run.pct }}
+                          transition={{ duration: 0.8, delay: 0.5 + i * 0.12, ease: [0.25, 0.1, 0.25, 1] }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+            </div>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
@@ -234,7 +304,7 @@ export default function Hero() {
                 fontSize: 'clamp(2.25rem, 7vw, 4.5rem)',
               }}
             >
-              Ship faster<br />
+              Ship faster
               with AI test<br />
               <span style={isDark ? { color: '#ffffff' } : {
                 backgroundImage: 'linear-gradient(135deg, #F2B705 0%, #F29F05 100%)',
@@ -254,7 +324,7 @@ export default function Hero() {
               style={{ color: isDark ? 'rgba(255,255,255,0.45)' : c.textMuted }}
             >
               Qalion orchestrates AI agents to generate, execute, and analyse
-              your entire test suite — in real-time, at scale, with zero scripting.
+              your entire test suite in real-time, at scale, with zero scripting.
             </motion.p>
 
             <motion.div
@@ -312,7 +382,7 @@ export default function Hero() {
             </motion.div>
           </div>
 
-          {/* Right — Canvas mockup */}
+          {/* Right — Dashboard mockup */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -320,7 +390,7 @@ export default function Hero() {
             className="lg:w-[62%] w-full"
             style={{ height: 'clamp(400px, 55vh, 600px)' }}
           >
-            <HeroCanvas c={c} isDark={isDark} />
+            <HeroCanvas />
           </motion.div>
 
         </div>
