@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-<<<<<<< HEAD
 import { motion, AnimatePresence } from "framer-motion";
-=======
 import { Input } from "../components/Input";
 import { GoogleButton } from "../components/GoogleButton";
 import { MicrosoftButton } from "../components/MicrosoftButton";
->>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { CheckCircle, Mail, Zap, Bot, Globe, Shield } from "lucide-react";
@@ -298,61 +295,28 @@ export default function SignupPage() {
               )}
             </AnimatePresence>
 
-            {!success && (
-              <>
-<<<<<<< HEAD
-                {/* Google button */}
-                <motion.button
-                  type="button"
-=======
-                <div className="space-y-3">
-                <GoogleButton
-                  label="Sign up with Google"
-                  disabled={loading}
->>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
-                  onClick={startGoogleAuth}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.85)" }}
-                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.38, ease: "easeOut" }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 48 48">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.69 1.22 9.19 3.22l6.85-6.85C35.9 2.27 30.47 0 24 0 14.64 0 6.61 5.38 2.68 13.22l7.98 6.19C12.47 13.09 17.77 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.1 24.5c0-1.64-.15-3.22-.43-4.75H24v9h12.38c-.54 2.9-2.16 5.36-4.6 7.04l7.07 5.49C43.91 37.15 46.1 31.32 46.1 24.5z"/>
-                    <path fill="#FFAA00" d="M10.66 28.59A14.38 14.38 0 019.5 24c0-1.6.28-3.15.78-4.59l-7.98-6.19A23.93 23.93 0 000 24c0 3.86.93 7.5 2.32 10.78l8.34-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.91-2.13 15.88-5.81l-7.07-5.49c-1.96 1.31-4.47 2.09-8.81 2.09-6.23 0-11.53-3.59-13.34-8.81l-8.34 6.19C6.61 42.62 14.64 48 24 48z"/>
-                  </svg>
-                  Sign up with Google
-                </motion.button>
-
-<<<<<<< HEAD
-                {/* Separator */}
-                <motion.div
-                  className="relative my-5"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.44 }}
-                >
-=======
-                <MicrosoftButton
-                  label="Sign up with Microsoft"
-                  disabled={loading}
-                  onClick={startMicrosoftAuth}
-                />
-                </div>
-                <div className="relative my-5">
->>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
+{!success && (
+  <>
+    <div className="space-y-3">
+    <GoogleButton
+      label="Sign up with Google"
+      disabled={loading}
+      onClick={startGoogleAuth}
+    />
+    <MicrosoftButton
+      label="Sign up with Microsoft"
+      disabled={loading}
+      onClick={startMicrosoftAuth}
+    />
+    </div>
+    <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }} />
                   </div>
                   <div className="relative flex justify-center text-xs">
                     <span className="px-3" style={{ background: "#0e0c1e", color: "rgba(255,255,255,0.3)" }}>or sign up with email</span>
                   </div>
-                </motion.div>
+                 </div>
 
                 <form onSubmit={handleSubmit}>
                   {/* First name + Last name */}
