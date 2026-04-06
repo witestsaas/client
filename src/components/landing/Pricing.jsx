@@ -58,8 +58,6 @@ export default function Pricing() {
     return { label: null, numeric: val };
   }
 
-  const cardBg    = isDark ? '#18152d' : '#ffffff';
-  const cardBgAlt = isDark ? '#1e1828' : '#f8f6ff';
 
   return (
     <Section
@@ -150,7 +148,7 @@ export default function Pricing() {
         {/* Cards */}
         <motion.div
           variants={staggerContainer}
-          className="grid sm:grid-cols-3 gap-4 sm:gap-6 items-center py-8"
+          className="grid sm:grid-cols-3 gap-4 sm:gap-6 items-stretch py-12"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.15 }}
@@ -160,16 +158,31 @@ export default function Pricing() {
             const isHighlight = plan.highlight;
             const isEnterprise = plan.name === 'Enterprise';
 
+            const glassyBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)';
+            const glassy = {
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            };
+
             const cardStyle = isHighlight
               ? {
-                  background: cardBg,
-                  border: '1.5px solid rgba(155,111,255,0.6)',
-                  boxShadow: '0 0 0 1px rgba(94,0,255,0.2), 0 0 50px rgba(94,0,255,0.28), 0 12px 60px rgba(94,0,255,0.15)',
+                  ...glassy,
+                  background: glassyBg,
+                  border: '1.5px solid #F29F05',
+                  boxShadow: '0 0 40px rgba(242,159,5,0.08), 0 8px 32px rgba(0,0,0,0.3)',
+                }
+              : isEnterprise
+              ? {
+                  ...glassy,
+                  background: glassyBg,
+                  border: '1.5px solid #ce9f4748',
+                  boxShadow: '0 0 30px rgba(151,91,255,0.08), 0 8px 32px rgba(0,0,0,0.3)',
                 }
               : {
-                  background: isEnterprise ? cardBgAlt : cardBg,
-                  border: '1px solid rgba(155,111,255,0.35)',
-                  boxShadow: '0 0 20px rgba(94,0,255,0.12)',
+                  ...glassy,
+                  background: glassyBg,
+                  border: isDark ? '1.5px solid rgba(255,255,255,0.2)' : '1.5px solid rgba(0,0,0,0.15)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
                 };
 
             const cardContent = (
@@ -177,15 +190,15 @@ export default function Pricing() {
                 key={plan.name}
                 variants={fadeUp}
                 whileHover={{ y: -5 }}
-                className={`relative rounded-2xl flex flex-col gap-5 transition-all duration-300 ${
-                  isHighlight ? 'p-6 sm:p-9 sm:-my-8' : 'p-6 sm:p-7'
+                className={`relative rounded-[10px] flex flex-col gap-5 transition-all duration-300 ${
+                  isHighlight ? 'p-6 sm:p-10 sm:-my-10 scale-[1.04]' : 'p-6 sm:p-7'
                 }`}
                 style={cardStyle}
               >
                 {/* Plan name */}
                 <div>
                   <p
-                    className="text-xs font-semibold uppercase tracking-widest mb-3"
+                    className={`font-semibold uppercase tracking-widest mb-3 ${isHighlight ? 'text-sm' : 'text-xs'}`}
                     style={{ color: c.textSubtle }}
                   >
                     {plan.name}
@@ -201,7 +214,7 @@ export default function Pricing() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 6 }}
                           transition={{ duration: 0.2 }}
-                          className="text-3xl sm:text-4xl font-bold tracking-tight"
+                          className={`font-bold tracking-tight ${isHighlight ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
                           style={{ color: c.textPrimary }}
                         >
                           {label}
@@ -216,13 +229,13 @@ export default function Pricing() {
                           className="flex items-start"
                         >
                           <span
-                            className="text-base font-bold mt-1.5 mr-0.5"
+                            className={`font-bold mr-0.5 ${isHighlight ? 'text-lg mt-2' : 'text-base mt-1.5'}`}
                             style={{ color: c.textPrimary }}
                           >
                             $
                           </span>
                           <span
-                            className="text-3xl sm:text-4xl font-bold tracking-tight"
+                            className={`font-bold tracking-tight ${isHighlight ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
                             style={{ color: c.textPrimary }}
                           >
                             {numeric}
@@ -238,7 +251,7 @@ export default function Pricing() {
                     </AnimatePresence>
                   </div>
 
-                  <p className="text-sm" style={{ color: c.textSubtle }}>
+                  <p className={isHighlight ? 'text-sm' : 'text-sm'} style={{ color: c.textSubtle }}>
                     {plan.desc}
                   </p>
                 </div>
@@ -246,7 +259,7 @@ export default function Pricing() {
                 {/* Features */}
                 <ul className="flex flex-col gap-2.5 flex-1">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2.5 text-sm">
+                    <li key={f} className={`flex items-center gap-2.5 ${isHighlight ? 'text-base' : 'text-sm'}`}>
                       <Check
                         className="w-4 h-4 shrink-0"
                         style={{ color: '#F29F05' }}
@@ -268,7 +281,7 @@ export default function Pricing() {
                         ? { background: '#F29F05', color: '#000', border: 'none' }
                         : {
                             background: 'transparent',
-                            border: '1px solid rgba(155,111,255,0.4)',
+                            border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.2)',
                             color: c.textPrimary,
                           }
                     }
