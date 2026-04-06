@@ -148,7 +148,7 @@ export default function Pricing() {
         {/* Cards */}
         <motion.div
           variants={staggerContainer}
-          className="grid sm:grid-cols-3 gap-4 sm:gap-6 items-stretch py-12"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-stretch py-4 sm:py-12"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.15 }}
@@ -191,7 +191,7 @@ export default function Pricing() {
                 variants={fadeUp}
                 whileHover={{ y: -5 }}
                 className={`relative rounded-[10px] flex flex-col gap-5 transition-all duration-300 ${
-                  isHighlight ? 'p-6 sm:p-10 sm:-my-10 scale-[1.04]' : 'p-6 sm:p-7'
+                  isHighlight ? 'p-6 sm:p-10 sm:-my-10 sm:scale-[1.04]' : 'p-6 sm:p-7'
                 }`}
                 style={cardStyle}
               >
@@ -214,7 +214,7 @@ export default function Pricing() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 6 }}
                           transition={{ duration: 0.2 }}
-                          className={`font-bold tracking-tight ${isHighlight ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
+                          className={`font-bold tracking-tight ${isHighlight ? 'text-3xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
                           style={{ color: c.textPrimary }}
                         >
                           {label}
@@ -229,13 +229,13 @@ export default function Pricing() {
                           className="flex items-start"
                         >
                           <span
-                            className={`font-bold mr-0.5 ${isHighlight ? 'text-lg mt-2' : 'text-base mt-1.5'}`}
+                            className={`font-bold mr-0.5 ${isHighlight ? 'text-base sm:text-lg mt-1.5 sm:mt-2' : 'text-base mt-1.5'}`}
                             style={{ color: c.textPrimary }}
                           >
                             $
                           </span>
                           <span
-                            className={`font-bold tracking-tight ${isHighlight ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
+                            className={`font-bold tracking-tight ${isHighlight ? 'text-3xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
                             style={{ color: c.textPrimary }}
                           >
                             {numeric}
