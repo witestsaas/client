@@ -14,6 +14,8 @@ import { NAV_SECTIONS } from "./dashboardNav";
 import { useTheme } from "../utils/theme-context";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { fetchOrganization, fetchUserOrganizations } from "../services/organizations";
+import logo from "../assets/logo_yellow.svg";
+
 
 function getInitials(user) {
   const first = user?.firstName?.[0] || "";
@@ -105,18 +107,16 @@ export default function Sidebar({ collapsed, onToggle }) {
         collapsed ? "w-16" : "w-[260px]"
       }`}
     >
-      <div className="h-11 flex items-center px-3 border-b border-white/10 shrink-0">
-        <span className="flex items-center justify-center h-9 w-9 rounded-full bg-[#13112a] border border-[#F29F05]/60 shadow-sm">
-          <img src="/image.png" alt="Logo" className="h-7 w-7 object-contain" />
-        </span>
+      {/* ── Logo ── */}
+      <div className={`h-14 shrink-0 flex items-center px-4 border-b border-white/5 ${collapsed ? "justify-center" : "gap-3"}`}>
+        <div
+          className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg"
+          
+        >
+          <img src={logo} alt="Qalion" className="h-5 w-5 object-contain" />
+        </div>
         {!collapsed && (
-          <span
-            className="ml-3 text-lg font-bold tracking-wide text-white select-none"
-            style={{
-              fontFamily: '"Quantico", "Exo 2", Futura, "Avenir Next", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif',
-              letterSpacing: "0.05em",
-            }}
-          >
+          <span className="text-base font-bold tracking-tight text-white select-none">
             QALION
           </span>
         )}
