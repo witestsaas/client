@@ -66,37 +66,37 @@ export default function NoOrganizationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F6F6F6] dark:bg-[#232323] flex items-center justify-center p-4">
+    <main className="min-h-screen bg-[#fafafa] dark:bg-[#13112a] flex items-center justify-center p-4">
       <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-[#232323] rounded-xl border border-border p-6">
-          <h2 className="text-xl font-bold mb-2 text-[#232323] dark:text-white">Create Organization</h2>
-          <p className="text-sm text-[#232323]/60 dark:text-white/60 mb-4">Start a new workspace for your team.</p>
+        <div className="bg-white dark:bg-[#1c1a2e] rounded-xl border border-border dark:border-white/[0.07] p-6">
+          <h2 className="text-xl font-bold mb-2 text-[#0f0f1a] dark:text-white" style={{ fontFamily: "'Aeonik', sans-serif" }}>Create Organization</h2>
+          <p className="text-sm text-[#0f0f1a]/60 dark:text-white/45 mb-4" style={{ fontFamily: "'Manrope', sans-serif" }}>Start a new workspace for your team.</p>
           <form onSubmit={handleCreate} className="space-y-3">
             <input
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
               placeholder="Organization name"
               required
-              className="w-full rounded-md border border-border px-3 py-2 bg-white dark:bg-[#181818]"
+              className="w-full rounded-md border border-border dark:border-white/[0.08] px-3 py-2 bg-white dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/30"
             />
-            <button disabled={loading} className="w-full rounded-md bg-[#FFAA00] text-[#232323] font-semibold py-2">
+            <button disabled={loading} className="w-full rounded-md bg-[#F29F05] hover:bg-[#e5a22e] text-[#0f0f1a] font-semibold py-2 transition-colors duration-200">
               {loading ? "Processing..." : "Create Organization"}
             </button>
           </form>
         </div>
 
-        <div className="bg-white dark:bg-[#232323] rounded-xl border border-border p-6">
-          <h2 className="text-xl font-bold mb-2 text-[#232323] dark:text-white">Join with Invite Code</h2>
-          <p className="text-sm text-[#232323]/60 dark:text-white/60 mb-4">Paste invitation token received by email.</p>
+        <div className="bg-white dark:bg-[#1c1a2e] rounded-xl border border-border dark:border-white/[0.07] p-6">
+          <h2 className="text-xl font-bold mb-2 text-[#0f0f1a] dark:text-white" style={{ fontFamily: "'Aeonik', sans-serif" }}>Join with Invite Code</h2>
+          <p className="text-sm text-[#0f0f1a]/60 dark:text-white/45 mb-4" style={{ fontFamily: "'Manrope', sans-serif" }}>Paste invitation token received by email.</p>
           <form onSubmit={handleJoin} className="space-y-3">
             <input
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
               placeholder="Invite token"
               required
-              className="w-full rounded-md border border-border px-3 py-2 bg-white dark:bg-[#181818]"
+              className="w-full rounded-md border border-border dark:border-white/[0.08] px-3 py-2 bg-white dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/30"
             />
-            <button disabled={loading} className="w-full rounded-md border border-border text-[#232323] dark:text-white font-semibold py-2">
+            <button disabled={loading} className="w-full rounded-md border border-border dark:border-white/[0.12] text-[#0f0f1a] dark:text-white font-semibold py-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-200">
               {loading ? "Processing..." : "Join Organization"}
             </button>
           </form>

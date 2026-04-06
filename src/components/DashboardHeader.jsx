@@ -507,7 +507,7 @@ export default function DashboardHeader() {
   }, [loadFunctionalQuota, activeRuns.length]);
 
   return (
-    <header className="sticky top-0 z-40 h-11 shrink-0 relative border-b border-white/10 bg-[#232323] dark:bg-[#232323] px-6 flex items-center justify-between">
+    <header className="sticky top-0 z-40 h-11 shrink-0 relative border-b border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] px-6 flex items-center justify-between">
       {!isNoOrg ? (
         <div className="relative" ref={projectsMenuRef}>
           <button
@@ -598,7 +598,7 @@ export default function DashboardHeader() {
               </button>
 
               {couponPanelOpen ? (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#232323] shadow-2xl p-3 z-40">
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#1c1a2e] shadow-2xl p-3 z-40">
                   {/*<div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-white/60">AI Credits</span>
                     <span className={`text-sm font-bold ${textColor}`}>{remaining.toFixed(2)}</span>
@@ -720,7 +720,7 @@ export default function DashboardHeader() {
             </button>
 
             {runsPanelOpen ? (
-              <div className="absolute right-0 mt-2 w-[340px] rounded-2xl border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-3 z-40">
+              <div className="absolute right-0 mt-2 w-[340px] rounded-2xl border border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] shadow-2xl p-3 z-40">
                 <div className="text-xs text-white/60 mb-2">Running test runs</div>
                 {!activeRuns.length ? (
                   <p className="text-sm text-white/75">No running test runs.</p>
@@ -783,7 +783,7 @@ export default function DashboardHeader() {
           </button>
 
           {notificationsOpen ? (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/10 bg-[#232323] dark:bg-[#232323] shadow-2xl p-3 z-30">
+            <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] shadow-2xl p-3 z-30">
               <p className="text-xs text-white/60 mb-2">{orgUnreadCount} unread notifications • {pendingInviteLabel}</p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {orgNotifications.map((notification) => (
@@ -843,7 +843,7 @@ export default function DashboardHeader() {
       </div>
 
       {alertText ? (
-        <div className="absolute top-[78px] right-6 flex items-center gap-2 rounded-lg border border-[#FFAA00]/40 bg-[#232323] dark:bg-[#232323] px-3 py-2 shadow-xl z-40">
+        <div className="absolute top-[78px] right-6 flex items-center gap-2 rounded-lg border border-[#FFAA00]/40 bg-[#1c1a2e] dark:bg-[#1c1a2e] px-3 py-2 shadow-xl z-40">
           <p className="text-xs text-white">{alertText}</p>
           <button type="button" className="text-white/70 hover:text-white" onClick={() => setAlertText("")}>
             <X className="h-3 w-3" />
@@ -861,7 +861,7 @@ export default function DashboardHeader() {
             }}
           />
           <div className="absolute right-6 top-[70px] w-[min(720px,92vw)]">
-            <div className="bg-white dark:bg-[#232323] border border-border dark:border-[#FFAA00]/20 rounded-2xl shadow-2xl p-4">
+            <div className="bg-white dark:bg-[#1c1a2e] border border-border dark:border-[#FFAA00]/20 rounded-2xl shadow-2xl p-4">
               <div className="flex items-center gap-2 bg-muted dark:bg-[#1F1F1F] rounded-full pl-4 pr-3 h-11 border border-border dark:border-white/10">
                 <Search className="h-4 w-4 text-[#FFAA00]" />
                 <input

@@ -49,14 +49,14 @@
 :root {
   --radius: 0.625rem;
   --font-geist-sans: "Manrope", "Space Grotesk", "Segoe UI", sans-serif;
-  --background: #f6f6f6;
-  --foreground: #232323;
-  --card: #f6f6f6;
-  --card-foreground: #232323;
-  --popover: #f6f6f6;
-  --popover-foreground: #232323;
-  --primary: #232323;
-  --primary-foreground: #f6f6f6;
+  --background: #fafafa;
+  --foreground: #0f0f1a;
+  --card: #ffffff;
+  --card-foreground: #0f0f1a;
+  --popover: #ffffff;
+  --popover-foreground: #0f0f1a;
+  --primary: #F29F05;
+  --primary-foreground: #0f0f1a;
   --secondary: #f0f0f0;
   --secondary-foreground: #232323;
   --muted: #ececec;
@@ -83,37 +83,74 @@
 }
 
 .dark {
-  --background: #232323;
+  --background: #13112a;
   --foreground: #f6f6f6;
-  --card: #2a2a2a;
+  --card: #1c1a2e;
   --card-foreground: #f6f6f6;
-  --popover: #2a2a2a;
+  --popover: #1c1a2e;
   --popover-foreground: #f6f6f6;
-  --primary: #ffb733;
-  --primary-foreground: #232323;
-  --secondary: #303030;
+  --primary: #F29F05;
+  --primary-foreground: #0f0f1a;
+  --secondary: #221f38;
   --secondary-foreground: #f6f6f6;
-  --muted: #303030;
-  --muted-foreground: #cfcfcf;
-  --accent: #333333;
+  --muted: #221f38;
+  --muted-foreground: #b0adc8;
+  --accent: #26233d;
   --accent-foreground: #f6f6f6;
   --destructive: #ef4444;
-  --border: rgba(255, 255, 255, 0.14);
-  --input: rgba(255, 255, 255, 0.14);
-  --ring: #ffb733;
-  --chart-1: #ffb733;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #F29F05;
+  --chart-1: #F29F05;
   --chart-2: #22c55e;
   --chart-3: #60a5fa;
   --chart-4: #f87171;
   --chart-5: #c084fc;
-  --sidebar: #232323;
+  --sidebar: #1c1a2e;
   --sidebar-foreground: #f6f6f6;
-  --sidebar-primary: #ffb733;
-  --sidebar-primary-foreground: #232323;
-  --sidebar-accent: #2f2f2f;
+  --sidebar-primary: #F29F05;
+  --sidebar-primary-foreground: #0f0f1a;
+  --sidebar-accent: #26233d;
   --sidebar-accent-foreground: #f6f6f6;
-  --sidebar-border: rgba(255, 255, 255, 0.14);
-  --sidebar-ring: #ffb733;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #F29F05;
+}
+
+/* ── Custom scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(242, 159, 5, 0.45);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
 }
 
 @keyframes folderHighlight {
