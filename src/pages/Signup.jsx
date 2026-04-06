@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+<<<<<<< HEAD
 import { motion, AnimatePresence } from "framer-motion";
+=======
+import { Input } from "../components/Input";
+import { GoogleButton } from "../components/GoogleButton";
+import { MicrosoftButton } from "../components/MicrosoftButton";
+>>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { CheckCircle, Mail, Zap, Bot, Globe, Shield } from "lucide-react";
@@ -26,7 +32,7 @@ const inputStyle = {
 };
 
 export default function SignupPage() {
-  const { signup, startGoogleAuth, getCaptchaChallenge } = useAuth();
+  const { signup, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
@@ -294,9 +300,16 @@ export default function SignupPage() {
 
             {!success && (
               <>
+<<<<<<< HEAD
                 {/* Google button */}
                 <motion.button
                   type="button"
+=======
+                <div className="space-y-3">
+                <GoogleButton
+                  label="Sign up with Google"
+                  disabled={loading}
+>>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
                   onClick={startGoogleAuth}
                   disabled={loading}
                   className="w-full flex items-center justify-center gap-2.5 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
@@ -316,6 +329,7 @@ export default function SignupPage() {
                   Sign up with Google
                 </motion.button>
 
+<<<<<<< HEAD
                 {/* Separator */}
                 <motion.div
                   className="relative my-5"
@@ -323,6 +337,15 @@ export default function SignupPage() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: 0.44 }}
                 >
+=======
+                <MicrosoftButton
+                  label="Sign up with Microsoft"
+                  disabled={loading}
+                  onClick={startMicrosoftAuth}
+                />
+                </div>
+                <div className="relative my-5">
+>>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }} />
                   </div>

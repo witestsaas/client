@@ -23,6 +23,7 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 import { getAccessToken } from '../auth/token-manager.js';
+import { notifyRefreshSuccess } from '../auth/session-keeper.js';
 
 function getCookieValue(name) {
   if (typeof document === 'undefined') return undefined;
@@ -40,10 +41,14 @@ let refreshPromise = null;
 
 async function refreshSession() {
   if (!refreshPromise) {
-    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    }).finally(() => {
+    refreshPromise = (async () => {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json().catch(() => ({}));
+      return { ok: response.ok, data };
+    })().finally(() => {
       refreshPromise = null;
     });
   }
@@ -89,8 +94,11 @@ export async function apiFetch(path, options = {}) {
   if (response.status === 401 && !_retry && path !== '/auth/refresh' && path !== '/auth/logout') {
     let refreshSucceeded = false;
     try {
-      const refreshResponse = await refreshSession();
-      refreshSucceeded = Boolean(refreshResponse?.ok);
+      const result = await refreshSession();
+      if (result?.ok) {
+        refreshSucceeded = true;
+        notifyRefreshSuccess(result.data?.accessTokenExpiresIn);
+      }
     } catch {
       refreshSucceeded = false;
     }

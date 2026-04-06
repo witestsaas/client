@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+<<<<<<< HEAD
 import { motion, AnimatePresence } from "framer-motion";
 
+=======
+import { Input } from "../components/Input";
+import { GoogleButton } from "../components/GoogleButton";
+import { MicrosoftButton } from "../components/MicrosoftButton";
+>>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -18,7 +24,7 @@ const highlights = [
 export default function SigninPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, startGoogleAuth, getCaptchaChallenge } = useAuth();
+  const { login, startGoogleAuth, startMicrosoftAuth, getCaptchaChallenge } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -297,6 +303,7 @@ export default function SigninPage() {
               )}
             </AnimatePresence>
 
+<<<<<<< HEAD
             {/* Google button */}
             <motion.button
               type="button"
@@ -318,6 +325,21 @@ export default function SigninPage() {
               </svg>
               Sign in with Google
             </motion.button>
+=======
+            <div className="space-y-3">
+  <GoogleButton
+    label="Sign in with Google"
+    disabled={loading}
+    onClick={startGoogleAuth}
+  />
+
+  <MicrosoftButton
+    label="Sign in with Microsoft"
+    disabled={loading}
+    onClick={startMicrosoftAuth}
+  />
+</div>
+>>>>>>> 3321bfbfeed500405e3201324d9adab6ff0033fe
 
             <motion.div
               className="relative my-5"

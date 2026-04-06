@@ -143,7 +143,7 @@ export default function Profile() {
         const absolute = payload.url.startsWith('http')
           ? payload.url
           : `${new URL(import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1').origin}${payload.url}`;
-        setAvatarUrl(absolute);
+        setAvatarUrl(`${absolute}?v=${Date.now()}`);
       }
 
       await refreshProfile();
@@ -152,6 +152,8 @@ export default function Profile() {
       setMessage(error?.message || 'Failed to upload avatar');
     } finally {
       setIsUploading(false);
+      // Reset file input so re-selecting the same file triggers onChange
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 

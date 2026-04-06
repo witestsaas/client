@@ -13,6 +13,7 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import { getAccessToken } from "../auth/token-manager.js";
+import { apiFetch } from "../services/http.js";
 
 // ---------------------------------------------------------------------------
 // Types matching middleware gateway events
@@ -338,4 +339,71 @@ export function useTestRunGlobalUpdates(
 			socket.off("testRun:completed", handler);
 		};
 	}, [socket, connected]);
+}
+
+// ---------------------------------------------------------------------------
+// Org concurrency slot events
+// ---------------------------------------------------------------------------
+
+export interface OrgSlotsEvent {
+	orgSlug: string;
+	used: number;
+	limit: number;
+	available: number;
+	timestamp: string;
+}
+
+/**
+ * Subscribe to real-time concurrency slot updates for an organization.
+ * Joins the `org:${orgSlug}` room and listens for `org:slotsUpdate`.
+ * Also fetches initial data via REST on mount.
+ */
+export function useOrgSlots(orgSlug: string | null | undefined) {
+	const { socket, connected } = useSocket();
+	const [slots, setSlots] = useState<{ used: number; limit: number; available: number } | null>(null);
+
+	// Fetch initial slot info via REST
+	useEffect(() => {
+		if (!orgSlug) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const r = await apiFetch(`/${encodeURIComponent(orgSlug)}/test-execution/org-slots`);
+				if (r.ok && !cancelled) {
+					const data = await r.json();
+					setSlots(data);
+				}
+			} catch { /* non-fatal */ }
+		})();
+		return () => { cancelled = true; };
+	}, [orgSlug]);
+
+	// Join org room + listen for updates
+	useEffect(() => {
+		if (!orgSlug || !socket) return;
+
+		if (socket.connected) {
+			socket.emit('subscribe:org', orgSlug);
+		} else {
+			const onConnect = () => {
+				socket.emit('subscribe:org', orgSlug);
+				socket.off('connect', onConnect);
+			};
+			socket.on('connect', onConnect);
+		}
+
+		const handler = (event: OrgSlotsEvent) => {
+			if (event.orgSlug === orgSlug) {
+				setSlots({ used: event.used, limit: event.limit, available: event.available });
+			}
+		};
+
+		socket.on('org:slotsUpdate', handler);
+
+		return () => {
+			socket.off('org:slotsUpdate', handler);
+		};
+	}, [orgSlug, socket, connected]);
+
+	return slots;
 }

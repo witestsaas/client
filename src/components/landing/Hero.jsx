@@ -46,7 +46,7 @@ export default function Hero() {
         <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-0">
 
           {/* Left — Text + CTA */}
-          <div className="lg:w-1/2 shrink-0 text-center lg:text-left">
+          <div className="lg:w-[58%] shrink-0 text-center lg:text-left">
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -56,7 +56,7 @@ export default function Hero() {
                 fontFamily: "'Aeonik', sans-serif",
                 fontWeight: 700,
                 color: isDark ? '#ffffff' : c.textPrimary,
-                fontSize: 'clamp(4rem, 10vw, 4.5rem)',
+                fontSize: 'clamp(4.5rem, 11vw, 5.5rem)',
               }}
             >
               Ship faster<br />

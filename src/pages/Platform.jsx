@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Mail, Settings, ShieldAlert, Trash2, UserPlus, Users, X } from "lucide-react";
+import { AlertTriangle, LogOut, Mail, Settings, ShieldAlert, Trash2, UserPlus, Users, X } from "lucide-react";
 import { apiFetch } from "../services/http";
 import { fetchUserOrganizations } from "../services/organizations";
 
@@ -69,6 +69,8 @@ export default function Platform() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingOrg, setDeletingOrg] = useState(false);
   const [deleteOrgError, setDeleteOrgError] = useState("");
+  const [leavingOrg, setLeavingOrg] = useState(false);
+  const [leaveError, setLeaveError] = useState("");
 
   const isOwner = org?.currentUserRole === "Owner";
   const canManage = isOwner;
@@ -235,6 +237,40 @@ export default function Platform() {
     }
   }
 
+  async function handleLeaveOrganization() {
+    if (!orgSlug || leavingOrg) return;
+    if (!confirm("Are you sure you want to leave this organization? You will lose access to all its projects and data.")) return;
+
+    setLeavingOrg(true);
+    setLeaveError("");
+
+    try {
+      const response = await apiFetch(`/organizations/${orgSlug}/leave`, { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to leave organization");
+      }
+
+      // Navigate to another org or the no-org page
+      try {
+        const orgs = await fetchUserOrganizations();
+        const firstOrgSlug = orgs?.organizations?.[0]?.slug;
+        if (firstOrgSlug) {
+          navigate(`/dashboard/${firstOrgSlug}/platform/organizations`, { replace: true });
+        } else {
+          navigate("/dashboard/no-org", { replace: true });
+        }
+      } catch {
+        navigate("/dashboard/no-org", { replace: true });
+      }
+    } catch (e) {
+      setLeaveError(e?.message || "Failed to leave organization");
+    } finally {
+      setLeavingOrg(false);
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -384,6 +420,27 @@ export default function Platform() {
                 Delete Organization
               </button>
             </div>
+          </div>
+        ) : null}
+
+        {!isOwner ? (
+          <div className="rounded-2xl border border-amber-300/70 dark:border-amber-700/40 bg-amber-50/20 dark:bg-amber-950/15 p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-medium text-[#232323] dark:text-white">Leave Organization</p>
+                <p className="text-sm text-[#232323]/60 dark:text-white/60">You will lose access to all projects and data in this organization</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleLeaveOrganization}
+                disabled={leavingOrg}
+                className="h-10 px-4 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" />
+                {leavingOrg ? "Leaving..." : "Leave Organization"}
+              </button>
+            </div>
+            {leaveError ? <p className="mt-3 text-sm text-red-600 dark:text-red-400">{leaveError}</p> : null}
           </div>
         ) : null}
       </div>

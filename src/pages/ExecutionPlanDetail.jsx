@@ -7,6 +7,7 @@ import { fetchOrgQuotaUsage } from "../services/organizations";
 import { addPlanTestCases, getExecutionSlots, getPlan, getRun, runPlan } from "../services/executionReporting";
 import { fetchProjectTree } from "../services/testManagement";
 import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
+import { useOrgSlots } from "../hooks/useSocket";
 
 const DESKTOP_PROFILES = [
   { id: "desktop-chrome", label: "Google Chrome (Desktop)", osIcon: "/os_browsers_icons/windowsOS.svg", browserIcon: "/os_browsers_icons/chrome.svg" },
@@ -435,42 +436,21 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
 
 function RunPlanModal({ open, onClose, plan, onRun }) {
   const { orgSlug } = useParams();
-  const [loadingSlots, setLoadingSlots] = useState(true);
   const [running, setRunning] = useState(false);
   const [parallelSessions, setParallelSessions] = useState(1);
-  const [slots, setSlots] = useState({ maxPerOrg: 4, orgAvailable: 4, orgRunning: 0, orgQueued: 0 });
+
+  // Real-time org slot info via Socket.IO + REST initial fetch
+  const realtimeSlots = useOrgSlots(open ? orgSlug : null);
+  const orgAvailable = realtimeSlots?.available ?? 4;
+  const orgLimit = realtimeSlots?.limit ?? 4;
+  const orgUsed = realtimeSlots?.used ?? 0;
+  const loadingSlots = realtimeSlots === null;
 
   useEffect(() => {
-    if (!open || !orgSlug) return;
-    let cancelled = false;
-    setLoadingSlots(true);
-    getExecutionSlots(orgSlug)
-      .then((data) => {
-        if (cancelled) return;
-        const maxPerOrg = Number(data?.maxPerOrg || 4);
-        const orgAvailable = Number(data?.orgAvailable ?? maxPerOrg);
-        setSlots({
-          maxPerOrg,
-          orgAvailable,
-          orgRunning: Number(data?.orgRunning || 0),
-          orgQueued: Number(data?.orgQueued || 0),
-        });
-        const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), 4);
-        setParallelSessions(defaultParallel);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSlots({ maxPerOrg: 4, orgAvailable: 4, orgRunning: 0, orgQueued: 0 });
-        setParallelSessions(4);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSlots(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, orgSlug]);
+    if (!open || realtimeSlots === null) return;
+    const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), 4);
+    setParallelSessions(defaultParallel);
+  }, [open, realtimeSlots === null]);
 
   if (!open || !plan) return null;
 
@@ -545,8 +525,9 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
                 <span className="text-xs text-[#232323]/60 dark:text-white/60 inline-flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin" />...</span>
               ) : (
                 <span className="text-sm font-semibold">
-                  <span className="text-green-600">{slots.orgAvailable}</span>
-                  <span className="text-[#232323]/45 dark:text-white/45"> / {slots.maxPerOrg}</span>
+                  <span className={orgAvailable > 0 ? "text-green-600" : "text-red-500"}>{orgAvailable}</span>
+                  <span className="text-[#232323]/45 dark:text-white/45"> / {orgLimit}</span>
+                  <span className="text-[#232323]/35 dark:text-white/35 text-xs ml-1">({orgUsed} in use)</span>
                 </span>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { clearBootstrapToken, setAccessTokenGetter } from './token-manager.js';
+import { startSessionKeeper, stopSessionKeeper } from './session-keeper.js';
 import { apiFetch } from '../services/http.js';
 
 function resolveApiBaseUrl() {
@@ -109,6 +110,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       setAccessTokenGetter(null);
+      stopSessionKeeper();
     };
   }, []);
 
@@ -130,6 +132,7 @@ export function AuthProvider({ children }) {
         const normalizedProfile = await refreshProfile();
         if (!cancelled) {
           setUser(normalizedProfile);
+          startSessionKeeper({ onSessionLost: () => setUser(null) });
         }
       } catch {
         if (!cancelled) {
@@ -192,6 +195,10 @@ export function AuthProvider({ children }) {
       };
     }
 
+    startSessionKeeper({
+      accessTokenExpiresIn: payload?.accessTokenExpiresIn,
+      onSessionLost: () => setUser(null),
+    });
     return refreshProfile();
   }, [refreshProfile]);
 
@@ -212,6 +219,10 @@ export function AuthProvider({ children }) {
       throw new Error(payload?.message || 'MFA verification failed');
     }
 
+    startSessionKeeper({
+      accessTokenExpiresIn: payload?.accessTokenExpiresIn,
+      onSessionLost: () => setUser(null),
+    });
     return refreshProfile();
   }, [refreshProfile]);
 
@@ -245,11 +256,18 @@ export function AuthProvider({ children }) {
     window.location.href = `${API_BASE_URL}/auth/google`;
   }, []);
 
+  const startMicrosoftAuth = useCallback(async () => {
+    window.location.href = `${API_BASE_URL}/auth/microsoft`;
+  }, []);
+
   const completeGoogleAuth = useCallback(async () => {
-    return refreshProfile();
+    const profile = await refreshProfile();
+    startSessionKeeper({ onSessionLost: () => setUser(null) });
+    return profile;
   }, [refreshProfile]);
 
   const logout = useCallback(async () => {
+    stopSessionKeeper();
     setUser(null);
     clearBootstrapToken();
     await apiFetch('/auth/logout', {
@@ -271,6 +289,7 @@ export function AuthProvider({ children }) {
       getCaptchaChallenge,
       logout,
       startGoogleAuth,
+      startMicrosoftAuth,
       completeGoogleAuth,
       refreshProfile,
     }),
@@ -284,6 +303,7 @@ export function AuthProvider({ children }) {
       getCaptchaChallenge,
       logout,
       startGoogleAuth,
+      startMicrosoftAuth,
       completeGoogleAuth,
       refreshProfile,
     ],
