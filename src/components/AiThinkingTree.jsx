@@ -225,7 +225,7 @@ function PhaseStatusIndicator({ status, color }) {
     return <XCircle className="h-3.5 w-3.5 text-red-500" />;
   }
   return (
-    <span className="h-3 w-3 rounded-full border-2 border-[#232323]/20 dark:border-white/20" />
+    <span className="h-3 w-3 rounded-full border-2 border-[#1c1a2e]/20 dark:border-white/20" />
   );
 }
 
@@ -240,7 +240,7 @@ function StepStatusIcon({ status }) {
   if (status === "error") {
     return <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />;
   }
-  return <Circle className="h-3 w-3 text-[#232323]/25 dark:text-white/25 flex-shrink-0" />;
+  return <Circle className="h-3 w-3 text-[#1c1a2e]/25 dark:text-white/25 flex-shrink-0" />;
 }
 
 // ─── Phase Node Component ──────────────────────────────────────────────────
@@ -271,7 +271,7 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
                 ? "border-red-500/20"
                 : isActive
                   ? colors.line
-                  : "border-[#232323]/10 dark:border-white/10"
+                  : "border-[#1c1a2e]/10 dark:border-white/10"
           } transition-colors duration-500`}
         />
       )}
@@ -282,7 +282,7 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
         className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all duration-300 group text-left ${
           isActive
             ? `${colors.activeBg} ring-1 ${colors.ring}`
-            : "hover:bg-[#232323]/[0.03] dark:hover:bg-white/[0.03]"
+            : "hover:bg-[#1c1a2e]/[0.03] dark:hover:bg-white/[0.03]"
         }`}
       >
         {/* Phase dot */}
@@ -304,10 +304,10 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
           <span
             className={`text-[13px] font-semibold ${
               status === "done"
-                ? "text-[#232323]/70 dark:text-white/70"
+                ? "text-[#1c1a2e]/70 dark:text-white/70"
                 : isActive
-                  ? "text-[#232323] dark:text-white"
-                  : "text-[#232323]/40 dark:text-white/40"
+                  ? "text-[#1c1a2e] dark:text-white"
+                  : "text-[#1c1a2e]/40 dark:text-white/40"
             } transition-colors duration-300`}
           >
             {phase.label}
@@ -316,14 +316,14 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
 
         {/* Duration badge */}
         {duration && status === "done" ? (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#232323]/5 dark:bg-white/5 text-[#232323]/50 dark:text-white/50">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1c1a2e]/5 dark:bg-white/5 text-[#1c1a2e]/50 dark:text-white/50">
             {duration}
           </span>
         ) : null}
 
         {/* Step count badge */}
         {steps.length > 0 ? (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#232323]/5 dark:bg-white/5 text-[#232323]/45 dark:text-white/45">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1c1a2e]/5 dark:bg-white/5 text-[#1c1a2e]/45 dark:text-white/45">
             {steps.length}
           </span>
         ) : null}
@@ -331,16 +331,16 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
         {/* Expand/collapse chevron */}
         {steps.length > 0 ? (
           expanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-[#232323]/35 dark:text-white/35 flex-shrink-0 transition-transform" />
+            <ChevronDown className="h-3.5 w-3.5 text-[#1c1a2e]/35 dark:text-white/35 flex-shrink-0 transition-transform" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-[#232323]/35 dark:text-white/35 flex-shrink-0 transition-transform" />
+            <ChevronRight className="h-3.5 w-3.5 text-[#1c1a2e]/35 dark:text-white/35 flex-shrink-0 transition-transform" />
           )
         ) : null}
       </button>
 
       {/* Phase Steps (children) */}
       {expanded && steps.length > 0 ? (
-        <div className="ml-[15px] pl-5 border-l-2 border-dashed border-[#232323]/8 dark:border-white/8 mt-0.5 mb-1">
+        <div className="ml-[15px] pl-5 border-l-2 border-dashed border-[#1c1a2e]/8 dark:border-white/8 mt-0.5 mb-1">
           {steps.map((step, idx) => {
             const StepIcon = getStepIcon(step);
             const isStepActive = step.status === "active";
@@ -354,7 +354,7 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
                 }`}
               >
                 {/* Branch connector */}
-                <div className="absolute -left-5 top-[14px] w-4 h-0 border-t border-dashed border-[#232323]/12 dark:border-white/12" />
+                <div className="absolute -left-5 top-[14px] w-4 h-0 border-t border-dashed border-[#1c1a2e]/12 dark:border-white/12" />
 
                 {/* Status icon */}
                 <div className="flex-shrink-0 mt-0.5">
@@ -365,12 +365,12 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
                 <StepIcon
                   className={`h-3 w-3 mt-0.5 flex-shrink-0 ${
                     step.status === "done"
-                      ? "text-[#232323]/40 dark:text-white/40"
+                      ? "text-[#1c1a2e]/40 dark:text-white/40"
                       : step.status === "active"
                         ? "text-blue-500"
                         : step.status === "error"
                           ? "text-red-400"
-                          : "text-[#232323]/25 dark:text-white/25"
+                          : "text-[#1c1a2e]/25 dark:text-white/25"
                   }`}
                 />
 
@@ -379,25 +379,25 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
                   <p
                     className={`text-[12px] leading-tight ${
                       step.status === "active"
-                        ? "text-[#232323] dark:text-white font-medium"
+                        ? "text-[#1c1a2e] dark:text-white font-medium"
                         : step.status === "done"
-                          ? "text-[#232323]/65 dark:text-white/65"
+                          ? "text-[#1c1a2e]/65 dark:text-white/65"
                           : step.status === "error"
                             ? "text-red-600 dark:text-red-400"
-                            : "text-[#232323]/40 dark:text-white/40"
+                            : "text-[#1c1a2e]/40 dark:text-white/40"
                     }`}
                   >
                     {step.label}
                   </p>
                   {step.detail ? (
-                    <p className="text-[11px] text-[#232323]/45 dark:text-white/45 mt-0.5 leading-tight whitespace-pre-wrap">
+                    <p className="text-[11px] text-[#1c1a2e]/45 dark:text-white/45 mt-0.5 leading-tight whitespace-pre-wrap">
                       {step.detail}
                     </p>
                   ) : null}
                 </div>
 
                 {/* Timestamp */}
-                <span className="text-[9px] text-[#232323]/30 dark:text-white/30 flex-shrink-0 mt-0.5 tabular-nums">
+                <span className="text-[9px] text-[#1c1a2e]/30 dark:text-white/30 flex-shrink-0 mt-0.5 tabular-nums">
                   {formatRelativeTime(step.timestamp)}
                 </span>
               </div>
@@ -462,7 +462,7 @@ export default function AiThinkingTree({ steps = [], phase = "generating" }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="px-4 py-2.5 border-b border-border bg-gradient-to-r from-[#232323]/[0.02] to-transparent dark:from-white/[0.02]">
+      <div className="px-4 py-2.5 border-b border-border bg-gradient-to-r from-[#1c1a2e]/[0.02] to-transparent dark:from-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <div className="relative">
             <Brain className="h-4 w-4 text-purple-500" />
@@ -473,7 +473,7 @@ export default function AiThinkingTree({ steps = [], phase = "generating" }) {
               </span>
             ) : null}
           </div>
-          <span className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 tracking-wide uppercase">
+          <span className="text-xs font-semibold text-[#1c1a2e]/70 dark:text-white/70 tracking-wide uppercase">
             AI Thinking Process
           </span>
           <div className="flex-1" />
@@ -498,7 +498,7 @@ export default function AiThinkingTree({ steps = [], phase = "generating" }) {
 
         {/* Progress bar */}
         {totalSteps > 0 ? (
-          <div className="mt-2 h-1 rounded-full bg-[#232323]/5 dark:bg-white/5 overflow-hidden">
+          <div className="mt-2 h-1 rounded-full bg-[#1c1a2e]/5 dark:bg-white/5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-700 ease-out ${
                 hasError

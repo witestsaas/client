@@ -157,7 +157,7 @@ export default function AIChatWidget() {
           open ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
         }`}
       >
-        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#141419] shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col h-[min(520px,calc(100dvh-7rem))]">
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#1c1a2e] shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col h-[min(520px,calc(100dvh-7rem))]">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-black/8 dark:border-white/8 bg-gradient-to-r from-[#FFAA00]/10 to-transparent">
             <div className="flex items-center gap-2.5">
@@ -165,13 +165,13 @@ export default function AIChatWidget() {
                 <Sparkles className="h-4 w-4 text-[#FFAA00]" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#232323] dark:text-white leading-tight">Qalion Assistant</p>
-                <p className="text-[11px] text-[#232323]/50 dark:text-white/50">Ask anything about our platform</p>
+                <p className="text-sm font-semibold text-[#1c1a2e] dark:text-white leading-tight">Qalion Assistant</p>
+                <p className="text-[11px] text-[#1c1a2e]/50 dark:text-white/50">Ask anything about our platform</p>
               </div>
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="h-7 w-7 rounded-lg flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 transition-colors"
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-[#1c1a2e]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -190,7 +190,7 @@ export default function AIChatWidget() {
                   className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
                     msg.role === "user"
                       ? "bg-[#FFAA00] text-white rounded-br-md"
-                      : "bg-[#f4f4f5] dark:bg-white/8 text-[#232323] dark:text-white/90 rounded-bl-md"
+                      : "bg-[#f4f4f5] dark:bg-white/8 text-[#1c1a2e] dark:text-white/90 rounded-bl-md"
                   }`}
                 >
                   {msg.role === "assistant" ? (
@@ -220,8 +220,8 @@ export default function AIChatWidget() {
                   )}
                 </div>
                 {msg.role === "user" && (
-                  <div className="h-6 w-6 rounded-md bg-[#232323]/8 dark:bg-white/10 flex-shrink-0 flex items-center justify-center mt-0.5">
-                    <User className="h-3.5 w-3.5 text-[#232323]/60 dark:text-white/60" />
+                  <div className="h-6 w-6 rounded-md bg-[#1c1a2e]/8 dark:bg-white/10 flex-shrink-0 flex items-center justify-center mt-0.5">
+                    <User className="h-3.5 w-3.5 text-[#1c1a2e]/60 dark:text-white/60" />
                   </div>
                 )}
               </div>
@@ -235,10 +235,10 @@ export default function AIChatWidget() {
                     onClick={() => sendSuggested(q)}
                     className="group w-full text-left px-3 py-2 rounded-lg border border-black/6 dark:border-white/6 bg-white dark:bg-white/[0.03] hover:border-[#FFAA00]/30 hover:bg-[#FFAA00]/[0.04] transition-all duration-200 flex items-center justify-between gap-2"
                   >
-                    <span className="text-[12.5px] text-[#232323]/70 dark:text-white/60 group-hover:text-[#232323] dark:group-hover:text-white/90 transition-colors leading-snug">
+                    <span className="text-[12.5px] text-[#1c1a2e]/70 dark:text-white/60 group-hover:text-[#1c1a2e] dark:group-hover:text-white/90 transition-colors leading-snug">
                       {q}
                     </span>
-                    <ArrowRight className="h-3 w-3 text-[#232323]/20 dark:text-white/20 group-hover:text-[#FFAA00] transition-colors flex-shrink-0" />
+                    <ArrowRight className="h-3 w-3 text-[#1c1a2e]/20 dark:text-white/20 group-hover:text-[#FFAA00] transition-colors flex-shrink-0" />
                   </button>
                 ))}
               </div>
@@ -250,9 +250,9 @@ export default function AIChatWidget() {
                 </div>
                 <div className="bg-[#f4f4f5] dark:bg-white/8 rounded-2xl rounded-bl-md px-4 py-3">
                   <div className="flex gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:0ms]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:150ms]" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#232323]/30 dark:bg-white/30 animate-bounce [animation-delay:300ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1c1a2e]/30 dark:bg-white/30 animate-bounce [animation-delay:0ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1c1a2e]/30 dark:bg-white/30 animate-bounce [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1c1a2e]/30 dark:bg-white/30 animate-bounce [animation-delay:300ms]" />
                   </div>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export default function AIChatWidget() {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about Qalion..."
                 rows={1}
-                className="flex-1 resize-none bg-transparent text-sm text-[#232323] dark:text-white placeholder:text-[#232323]/35 dark:placeholder:text-white/35 outline-none max-h-24 leading-relaxed"
+                className="flex-1 resize-none bg-transparent text-sm text-[#1c1a2e] dark:text-white placeholder:text-[#1c1a2e]/35 dark:placeholder:text-white/35 outline-none max-h-24 leading-relaxed"
               />
               <button
                 onClick={sendMessage}
@@ -280,7 +280,7 @@ export default function AIChatWidget() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-[10px] text-center text-[#232323]/30 dark:text-white/30 mt-2">
+            <p className="text-[10px] text-center text-[#1c1a2e]/30 dark:text-white/30 mt-2">
               Powered by Qalion AI
             </p>
           </div>
@@ -292,7 +292,7 @@ export default function AIChatWidget() {
         onClick={() => setOpen((v) => !v)}
         className={`fixed bottom-4 right-4 sm:right-6 z-[9999] h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
           open
-            ? "bg-[#232323] dark:bg-white/15 rotate-0"
+            ? "bg-[#1c1a2e] dark:bg-white/15 rotate-0"
             : "bg-[#FFAA00] hover:bg-[#e69900] shadow-[0_4px_20px_rgba(255,170,0,0.4)]"
         }`}
         aria-label={open ? "Close chat" : "Open chat"}
