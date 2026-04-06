@@ -11,6 +11,8 @@ import { Zap, Bot, Globe, Shield } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import AIChatWidget from "../components/AIChatWidget";
 import { useTheme } from "../utils/theme-context";
+import logo from '../assets/logo_yellow.svg';
+
 
 const highlights = [
   { icon: Bot, stat: "10x", label: "Faster test creation" },
@@ -177,14 +179,16 @@ const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center"
-              style={{ background: "#F29F05", boxShadow: "0 2px 12px rgba(242,159,5,0.35)" }}
-            >
-              <Zap className="w-5 h-5 text-black" strokeWidth={2.5} />
-            </div>
-            <span className="font-bold text-lg text-white tracking-tight">Qalion</span>
-          </Link>
+<Link to="/" className="flex items-center gap-2.5">
+  <div
+    className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+  >
+    <img src={logo} alt="Qalion logo" className="w-full h-full object-contain" />
+  </div>
+  <span className="font-bold text-base tracking-tight text-white" >
+    QALION
+  </span>
+</Link>
         </motion.div>
 
         {/* Content */}

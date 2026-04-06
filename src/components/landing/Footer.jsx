@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { footerColumns } from '../../constants/landing';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
+import logo from '../../assets/logo_yellow.svg';
 
 export default function Footer() {
   const { theme } = useTheme();
@@ -88,12 +89,18 @@ export default function Footer() {
               visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
             }}
           >
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#F29F05] flex items-center justify-center">
-                <Zap className="w-4 h-4 text-black" strokeWidth={2.5} />
-              </div>
-              <span className="font-bold text-base" style={{ color: c.textPrimary }}>Qalion</span>
-            </div>
+       <div className="flex items-center gap-2.5 mb-3">
+  <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+    <img 
+      src={logo} 
+      alt="Qalion logo" 
+      className="w-full h-full object-contain"
+    />
+  </div>
+  <span className="font-bold text-base" style={{ color: c.textPrimary }}>
+    QALION
+  </span>
+</div>
             <p className="text-sm leading-relaxed max-w-xs" style={{ color: c.textSubtle }}>
               AI-powered test automation for modern engineering teams.
             </p>

@@ -5,6 +5,7 @@ import { Zap, Menu, X, Sun, Moon } from 'lucide-react';
 import { navLinks } from '../../constants/landing';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
+import logo from '../../assets/logo_yellow.svg';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -46,17 +47,16 @@ export default function Navbar() {
             }}
           >
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5">
-              <div
-                className="w-8 h-8 rounded-lg bg-[#F29F05] flex items-center justify-center"
-                style={{ boxShadow: '0 2px 8px rgba(255,183,51,0.3)' }}
-              >
-                <Zap className="w-4 h-4 text-black" strokeWidth={2.5} />
-              </div>
-              <span className="font-bold text-base tracking-tight" style={{ color: c.textPrimary }}>
-                Qalion
-              </span>
-            </Link>
+<Link to="/" className="flex items-center gap-2.5">
+  <div
+    className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+  >
+    <img src={logo} alt="Qalion logo" className="w-full h-full object-contain" />
+  </div>
+  <span className="font-bold text-base tracking-tight" style={{ color: c.textPrimary }}>
+    QALION
+  </span>
+</Link>
 
             {/* Center links */}
             <div className="flex items-center gap-1">
