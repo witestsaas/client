@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { footerColumns } from '../../constants/landing';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
-import logo from '../../assets/logo_yellow.svg';
+import logo from '../../assets/logo_white.svg';
 
 export default function Footer() {
   const { theme } = useTheme();
