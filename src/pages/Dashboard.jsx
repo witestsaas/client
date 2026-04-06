@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
@@ -108,9 +108,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let isInitialLoad = true;
+    const prevData = { projects: '[]', runs: '[]', plans: 0, counts: '{}' };
+
     async function load() {
       if (!orgSlug) return;
-      setLoading(true);
+      if (isInitialLoad) setLoading(true);
       setError("");
       try {
         const [projectsData, runsData, plansData] = await Promise.all([
@@ -124,47 +127,69 @@ export default function DashboardPage() {
         const normalizedRuns = Array.isArray(runsData) ? runsData : [];
         const normalizedPlans = Array.isArray(plansData) ? plansData : [];
 
-        setProjects(normalizedProjects);
-        setRuns(normalizedRuns);
-        setPlansCount(normalizedPlans.length);
+        const projectsJson = JSON.stringify(normalizedProjects);
+        const runsJson = JSON.stringify(normalizedRuns);
+        const plansLen = normalizedPlans.length;
 
-        const countEntries = await Promise.all(
-          normalizedProjects.map(async (project) => {
-            const fallbackFolders = Number(project?._count?.folders ?? project?.folders?.length ?? 0);
-            const fallbackTestCases = Number(project?._count?.testCases ?? 0);
-            try {
-              const tree = await fetchProjectTree(orgSlug, project.id);
-              return [
-                String(project.id),
-                {
-                  folders: Array.isArray(tree?.folders) ? tree.folders.length : fallbackFolders,
-                  testCases: Array.isArray(tree?.testCases) ? tree.testCases.length : fallbackTestCases,
-                },
-              ];
-            } catch {
-              return [
-                String(project.id),
-                {
-                  folders: fallbackFolders,
-                  testCases: fallbackTestCases,
-                },
-              ];
+        if (projectsJson !== prevData.projects) {
+          prevData.projects = projectsJson;
+          setProjects(normalizedProjects);
+        }
+        if (runsJson !== prevData.runs) {
+          prevData.runs = runsJson;
+          setRuns(normalizedRuns);
+        }
+        if (plansLen !== prevData.plans) {
+          prevData.plans = plansLen;
+          setPlansCount(plansLen);
+        }
+
+        if (normalizedProjects.length > 0) {
+          const countEntries = await Promise.all(
+            normalizedProjects.map(async (project) => {
+              const fallbackFolders = Number(project?._count?.folders ?? project?.folders?.length ?? 0);
+              const fallbackTestCases = Number(project?._count?.testCases ?? 0);
+              try {
+                const tree = await fetchProjectTree(orgSlug, project.id);
+                return [
+                  String(project.id),
+                  {
+                    folders: Array.isArray(tree?.folders) ? tree.folders.length : fallbackFolders,
+                    testCases: Array.isArray(tree?.testCases) ? tree.testCases.length : fallbackTestCases,
+                  },
+                ];
+              } catch {
+                return [
+                  String(project.id),
+                  {
+                    folders: fallbackFolders,
+                    testCases: fallbackTestCases,
+                  },
+                ];
+              }
+            }),
+          );
+
+          if (!cancelled) {
+            const countsJson = JSON.stringify(countEntries);
+            if (countsJson !== prevData.counts) {
+              prevData.counts = countsJson;
+              setProjectCounts(Object.fromEntries(countEntries));
             }
-          }),
-        );
-
-        if (!cancelled) {
-          setProjectCounts(Object.fromEntries(countEntries));
+          }
         }
       } catch (e) {
         if (!cancelled) setError(e.message || "Failed to load dashboard");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          isInitialLoad = false;
+          setLoading(false);
+        }
       }
     }
 
     load();
-    const timer = setInterval(load, 5000);
+    const timer = setInterval(load, 15000);
     return () => {
       cancelled = true;
       clearInterval(timer);
