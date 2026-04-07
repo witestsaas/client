@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
+import logoYellow from '../../assets/logo_yellow.svg';
 
 /* ── Dashboard mockup ───────────────────────────────────────────── */
 function HeroCanvas() {
@@ -67,11 +68,7 @@ function HeroCanvas() {
         >
           {/* Logo */}
           <div className="px-3 py-2.5 flex items-center gap-2 border-b" style={{ borderColor: border }}>
-            <div className="h-5 w-5 rounded-md flex items-center justify-center shrink-0"
-              style={{ background: `${accent}20`, boxShadow: `0 0 8px ${accent}30` }}
-            >
-              <Zap className="w-3 h-3" style={{ color: accent }} />
-            </div>
+            <img src={logoYellow} alt="Qalion" className="h-5 w-auto" />
             <span className="text-[11px] font-bold tracking-widest text-white">QALION</span>
           </div>
 
