@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, ChevronDown, Zap,
@@ -37,7 +38,14 @@ function HeroCanvas() {
     { label: 'FAILURES',     value: '17',  color: '#ef4444', bg: '#ef444418' },
   ];
 
-  const bars = [30, 52, 42, 68, 58, 78, 62, 74, 56, 70];
+  const INIT_BARS = [30, 52, 42, 68, 58, 78, 62, 74, 56, 70];
+  const [bars, setBars] = useState(INIT_BARS);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBars(prev => prev.map(h => Math.max(12, Math.min(92, h + Math.round((Math.random() - 0.5) * 34)))));
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
 
   const recentRuns = [
     { name: 'E2E Suite',  pct: '94%', color: '#22c55e' },
@@ -201,31 +209,50 @@ function HeroCanvas() {
               <motion.div
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.3 }}
-                className="col-span-3 rounded-xl p-2.5 flex flex-col"
+                className="col-span-3 rounded-xl p-2.5 flex flex-col gap-1.5"
                 style={{ background: cardBg, border: `1px solid ${border}` }}
               >
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between">
                   <span className="text-[9px] font-semibold text-white">Organization Velocity (Last 30h)</span>
-                  <span className="text-[8px]" style={{ color: 'rgba(255,255,255,0.3)' }}>0 runs · 0% success</span>
+                  <span className="text-[8px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    {bars.length} runs · {Math.round(bars.reduce((a, b) => a + b, 0) / bars.length)}% avg
+                  </span>
                 </div>
-                <div className="flex-1 flex items-end gap-0.5 px-1">
-                  {bars.map((h, i) => (
-                    <div key={i} className="flex-1 flex flex-col justify-end" style={{ height: '100%' }}>
-                      <motion.div
-                        className="w-full rounded-sm relative overflow-hidden"
-                        style={{ background: 'rgba(255,170,0,0.12)' }}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ duration: 0.7, delay: 0.35 + i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
-                      >
-                        <div className="absolute bottom-0 left-0 right-0 h-[3px] rounded-sm"
-                          style={{ background: accent }}
-                        />
-                      </motion.div>
-                    </div>
+
+                {/* Chart area */}
+                <div className="relative flex-1 min-h-0">
+                  {/* Grid lines */}
+                  {[33, 66].map(pct => (
+                    <div key={pct} className="absolute left-0 right-0 pointer-events-none"
+                      style={{ bottom: `${pct}%`, borderTop: '1px dashed rgba(255,255,255,0.05)' }}
+                    />
                   ))}
+                  {/* Bars */}
+                  <div className="absolute inset-0 flex items-end gap-[3px] px-0.5">
+                    {bars.map((h, i) => (
+                      <div key={i} className="flex-1 h-full flex items-end">
+                        <motion.div
+                          className="w-full rounded-[3px] relative overflow-hidden"
+                          style={{
+                            height: '100%',
+                            transformOrigin: 'bottom',
+                            background: `linear-gradient(to top, ${accent}, ${accent}88)`,
+                          }}
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: h / 100 }}
+                          transition={{ duration: 1.4, ease: [0.4, 0, 0.2, 1] }}
+                        >
+                          <div className="absolute bottom-0 left-0 right-0 h-[2px]"
+                            style={{ background: accent, boxShadow: `0 0 6px ${accent}80` }}
+                          />
+                        </motion.div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-1.5">
+
+                {/* Legend */}
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
                     <span className="text-[7px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Runs volume</span>
@@ -269,6 +296,46 @@ function HeroCanvas() {
             </div>
           </div>
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const CANVAS_W = 640;
+const CANVAS_H = 420;
+
+function CanvasWrapper() {
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const update = () => {
+      if (wrapRef.current) {
+        setScale(wrapRef.current.offsetWidth / CANVAS_W);
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <motion.div
+      ref={wrapRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1, delay: 0.4 }}
+      className="lg:w-[62%] w-full overflow-hidden"
+      style={{ height: CANVAS_H * scale }}
+    >
+      <div style={{
+        width: CANVAS_W,
+        height: CANVAS_H,
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+      }}>
+        <HeroCanvas />
       </div>
     </motion.div>
   );
@@ -380,15 +447,7 @@ export default function Hero() {
           </div>
 
           {/* Right — Dashboard mockup */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.4 }}
-            className="lg:w-[62%] w-full"
-            style={{ height: 'clamp(400px, 55vh, 600px)' }}
-          >
-            <HeroCanvas />
-          </motion.div>
+          <CanvasWrapper />
 
         </div>
       </div>
