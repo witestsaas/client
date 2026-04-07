@@ -83,7 +83,8 @@ function SceneScroll({ children, className = '' }) {
       {/* Content — native scrollbar pushed off-screen via marginRight */}
       <div
         ref={contentRef}
-        style={{ flex: 1, overflowY: 'scroll', marginRight: -20, paddingRight: 24 }}
+        className="scene-scroll"
+        style={{ flex: 1, overflowY: 'auto', paddingRight: 8 }}
       >
         {children}
       </div>

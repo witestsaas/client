@@ -19,66 +19,16 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }
 
 /* Animated Bubbles Keyframes */
@@ -172,22 +122,6 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-8px);
 }
 
-/* Button Enhancement */
-button {
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 183, 51, 0.2);
-}
-
-button:hover {
-  box-shadow: 0 8px 30px rgba(255, 183, 51, 0.35);
-  transform: translateY(-2px);
-}
-
-/* Section Dividers */
-section + section {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
 /* Text Gradient for Headlines */
 .text-transparent {
   background-clip: text;
@@ -216,4 +150,23 @@ section + section {
 }
 .scene-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #fbbf24 0%, #F29F05 100%);
+}
+
+/* Chat response bubble scrollbar */
+.chat-response-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,200,200,0.4) transparent;
+}
+.chat-response-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+.chat-response-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-response-scroll::-webkit-scrollbar-thumb {
+  background: rgba(150,150,150,0.4);
+  border-radius: 999px;
+}
+.chat-response-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(150,150,150,0.6);
 }

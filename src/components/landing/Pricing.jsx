@@ -11,34 +11,90 @@ const annualDiscount = 0.2;
 
 const plans = [
   {
-    name: 'Starter',
+    name: 'Free',
     price: null,
-    priceLabel: 'Free',
+    priceLabel: '$0',
     period: '',
-    desc: 'Perfect to get started',
-    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert'],
+    desc: 'Individuals, students, early experimentation',
+    features: [
+      '1–2 parallel test sessions',
+      '500 AI credits / month',
+      'Web Test Agent',
+      'Basic test generation',
+      'Community support',
+    ],
+    cta: 'Get started',
+    ctaLink: '/signup',
+    highlight: false,
+  },
+  {
+    name: 'Starter',
+    price: 79,
+    priceLabel: null,
+    period: '/month',
+    desc: 'Small teams validating workflows',
+    features: [
+      '3–5 parallel test sessions',
+      '5,000 AI credits / month',
+      'Web Test Agent',
+      'Basic Functional Test Agent',
+      'CI/CD integrations',
+      'Email support',
+    ],
     cta: 'Get started',
     ctaLink: '/signup',
     highlight: false,
   },
   {
     name: 'Pro',
-    price: 499,
+    price: 249,
     priceLabel: null,
     period: '/month',
-    desc: 'Recommended for growing teams',
-    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert', 'Priority support'],
+    desc: 'Growing startups & product teams',
+    features: [
+      '10 parallel test sessions',
+      '20,000 AI credits / month',
+      'Full Web + Functional Test Agents',
+      'Smart self-healing tests',
+      'Test analytics dashboard',
+      'Priority support',
+    ],
     cta: 'Get started',
     ctaLink: '/signup',
     highlight: true,
   },
   {
+    name: 'Team',
+    price: 699,
+    priceLabel: null,
+    period: '/month',
+    desc: 'Scaling teams & CI-heavy environments',
+    features: [
+      '25 parallel test sessions',
+      '75,000 AI credits / month',
+      'Multi-agent orchestration',
+      'Advanced E2E test scenarios',
+      'Role-based access control',
+      'SLA support',
+    ],
+    cta: 'Get started',
+    ctaLink: '/signup',
+    highlight: false,
+  },
+  {
     name: 'Enterprise',
     price: null,
-    priceLabel: "Let's talk",
+    priceLabel: 'Custom',
     period: '',
-    desc: 'For larger organisations',
-    features: ['Unlimited tests', '5 parallel agents', 'Ai test generation', 'Slack & Webhook alert', 'Priority support'],
+    desc: 'Large companies & high-scale testing',
+    features: [
+      '50–100+ parallel sessions',
+      'Unlimited or custom AI credits',
+      'Dedicated infrastructure',
+      'On-prem / VPC deployment',
+      'Advanced security (SSO, MFA)',
+      'Dedicated account manager',
+    ],
     cta: 'Contact sales',
     ctaLink: '/signup',
     highlight: false,
@@ -67,7 +123,7 @@ export default function Pricing() {
         background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)',
       }}
     >
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
 
         {/* Header */}
         <div className="text-center mb-12">
@@ -148,7 +204,7 @@ export default function Pricing() {
         {/* Cards */}
         <motion.div
           variants={staggerContainer}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-stretch py-4 sm:py-12"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 items-stretch py-4 sm:py-12"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.15 }}
@@ -157,6 +213,7 @@ export default function Pricing() {
             const { label, numeric } = getDisplayPrice(plan);
             const isHighlight = plan.highlight;
             const isEnterprise = plan.name === 'Enterprise';
+            const isTeam = plan.name === 'Team';
 
             const glassyBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)';
             const glassy = {
@@ -171,7 +228,7 @@ export default function Pricing() {
                   border: '1.5px solid #F29F05',
                   boxShadow: '0 0 40px rgba(242,159,5,0.08), 0 8px 32px rgba(0,0,0,0.3)',
                 }
-              : isEnterprise
+              : isEnterprise || isTeam
               ? {
                   ...glassy,
                   background: glassyBg,
@@ -190,15 +247,13 @@ export default function Pricing() {
                 key={plan.name}
                 variants={fadeUp}
                 whileHover={{ y: -5 }}
-                className={`relative rounded-[10px] flex flex-col gap-5 transition-all duration-300 ${
-                  isHighlight ? 'p-6 sm:p-10 sm:-my-10 sm:scale-[1.04]' : 'p-6 sm:p-7'
-                }`}
+                className={`relative rounded-[10px] flex flex-col gap-4 transition-all duration-300 p-5 sm:p-6`}
                 style={cardStyle}
               >
                 {/* Plan name */}
                 <div>
                   <p
-                    className={`font-semibold uppercase tracking-widest mb-3 ${isHighlight ? 'text-sm' : 'text-xs'}`}
+                    className="font-semibold uppercase tracking-widest mb-2 text-xs"
                     style={{ color: c.textSubtle }}
                   >
                     {plan.name}
@@ -214,7 +269,7 @@ export default function Pricing() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 6 }}
                           transition={{ duration: 0.2 }}
-                          className={`font-bold tracking-tight ${isHighlight ? 'text-3xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
+                          className="font-bold tracking-tight text-2xl sm:text-3xl"
                           style={{ color: c.textPrimary }}
                         >
                           {label}
@@ -229,39 +284,39 @@ export default function Pricing() {
                           className="flex items-start"
                         >
                           <span
-                            className={`font-bold mr-0.5 ${isHighlight ? 'text-base sm:text-lg mt-1.5 sm:mt-2' : 'text-base mt-1.5'}`}
+                            className="font-bold mr-0.5 text-sm mt-1"
                             style={{ color: c.textPrimary }}
                           >
                             $
                           </span>
                           <span
-                            className={`font-bold tracking-tight ${isHighlight ? 'text-3xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
+                            className="font-bold tracking-tight text-2xl sm:text-3xl"
                             style={{ color: c.textPrimary }}
                           >
                             {numeric}
                           </span>
                           <span
-                            className="text-sm self-end mb-1 ml-1"
+                            className="text-xs self-end mb-0.5 ml-1"
                             style={{ color: c.textSubtle }}
                           >
-                            {annual ? '/mo billed annually' : plan.period}
+                            {annual ? '/mo annually' : plan.period}
                           </span>
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
 
-                  <p className={isHighlight ? 'text-sm' : 'text-sm'} style={{ color: c.textSubtle }}>
+                  <p className="text-xs" style={{ color: c.textSubtle }}>
                     {plan.desc}
                   </p>
                 </div>
 
                 {/* Features */}
-                <ul className="flex flex-col gap-2.5 flex-1">
+                <ul className="flex flex-col gap-2 flex-1">
                   {plan.features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2.5 ${isHighlight ? 'text-base' : 'text-sm'}`}>
+                    <li key={f} className="flex items-start gap-2 text-xs sm:text-sm">
                       <Check
-                        className="w-4 h-4 shrink-0"
+                        className="w-3.5 h-3.5 shrink-0 mt-0.5"
                         style={{ color: '#F29F05' }}
                         strokeWidth={2.5}
                       />
@@ -275,7 +330,7 @@ export default function Pricing() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
-                    className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200"
+                    className="w-full py-2.5 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200"
                     style={
                       isHighlight
                         ? { background: '#F29F05', color: '#000', border: 'none' }
