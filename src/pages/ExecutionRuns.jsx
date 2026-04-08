@@ -744,38 +744,53 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-[95vw] max-w-[1320px] h-[90vh] rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden" onClick={(event) => event.stopPropagation()}>
-        <div className="h-14 px-5 border-b border-black/10 dark:border-white/10 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-base font-semibold text-[#232323] dark:text-white truncate">{run?.testPlan?.name || "Run details"}</p>
-            <div className="inline-flex items-center gap-2 text-xs text-[#232323]/60 dark:text-white/60">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
+      <div className="w-full max-w-[1400px] h-[95vh] sm:h-[92vh] rounded-2xl border border-black/8 dark:border-white/10 bg-card shadow-2xl overflow-hidden flex flex-col" onClick={(event) => event.stopPropagation()}>
+        {/* ── Header ── */}
+        <div className="h-16 px-5 sm:px-6 border-b border-black/8 dark:border-white/8 flex items-center justify-between gap-4 shrink-0 bg-gradient-to-r from-card to-card/80">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-lg font-bold text-[#232323] dark:text-white truncate tracking-tight">{run?.testPlan?.name || "Run details"}</h2>
+            <div className="flex items-center gap-3 mt-0.5">
               {statusBadge(run?.status)}
-              <span>{run?.passedTests || 0}/{run?.totalTests || 0} passed</span>
+              <span className="text-xs text-[#232323]/55 dark:text-white/55 font-medium tabular-nums">
+                <span className="text-green-600 dark:text-green-400 font-semibold">{run?.passedTests || 0}</span>
+                <span className="mx-0.5">/</span>
+                <span>{run?.totalTests || 0}</span>
+                <span className="ml-1">passed</span>
+              </span>
+              {run?.failedTests ? (
+                <span className="text-xs font-medium">
+                  <span className="text-red-500 dark:text-red-400 font-semibold">{run.failedTests}</span>
+                  <span className="text-[#232323]/45 dark:text-white/45 ml-1">failed</span>
+                </span>
+              ) : null}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
-            <X className="h-4 w-4" />
+          <button type="button" onClick={onClose} className="h-9 w-9 rounded-xl border border-black/8 dark:border-white/12 inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/8 transition-colors">
+            <X className="h-4 w-4 text-[#232323]/70 dark:text-white/70" />
           </button>
         </div>
 
         {loading ? (
-          <div className="h-[calc(90vh-56px)] flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">
+          <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">
             <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#FFAA00]" />
             Loading run details...
           </div>
         ) : error ? (
-          <div className="h-[calc(90vh-56px)] flex items-center justify-center">
-            <div className="rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="rounded-xl border border-red-400/30 bg-red-500/8 px-4 py-3 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
           </div>
         ) : (
-          <div className="h-[calc(90vh-56px)] grid grid-cols-12">
-            <div className="col-span-4 border-r border-black/10 dark:border-white/10 min-h-0 overflow-auto">
-              <div className="px-4 py-3 border-b border-black/10 dark:border-white/10 text-xs text-[#232323]/60 dark:text-white/60 font-semibold">Test case results ({results.length})</div>
-              <div className="p-2 space-y-2">
+          <div className="flex-1 min-h-0 flex flex-col sm:flex-row">
+            {/* ── Left sidebar: test case list ── */}
+            <div className="w-full sm:w-80 lg:w-96 sm:border-r border-b sm:border-b-0 border-black/8 dark:border-white/8 min-h-0 flex flex-col shrink-0">
+              <div className="px-4 py-3 border-b border-black/6 dark:border-white/6 bg-black/[0.02] dark:bg-white/[0.02]">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#232323]/50 dark:text-white/50">Test case results ({results.length})</span>
+              </div>
+              <div className="flex-1 min-h-0 overflow-auto p-2 space-y-1.5">
                 {results.map((result) => {
                   const selected = String(result?.id) === selectedResultId;
                   return (
@@ -783,39 +798,50 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       key={result.id}
                       type="button"
                       onClick={() => setActiveResultId(String(result.id))}
-                      className={`w-full text-left rounded-lg border px-3 py-2.5 transition ${selected ? "border-[#FFAA00]/60 bg-[#FFAA00]/8" : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"}`}
+                      className={`w-full text-left rounded-xl border px-3.5 py-3 transition-all duration-150 ${selected ? "border-[#FFAA00]/50 bg-[#FFAA00]/8 shadow-sm shadow-[#FFAA00]/10" : "border-black/6 dark:border-white/8 hover:border-black/15 dark:hover:border-white/15 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{result?.testCase?.title || "Test case"}</p>
-                          <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-[#232323]/60 dark:text-white/60">
-                            <Folder className="h-3 w-3" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-[#232323] dark:text-white truncate leading-snug">{result?.testCase?.title || "Test case"}</p>
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[#232323]/50 dark:text-white/50">
+                            <Folder className="h-3 w-3 shrink-0" />
                             <span className="truncate">{result?.testCase?.folder?.path || "No folder"}</span>
                           </div>
                         </div>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-background/80 border border-black/10 dark:border-white/15 text-[#232323]/75 dark:text-white/75">{result?.browser || "desktop-chrome"}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.06] border border-black/6 dark:border-white/10 text-[#232323]/65 dark:text-white/65 font-medium shrink-0">{result?.browser || "desktop-chrome"}</span>
                       </div>
-                      <div className="mt-2 inline-flex">{statusBadge(result?.status)}</div>
+                      <div className="mt-2">{statusBadge(result?.status)}</div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="col-span-8 min-h-0 flex flex-col">
+            {/* ── Right panel: detail view ── */}
+            <div className="flex-1 min-h-0 min-w-0 flex flex-col">
               {!selectedResult ? (
-                <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/60 dark:text-white/60">
-                  {isActiveRunStatus(run?.status) ? "Results are being generated..." : "No test results available for this run."}
+                <div className="flex-1 flex items-center justify-center text-sm text-[#232323]/50 dark:text-white/50">
+                  {isActiveRunStatus(run?.status) ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#FFAA00]" />
+                      Results are being generated...
+                    </div>
+                  ) : "Select a test result to view details."}
                 </div>
               ) : (
                 <>
-                  <div className="px-5 py-3 border-b border-black/10 dark:border-white/10">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-lg font-semibold text-[#232323] dark:text-white truncate">{selectedResult?.testCase?.title || "Test case"}</p>
-                        <p className="text-xs text-[#232323]/55 dark:text-white/55 mt-0.5">Duration: {formatDuration(selectedResult?.duration)} • Browser: {selectedResult?.browser || "desktop-chrome"}</p>
+                  {/* ── Detail header ── */}
+                  <div className="px-5 sm:px-6 py-4 border-b border-black/6 dark:border-white/6 shrink-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base sm:text-lg font-bold text-[#232323] dark:text-white truncate tracking-tight">{selectedResult?.testCase?.title || "Test case"}</h3>
+                        <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1 font-medium">
+                          Duration: <span className="text-[#232323]/65 dark:text-white/65">{formatDuration(selectedResult?.duration)}</span>
+                          <span className="mx-2 text-[#232323]/20 dark:text-white/20">|</span>
+                          Browser: <span className="text-[#232323]/65 dark:text-white/65">{selectedResult?.browser || "desktop-chrome"}</span>
+                        </p>
                       </div>
-                      <div className="inline-flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {statusBadge(selectedResult?.status)}
                         <button
                           type="button"
@@ -824,7 +850,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                             setParallelSessions(1);
                             setRerunModalOpen(true);
                           }}
-                          className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold"
+                          className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/12 text-xs font-semibold text-[#232323]/80 dark:text-white/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
                         >
                           Re-run This
                         </button>
@@ -834,40 +860,64 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                             setRerunMode("all");
                             setRerunModalOpen(true);
                           }}
-                          className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold"
+                          className="h-8 px-3.5 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-xs font-semibold transition-colors"
                         >
                           Re-run All
                         </button>
                       </div>
                     </div>
                     {selectedResult?.errorMessage ? (
-                      <div className="mt-2 rounded-md border border-red-300/40 bg-red-500/10 px-2.5 py-2 text-xs text-red-600 dark:text-red-300 inline-flex items-start gap-2">
-                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
-                        <span>{selectedResult.errorMessage}</span>
+                      <div className="mt-3 rounded-lg border border-red-300/30 bg-red-500/6 px-3 py-2.5 text-xs text-red-600 dark:text-red-300 flex items-start gap-2">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span className="leading-relaxed">{selectedResult.errorMessage}</span>
                       </div>
                     ) : null}
                   </div>
 
-                  <div className="px-5 py-2 border-b border-black/10 dark:border-white/10 flex items-center gap-2">
-                    <button type="button" onClick={() => setActiveTab("steps")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "steps" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><FileText className="h-3.5 w-3.5" />Steps</button>
-                    <button type="button" onClick={() => setActiveTab("video")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "video" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Video className="h-3.5 w-3.5" />Video</button>
-                    <button type="button" onClick={() => setActiveTab("console")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "console" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><TerminalSquare className="h-3.5 w-3.5" />Console</button>
-                    <button type="button" onClick={() => setActiveTab("network")} className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${activeTab === "network" ? "bg-[#FFAA00] text-[#232323]" : "border border-black/10 dark:border-white/15"}`}><Globe2 className="h-3.5 w-3.5" />Network</button>
+                  {/* ── Tabs ── */}
+                  <div className="px-5 sm:px-6 py-2.5 border-b border-black/6 dark:border-white/6 flex items-center gap-1.5 shrink-0 overflow-x-auto">
+                    {[
+                      { key: "steps", label: "Steps", icon: FileText },
+                      { key: "video", label: "Video", icon: Video },
+                      { key: "console", label: "Console", icon: TerminalSquare },
+                      { key: "network", label: "Network", icon: Globe2 },
+                    ].map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setActiveTab(key)}
+                        className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                          activeTab === key
+                            ? "bg-[#FFAA00] text-[#232323] shadow-sm shadow-[#FFAA00]/20"
+                            : "border border-black/8 dark:border-white/10 text-[#232323]/65 dark:text-white/65 hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                      </button>
+                    ))}
 
-                    <div className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-[#232323]/55 dark:text-white/55">
-                      <Eye className="h-3.5 w-3.5" />
+                    <div className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-[#232323]/40 dark:text-white/40 font-medium shrink-0">
+                      <span className="relative flex h-2 w-2">
+                        {isActiveRunStatus(run?.status) ? <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /> : null}
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${isActiveRunStatus(run?.status) ? "bg-green-500" : "bg-[#232323]/20 dark:bg-white/20"}`} />
+                      </span>
                       Realtime
                     </div>
                   </div>
 
-                  <div className="flex-1 min-h-0 overflow-auto p-4">
+                  {/* ── Tab content ── */}
+                  <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-5">
                     {activeTab === "steps" ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {steps.length === 0 ? (
-                          <p className="text-sm text-[#232323]/60 dark:text-white/60">No steps available yet.</p>
+                          <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
+                            <FileText className="h-8 w-8 mb-2 opacity-50" />
+                            <p className="text-sm">No steps available yet.</p>
+                          </div>
                         ) : (
                           steps.map((step, index) => (
-                            <div key={`${index}-${step?.name || "step"}`} className="rounded-lg border border-black/10 dark:border-white/10 bg-background/70 px-3 py-2.5">
+                            <div key={`${index}-${step?.name || "step"}`} className="rounded-xl border border-black/6 dark:border-white/8 bg-white/50 dark:bg-white/[0.03] overflow-hidden">
                               {(() => {
                                 const stepStatus = String(step?.status || "pending").toLowerCase();
                                 const isPassed = stepStatus === "passed" || stepStatus === "completed";
@@ -887,32 +937,46 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                 );
 
                                 const statusClasses = isPassed
-                                  ? "border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                                  ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300"
                                   : isFailed
-                                    ? "border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
-                                    : "border-black/10 dark:border-white/15 bg-card text-[#232323]/75 dark:text-white/75";
+                                    ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+                                    : "border-black/10 dark:border-white/12 bg-black/[0.03] dark:bg-white/[0.05] text-[#232323]/60 dark:text-white/60";
+
+                                const cardAccent = isPassed
+                                  ? "border-l-green-500"
+                                  : isFailed
+                                    ? "border-l-red-500"
+                                    : "border-l-[#FFAA00]/60";
 
                                 return (
-                              <div className="flex items-start gap-3">
-                                <div className="flex-1 min-w-0 overflow-hidden">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{step?.name || `Step ${index + 1}`}</p>
-                                    <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusClasses}`}>
+                              <div className={`flex flex-col sm:flex-row items-start gap-4 p-4 border-l-[3px] ${cardAccent}`}>
+                                <div className="flex-1 min-w-0 w-full">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-[11px] font-bold text-[#232323]/30 dark:text-white/25 tabular-nums shrink-0">{String(index + 1).padStart(2, '0')}</span>
+                                      <p className="text-[13px] font-semibold text-[#232323] dark:text-white truncate">{step?.name || `Step ${index + 1}`}</p>
+                                    </div>
+                                    <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md border ${statusClasses}`}>
                                       {isPassed ? <CheckCircle2 className="h-3 w-3" /> : null}
                                       {isFailed ? <XCircle className="h-3 w-3" /> : null}
                                       {String(step?.status || "pending")}
                                     </span>
                                   </div>
 
-                                  <div className="mt-1.5 rounded-md border border-black/10 dark:border-white/10 bg-card/70 px-2.5 py-2 overflow-hidden">
-                                    <p className="text-[11px] font-semibold text-[#232323]/75 dark:text-white/75">AI Note</p>
-                                    <p className="text-xs text-[#232323]/65 dark:text-white/65 mt-0.5 leading-relaxed break-words">{noteText}</p>
+                                  <div className="mt-3 rounded-lg border border-black/6 dark:border-white/8 bg-black/[0.02] dark:bg-white/[0.02] px-3.5 py-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-1">AI Note</p>
+                                    <p className="text-xs text-[#232323]/70 dark:text-white/65 leading-relaxed break-words">{noteText}</p>
                                   </div>
 
-                                  {step?.error ? <p className="text-xs text-red-600 dark:text-red-300 mt-1.5 break-words">{step.error}</p> : null}
+                                  {step?.error ? (
+                                    <div className="mt-2 rounded-lg border border-red-300/25 bg-red-500/5 px-3 py-2 text-xs text-red-600 dark:text-red-300 break-words flex items-start gap-1.5">
+                                      <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                                      {step.error}
+                                    </div>
+                                  ) : null}
                                 </div>
 
-                                <div className="w-52 flex-shrink-0">
+                                <div className="w-full sm:w-48 lg:w-56 shrink-0">
                                   {screenshotCandidates.length ? (
                                     <button
                                       type="button"
@@ -923,12 +987,12 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                           : screenshotCandidates[0];
                                         window.open(target, "_blank", "noopener,noreferrer");
                                       }}
-                                      className="w-full rounded-lg border border-black/10 dark:border-white/10 overflow-hidden bg-card text-left"
+                                      className="w-full rounded-xl border border-black/8 dark:border-white/10 overflow-hidden bg-card hover:border-black/15 dark:hover:border-white/20 transition-colors group"
                                     >
                                       <ArtifactImage
                                         candidates={screenshotCandidates}
                                         alt={`Step ${index + 1} screenshot`}
-                                        className="w-full h-28 object-cover bg-muted"
+                                        className="w-full h-32 object-cover bg-muted"
                                         onResolved={(url) => {
                                           if (!resolvedScreenshotItem?.key) return;
                                           setResolvedScreenshotUrlByKey((prev) =>
@@ -936,13 +1000,13 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                           );
                                         }}
                                       />
-                                      <div className="px-2 py-1.5 text-[10px] text-[#232323]/65 dark:text-white/65 inline-flex items-center gap-1">
+                                      <div className="px-2.5 py-2 text-[10px] text-[#232323]/50 dark:text-white/50 inline-flex items-center gap-1.5 group-hover:text-[#FFAA00] transition-colors">
                                         <ExternalLink className="h-3 w-3" />
                                         Screenshot
                                       </div>
                                     </button>
                                   ) : (
-                                    <div className="h-28 rounded-lg border border-dashed border-black/15 dark:border-white/15 bg-background/60 text-[11px] text-[#232323]/50 dark:text-white/50 flex items-center justify-center px-2 text-center">
+                                    <div className="h-32 rounded-xl border border-dashed border-black/10 dark:border-white/10 bg-black/[0.01] dark:bg-white/[0.02] text-[11px] text-[#232323]/35 dark:text-white/30 flex items-center justify-center px-3 text-center">
                                       Screenshot not available yet
                                     </div>
                                   )}
@@ -958,57 +1022,79 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
                     {activeTab === "video" ? (
                       selectedVideoUrl ? (
-                        <video controls src={selectedVideoUrl} className="w-full max-h-[55vh] rounded-xl border border-black/10 dark:border-white/10 bg-[#13112a] dark:bg-[#232323]" />
+                        <div className="rounded-xl border border-black/8 dark:border-white/10 overflow-hidden bg-[#0d0b1f] dark:bg-[#1a1a2e]">
+                          <video controls src={selectedVideoUrl} className="w-full max-h-[60vh]" />
+                        </div>
                       ) : (
-                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Video not available yet.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
+                          <Video className="h-8 w-8 mb-2 opacity-50" />
+                          <p className="text-sm">Video not available yet.</p>
+                        </div>
                       )
                     ) : null}
 
                     {activeTab === "console" ? (
                       selectedLogs.length ? (
-                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-[#13112a] dark:bg-[#232323] text-white p-3 font-mono text-xs space-y-1.5 max-h-[55vh] overflow-auto">
+                        <div className="rounded-xl border border-black/8 dark:border-white/10 bg-[#0d0b1f] dark:bg-[#1a1a2e] text-white p-4 font-mono text-xs space-y-1 max-h-[60vh] overflow-auto">
                           {selectedLogs.map((entry, index) => (
-                            <div key={`${index}-${entry.timestamp || ""}`}>
-                              <span className="text-[#FFAA00]">[{entry.type}]</span>
-                              {entry.timestamp ? <span className="text-white/50"> {entry.timestamp}</span> : null}
-                              <span className="text-white"> {entry.message}</span>
+                            <div key={`${index}-${entry.timestamp || ""}`} className="py-0.5 border-b border-white/[0.04] last:border-b-0">
+                              <span className="text-[#FFAA00] font-semibold">[{entry.type}]</span>
+                              {entry.timestamp ? <span className="text-white/35 ml-1.5">{entry.timestamp}</span> : null}
+                              <span className="text-white/85 ml-1.5">{entry.message}</span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Console logs not available yet.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
+                          <TerminalSquare className="h-8 w-8 mb-2 opacity-50" />
+                          <p className="text-sm">Console logs not available yet.</p>
+                        </div>
                       )
                     ) : null}
 
                     {activeTab === "network" ? (
                       selectedNetworkLogs.length ? (
-                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-background/70 divide-y divide-black/10 dark:divide-white/10 overflow-hidden">
+                        <div className="rounded-xl border border-black/8 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] divide-y divide-black/6 dark:divide-white/6 overflow-hidden">
+                          <div className="grid grid-cols-12 px-4 py-2 bg-black/[0.03] dark:bg-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35">
+                            <span className="col-span-1">Method</span>
+                            <span className="col-span-1">Status</span>
+                            <span className="col-span-10">URL</span>
+                          </div>
                           {selectedNetworkLogs.map((entry, index) => (
-                            <div key={`${index}-${entry?.url || ""}`} className="px-3 py-2 text-xs">
-                              <div className="inline-flex items-center gap-2">
-                                <span className="font-semibold text-[#232323] dark:text-white">{entry?.method || "GET"}</span>
-                                <span className="text-[#232323]/70 dark:text-white/70">{entry?.status || "-"}</span>
-                              </div>
-                              <p className="text-[#232323]/60 dark:text-white/60 mt-0.5 break-all">{entry?.url || "-"}</p>
+                            <div key={`${index}-${entry?.url || ""}`} className="grid grid-cols-12 px-4 py-2.5 text-xs items-center hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                              <span className="col-span-1 font-bold text-[#232323]/80 dark:text-white/80">{entry?.method || "GET"}</span>
+                              <span className={`col-span-1 font-semibold tabular-nums ${
+                                String(entry?.status || "").startsWith("2") ? "text-green-600 dark:text-green-400" :
+                                String(entry?.status || "").startsWith("4") || String(entry?.status || "").startsWith("5") ? "text-red-500 dark:text-red-400" :
+                                "text-[#232323]/60 dark:text-white/60"
+                              }`}>{entry?.status || "-"}</span>
+                              <p className="col-span-10 text-[#232323]/55 dark:text-white/55 break-all font-mono text-[11px]">{entry?.url || "-"}</p>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-[#232323]/60 dark:text-white/60">Network logs not available yet.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
+                          <Globe2 className="h-8 w-8 mb-2 opacity-50" />
+                          <p className="text-sm">Network logs not available yet.</p>
+                        </div>
                       )
                     ) : null}
                   </div>
 
-                  <div className="h-12 px-4 border-t border-black/10 dark:border-white/10 flex items-center justify-between">
-                    <p className="text-xs text-[#232323]/60 dark:text-white/60">Result {Math.max(1, results.findIndex((result) => String(result.id) === selectedResultId) + 1)} of {Math.max(1, results.length)}</p>
-                    <div className="inline-flex items-center gap-2">
+                  {/* ── Footer navigation ── */}
+                  <div className="h-14 px-5 sm:px-6 border-t border-black/6 dark:border-white/6 flex items-center justify-between shrink-0 bg-black/[0.01] dark:bg-white/[0.01]">
+                    <p className="text-xs text-[#232323]/45 dark:text-white/45 font-medium tabular-nums">
+                      Result <span className="text-[#232323]/70 dark:text-white/70 font-semibold">{Math.max(1, results.findIndex((result) => String(result.id) === selectedResultId) + 1)}</span> of <span className="text-[#232323]/70 dark:text-white/70 font-semibold">{Math.max(1, results.length)}</span>
+                    </p>
+                    <div className="inline-flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => {
                           const index = results.findIndex((result) => String(result.id) === selectedResultId);
                           if (index > 0) setActiveResultId(String(results[index - 1].id));
                         }}
-                        className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5"
+                        disabled={results.findIndex((result) => String(result.id) === selectedResultId) <= 0}
+                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         Previous
@@ -1019,7 +1105,8 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           const index = results.findIndex((result) => String(result.id) === selectedResultId);
                           if (index < results.length - 1) setActiveResultId(String(results[index + 1].id));
                         }}
-                        className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5"
+                        disabled={results.findIndex((result) => String(result.id) === selectedResultId) >= results.length - 1}
+                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors"
                       >
                         Next
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -1048,7 +1135,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 <input
                   type="range"
                   min={1}
-                  max={4}
+                  max={10}
                   value={parallelSessions}
                   onChange={(event) => setParallelSessions(Number(event.target.value))}
                   className="w-full accent-[#FFAA00]"
@@ -1173,7 +1260,24 @@ export default function ExecutionRuns() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [orgSlug, projectId, status]);
 
-  useTestRunGlobalUpdates(() => {
+  useTestRunGlobalUpdates((event) => {
+    // Immediately merge counter updates from socket before the full refresh
+    if (event?.testRunId && (event.passedTests != null || event.failedTests != null)) {
+      setRuns((prev) =>
+        prev.map((r) =>
+          r.id === event.testRunId
+            ? {
+                ...r,
+                ...(event.status ? { status: event.status } : {}),
+                ...(event.passedTests != null ? { passedTests: event.passedTests } : {}),
+                ...(event.failedTests != null ? { failedTests: event.failedTests } : {}),
+                ...(event.skippedTests != null ? { skippedTests: event.skippedTests } : {}),
+                ...(event.totalTests != null ? { totalTests: event.totalTests } : {}),
+              }
+            : r
+        )
+      );
+    }
     refreshRuns().catch(() => undefined);
   });
 
