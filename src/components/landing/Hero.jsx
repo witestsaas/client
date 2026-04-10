@@ -301,46 +301,6 @@ function HeroCanvas() {
   );
 }
 
-const CANVAS_W = 640;
-const CANVAS_H = 420;
-
-function CanvasWrapper() {
-  const wrapRef = useRef(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const update = () => {
-      if (wrapRef.current) {
-        setScale(wrapRef.current.offsetWidth / CANVAS_W);
-      }
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(wrapRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  return (
-    <motion.div
-      ref={wrapRef}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1, delay: 0.4 }}
-      className="lg:w-[62%] w-full overflow-hidden"
-      style={{ height: CANVAS_H * scale }}
-    >
-      <div style={{
-        width: CANVAS_W,
-        height: CANVAS_H,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-      }}>
-        <HeroCanvas />
-      </div>
-    </motion.div>
-  );
-}
-
 export default function Hero() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -447,7 +407,15 @@ export default function Hero() {
           </div>
 
           {/* Right — Dashboard mockup */}
-          <CanvasWrapper />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.4 }}
+            className="lg:w-[62%] w-full"
+            style={{ height: 'clamp(400px, 55vh, 600px)' }}
+          >
+            <HeroCanvas />
+          </motion.div>
 
         </div>
       </div>
