@@ -86,11 +86,15 @@ function getSocketUrl(): string {
 	// On the server (SSR) we can't connect — return empty
 	if (typeof window === "undefined") return "";
 
-	// In production (AWS), socket.io is served by the same ALB via /socket.io/* rule
-	// → connect to the same origin (the ALB URL the browser is already on)
-	//
+	// Derive socket URL from the API base URL (same middleware serves both)
+	if (import.meta.env.VITE_API_BASE_URL) {
+		try {
+			const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL);
+			return apiUrl.origin; // e.g. https://witest-middleware.onrender.com
+		} catch { /* fall through */ }
+	}
+
 	// Locally, middleware runs on localhost:4000
-	// → detect localhost and point to port 4000
 	const { hostname, protocol } = window.location;
 
 	if (hostname === "localhost" || hostname === "127.0.0.1") {

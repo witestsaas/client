@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock, Loader2, MessageCircle, Play, RefreshCw, Square, Folder, Send, X } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useTestRunSocket } from "../hooks/useSocket";
 import { MentionInput } from "../components/MentionInput.tsx";
 import { cancelRun, createRunActivity, getRun, listRunActivities, rerunRun } from "../services/executionReporting";
 import { RunDetailsModal } from "./ExecutionRuns.jsx";
@@ -83,10 +84,82 @@ export default function ExecutionRunDetail() {
 
     const timer = window.setInterval(() => {
       loadRun();
-    }, 2500);
+    }, 5000);
 
     return () => window.clearInterval(timer);
   }, [run?.status, orgSlug, runId]);
+
+  // --- Real-time Socket.IO updates for individual test result statuses ---
+  const handleLiveEvent = useCallback((event) => {
+    const { type, status, testCaseId, browser } = event || {};
+    if (type === "status" && status === "running" && testCaseId) {
+      setRun((prev) => {
+        if (!prev) return prev;
+        const updatedResults = (prev.results || []).map((r) => {
+          if (
+            r.testCase?.id === testCaseId &&
+            (!browser || r.browser === browser) &&
+            (r.status === "Pending" || r.status === "Queued")
+          ) {
+            return { ...r, status: "Running", startedAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        const newStatus = prev.status === "Pending" || prev.status === "Queued" ? "Running" : prev.status;
+        return { ...prev, results: updatedResults, status: newStatus };
+      });
+    }
+  }, []);
+
+  const handleSocketCompleted = useCallback((event) => {
+    const { testCaseId, browser, status } = event?.results || event || {};
+    if (testCaseId) {
+      setRun((prev) => {
+        if (!prev) return prev;
+        const mappedStatus = status === "passed" || status === "completed" ? "Passed" : "Failed";
+        const updatedResults = (prev.results || []).map((r) => {
+          if (
+            r.testCase?.id === testCaseId &&
+            (!browser || r.browser === browser) &&
+            r.status !== "Passed" && r.status !== "Failed"
+          ) {
+            return { ...r, status: mappedStatus, completedAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        return { ...prev, results: updatedResults };
+      });
+    }
+    // Also refresh from DB for accurate counts
+    loadRun();
+  }, []);
+
+  const handleSocketError = useCallback((event) => {
+    const { testCaseId, browser } = event?.error || event || {};
+    if (testCaseId) {
+      setRun((prev) => {
+        if (!prev) return prev;
+        const updatedResults = (prev.results || []).map((r) => {
+          if (
+            r.testCase?.id === testCaseId &&
+            (!browser || r.browser === browser) &&
+            r.status !== "Passed" && r.status !== "Failed"
+          ) {
+            return { ...r, status: "Failed", completedAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        return { ...prev, results: updatedResults };
+      });
+    }
+    loadRun();
+  }, []);
+
+  useTestRunSocket(runId || null, {
+    onLiveEvent: handleLiveEvent,
+    onCompleted: handleSocketCompleted,
+    onError: handleSocketError,
+  });
 
   const groupedResults = useMemo(() => {
     const results = Array.isArray(run?.results) ? run.results : [];
