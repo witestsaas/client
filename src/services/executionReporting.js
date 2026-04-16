@@ -110,6 +110,13 @@ export async function getRunResultLogs(orgSlug, runId, resultId) {
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+export async function getRunLiveActions(orgSlug, runId) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/runs/${encodeURIComponent(runId)}/live-actions?_t=${Date.now()}`);
+  return parseJson(res);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function getResultArtifacts(resultId) {
   const res = await apiFetch(`/test-results/${encodeURIComponent(resultId)}/artifacts?_t=${Date.now()}`);
   return parseJson(res);

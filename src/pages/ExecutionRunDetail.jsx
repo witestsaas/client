@@ -57,6 +57,9 @@ export default function ExecutionRunDetail() {
   const [activityDraft, setActivityDraft] = useState("");
   const [activityUnreadCount, setActivityUnreadCount] = useState(0);
   const [lastSeenActivityId, setLastSeenActivityId] = useState("");
+  const [rerunModalOpen, setRerunModalOpen] = useState(false);
+  const [rerunParallel, setRerunParallel] = useState(1);
+  const [rerunning, setRerunning] = useState(false);
   const activityEndRef = useRef(null);
 
   const loadRun = async () => {
@@ -92,7 +95,9 @@ export default function ExecutionRunDetail() {
   // --- Real-time Socket.IO updates for individual test result statuses ---
   const handleLiveEvent = useCallback((event) => {
     const { type, status, testCaseId, browser } = event || {};
-    if (type === "status" && status === "running" && testCaseId) {
+    if (type !== "status" || !testCaseId) return;
+
+    if (status === "running") {
       setRun((prev) => {
         if (!prev) return prev;
         const updatedResults = (prev.results || []).map((r) => {
@@ -109,6 +114,27 @@ export default function ExecutionRunDetail() {
         return { ...prev, results: updatedResults, status: newStatus };
       });
     }
+
+    // Completed statuses — update immediately so the UI doesn't briefly show
+    // extra "Running" results while the stream consumer catches up.
+    const completedMap = { passed: "Passed", failed: "Failed", error: "Error", skipped: "Skipped", cancelled: "Cancelled" };
+    const mapped = completedMap[status];
+    if (mapped) {
+      setRun((prev) => {
+        if (!prev) return prev;
+        const updatedResults = (prev.results || []).map((r) => {
+          if (
+            r.testCase?.id === testCaseId &&
+            (!browser || r.browser === browser) &&
+            !["Passed", "Failed", "Error", "Skipped", "Cancelled"].includes(r.status)
+          ) {
+            return { ...r, status: mapped, completedAt: new Date().toISOString() };
+          }
+          return r;
+        });
+        return { ...prev, results: updatedResults };
+      });
+    }
   }, []);
 
   const handleSocketCompleted = useCallback((event) => {
@@ -121,7 +147,7 @@ export default function ExecutionRunDetail() {
           if (
             r.testCase?.id === testCaseId &&
             (!browser || r.browser === browser) &&
-            r.status !== "Passed" && r.status !== "Failed"
+            !["Passed", "Failed", "Error", "Skipped"].includes(r.status)
           ) {
             return { ...r, status: mappedStatus, completedAt: new Date().toISOString() };
           }
@@ -143,9 +169,9 @@ export default function ExecutionRunDetail() {
           if (
             r.testCase?.id === testCaseId &&
             (!browser || r.browser === browser) &&
-            r.status !== "Passed" && r.status !== "Failed"
+            !["Passed", "Failed", "Error", "Skipped"].includes(r.status)
           ) {
-            return { ...r, status: "Failed", completedAt: new Date().toISOString() };
+            return { ...r, status: "Error", completedAt: new Date().toISOString() };
           }
           return r;
         });
@@ -189,16 +215,17 @@ export default function ExecutionRunDetail() {
     }
   };
 
-  const handleRerunAll = async () => {
+  const handleRerunAll = async (parallelSessions = 1) => {
     if (!orgSlug || !runId) return;
-    setSaving(true);
+    setRerunning(true);
     try {
-      await rerunRun(orgSlug, runId, {});
+      await rerunRun(orgSlug, runId, { parallelSessions });
+      setRerunModalOpen(false);
       await loadRun();
     } catch (err) {
       setError(err?.message || "Failed to rerun");
     } finally {
-      setSaving(false);
+      setRerunning(false);
     }
   };
 
@@ -395,8 +422,8 @@ export default function ExecutionRunDetail() {
               <p className="text-2xl font-semibold text-[#232323] dark:text-white">Test Case Results</p>
               <button
                 type="button"
-                onClick={handleRerunAll}
-                disabled={saving}
+                onClick={() => { setRerunParallel(1); setRerunModalOpen(true); }}
+                disabled={saving || rerunning}
                 className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -444,6 +471,39 @@ export default function ExecutionRunDetail() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        ) : null}
+
+        {rerunModalOpen ? (
+          <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !rerunning && setRerunModalOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-lg font-semibold text-[#232323] dark:text-white">Re-run All Tests</p>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">This will queue all test cases in this run again.</p>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
+                  <span>Parallel sessions</span>
+                  <span className="font-semibold">{rerunParallel}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={4}
+                  value={rerunParallel}
+                  onChange={(e) => setRerunParallel(Math.min(Math.max(Number(e.target.value) || 1, 1), 4))}
+                  className="w-full accent-[#FFAA00]"
+                />
+                <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">Up to {rerunParallel} browser session{rerunParallel !== 1 ? "s" : ""} will run at once</p>
+              </div>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setRerunModalOpen(false)} disabled={rerunning} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">Cancel</button>
+                <button type="button" onClick={() => handleRerunAll(rerunParallel)} disabled={rerunning} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60">
+                  {rerunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Re-run
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useSocket } from "../hooks/useSocket.tsx";
+import { useSocket, useOrgSlots } from "../hooks/useSocket.tsx";
 import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, fetchOrgLlmUsage, fetchOrgCouponBalance, markOrgNotificationsAsRead } from "../services/organizations";
 import { listRuns } from "../services/executionReporting";
 import { fetchProjectTree, fetchTestProjects } from "../services/testManagement";
@@ -13,6 +13,8 @@ export default function DashboardHeader() {
   const navigate = useNavigate();
   const { orgSlug } = useParams();
   const { socket } = useSocket();
+  const realtimeSlots = useOrgSlots(orgSlug);
+  const orgParallelLimit = realtimeSlots?.limit ?? 4;
   const projectsMenuRef = useRef(null);
   const isNoOrg = !orgSlug || orgSlug === "no-org";
 
@@ -41,7 +43,10 @@ export default function DashboardHeader() {
   const testCaseCacheRef = useRef({});
   const searchInputRef = useRef(null);
 
-  const normalizedRunningCount = Math.min(4, activeRuns.length);
+  const runningBrowserSessions = useMemo(() => {
+    return activeRuns.reduce((sum, run) => sum + (run?.runningTests || 0), 0);
+  }, [activeRuns]);
+  const normalizedRunningCount = Math.min(orgParallelLimit, runningBrowserSessions);
 
   const isActiveRunStatus = (status) => {
     const normalized = String(status || "").trim().toLowerCase();
@@ -568,7 +573,7 @@ export default function DashboardHeader() {
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
-        {/* Coupon Balance – inline progress bar */}
+        {/* Coupon Balance – AI icon with hover panel */}
         {!isNoOrg && couponBalance && couponBalance.totalAmountUsd > 0 ? (() => {
           const remaining = Number(couponBalance.totalRemainingUsd || 0);
           const total = Number(couponBalance.totalAmountUsd || 0);
@@ -673,9 +678,9 @@ export default function DashboardHeader() {
             <button
               type="button"
               className="h-8 px-2.5 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90 inline-flex items-center gap-1.5"
-              title={`Running sessions ${activeRuns.length}/4+`}
+              title={`Running sessions ${runningBrowserSessions}/${orgParallelLimit} slots`}
             >
-              {Array.from({ length: 4 }).map((_, index) => {
+              {Array.from({ length: orgParallelLimit }).map((_, index) => {
                 const active = index < normalizedRunningCount;
                 return (
                   <span

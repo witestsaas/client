@@ -337,10 +337,12 @@ export function useTestRunGlobalUpdates(
 
 		socket.on("testRun:statusUpdate", handler);
 		socket.on("testRun:completed", handler);
+		socket.on("testRun:error", handler);
 
 		return () => {
 			socket.off("testRun:statusUpdate", handler);
 			socket.off("testRun:completed", handler);
+			socket.off("testRun:error", handler);
 		};
 	}, [socket, connected]);
 }

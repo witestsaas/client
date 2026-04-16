@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Calendar, Filter, MoreVertical, Play, Plus, Search, Trash2, X } from "lucide-react";
+import { Calendar, Filter, Loader2, MoreVertical, Play, Plus, Search, Trash2, X } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
 import { fetchOrgQuotaUsage } from "../services/organizations";
 import { fetchProjectSettings, fetchTestProjects } from "../services/testManagement";
-import { createPlan, deletePlan, listPlans, runPlan } from "../services/executionReporting";
-import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
+import { createPlan, deletePlan, listPlans, runPlan, getExecutionSlots } from "../services/executionReporting";
+import { isQuotaDeniedError } from "../utils/quota";
+import { useOrgSlots } from "../hooks/useSocket";
 
 function normalizeEnvironmentOptions(configPayload) {
   const rawRows = Array.isArray(configPayload?.environments)
@@ -160,6 +161,9 @@ export default function ExecutionPlans() {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
+  const [runModalPlanId, setRunModalPlanId] = useState("");
+  const [runModalParallel, setRunModalParallel] = useState(1);
+  const [runModalRunning, setRunModalRunning] = useState(false);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -277,35 +281,49 @@ export default function ExecutionPlans() {
     }
   };
 
-  const handleRunPlan = async (planId) => {
-    setSaving(true);
+  const openRunModal = (planId) => {
+    setRunModalPlanId(planId);
+    setRunModalParallel(1);
+  };
+
+  const handleRunPlan = async (parallelSessions = 1) => {
+    const planId = runModalPlanId;
+    if (!planId) return;
+    setRunModalRunning(true);
     setError("");
     try {
       const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
-      const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
-      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0 && !webQuota.hasCouponCredits) {
+      const creditBalance = Number(quotaPayload?.couponBalance?.totalRemainingUsd || 0);
+      if (creditBalance <= 0) {
         setQuotaPopup({
           open: true,
-          title: "Quota Required",
-          message: "Your organization has no remaining web run quota to execute this test plan. Contact your organization admin to increase quota.",
+          title: "No Credits",
+          message: "Your organization has no remaining credits. Please add credits to run tests.",
         });
         return;
       }
 
-      await runPlan(orgSlug, planId, {});
+      await runPlan(orgSlug, planId, { parallelSessions });
+      setRunModalPlanId("");
       setPlans(await listPlans(orgSlug, { projectId: projectId || undefined }));
     } catch (err) {
+      // Concurrency limit = too many parallel tests running right now (429 with concurrency_limit_* error)
+      const errCode = err?.payload?.error || err?.code || "";
+      if (typeof errCode === "string" && errCode.startsWith("concurrency_limit")) {
+        setError(err?.payload?.message || err?.message || "Your organization has reached its concurrent test limit. Wait for running tests to complete.");
+        return;
+      }
       if (isQuotaDeniedError(err)) {
         setQuotaPopup({
           open: true,
-          title: "Quota Required",
-          message: "Your organization has no remaining web run quota to execute this test plan. Contact your organization admin to increase quota.",
+          title: "No Credits",
+          message: "Your organization has no remaining credits. Please add credits to run tests.",
         });
         return;
       }
       setError(err?.message || "Failed to run plan");
     } finally {
-      setSaving(false);
+      setRunModalRunning(false);
     }
   };
 
@@ -390,7 +408,7 @@ export default function ExecutionPlans() {
                   <div className="relative inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      onClick={() => handleRunPlan(plan.id)}
+                      onClick={() => openRunModal(plan.id)}
                       disabled={saving}
                       className="h-8 px-3 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60"
                     >
@@ -467,6 +485,18 @@ export default function ExecutionPlans() {
           saving={saving}
         />
 
+        {runModalPlanId ? (
+          <RunPlanQuickModal
+            orgSlug={orgSlug}
+            planName={(filteredPlans.find((p) => p.id === runModalPlanId)?.name) || "Plan"}
+            parallelSessions={runModalParallel}
+            setParallelSessions={setRunModalParallel}
+            running={runModalRunning}
+            onRun={() => handleRunPlan(runModalParallel)}
+            onClose={() => !runModalRunning && setRunModalPlanId("")}
+          />
+        ) : null}
+
         <QuotaRequiredPopup
           open={quotaPopup.open}
           onClose={() => setQuotaPopup({ open: false, title: "", message: "" })}
@@ -475,6 +505,68 @@ export default function ExecutionPlans() {
         />
       </div>
     </DashboardLayout>
+  );
+}
+
+function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSessions, running, onRun, onClose }) {
+  const realtimeSlots = useOrgSlots(orgSlug);
+  const orgAvailable = realtimeSlots?.available ?? 4;
+  const orgLimit = realtimeSlots?.limit ?? 4;
+  const orgUsed = realtimeSlots?.used ?? 0;
+  const loadingSlots = realtimeSlots === null;
+
+  useEffect(() => {
+    if (realtimeSlots === null) return;
+    const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), orgLimit);
+    setParallelSessions(defaultParallel);
+  }, [realtimeSlots === null]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !running && onClose()}>
+      <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <p className="text-lg font-semibold text-[#232323] dark:text-white">Run "{planName}"</p>
+        <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">Configure how many tests to run simultaneously.</p>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-1">
+            <span>Slot availability</span>
+            {loadingSlots ? (
+              <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />...</span>
+            ) : (
+              <span>
+                <span className={orgAvailable > 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>{orgAvailable}</span>
+                <span className="text-[#232323]/45 dark:text-white/45"> / {orgLimit}</span>
+                <span className="text-[#232323]/35 dark:text-white/35 ml-1">({orgUsed} in use)</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
+            <span>Parallel sessions</span>
+            <span className="font-semibold">{parallelSessions}</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={orgLimit}
+            value={parallelSessions}
+            onChange={(e) => setParallelSessions(Math.min(Math.max(Number(e.target.value) || 1, 1), orgLimit))}
+            className="w-full accent-[#FFAA00]"
+          />
+          <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">Up to {parallelSessions} browser session{parallelSessions !== 1 ? "s" : ""} will run at once</p>
+        </div>
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={running} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">Cancel</button>
+          <button type="button" onClick={onRun} disabled={running} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60">
+            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            Run Now
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

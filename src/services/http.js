@@ -38,6 +38,17 @@ function getCookieValue(name) {
 }
 
 let refreshPromise = null;
+let sessionExpired = false;
+
+/** Check whether the session has been marked as definitively expired. */
+export function isSessionExpired() {
+  return sessionExpired;
+}
+
+/** Reset the flag (called after successful login). */
+export function clearSessionExpired() {
+  sessionExpired = false;
+}
 
 async function refreshSession() {
   if (!refreshPromise) {
@@ -57,6 +68,11 @@ async function refreshSession() {
 }
 
 export async function apiFetch(path, options = {}) {
+  // Short-circuit if session is known-expired — avoid flooding the server
+  if (sessionExpired && path !== '/auth/refresh' && path !== '/auth/logout' && path !== '/auth/login') {
+    return new Response(JSON.stringify({ message: 'Session expired' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  }
+
   const { _retry = false, _usedBearerFallback = false, authMode = 'cookie', ...fetchOptions } = options;
   const method = String(fetchOptions.method || 'GET').toUpperCase();
   const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
@@ -119,6 +135,7 @@ export async function apiFetch(path, options = {}) {
       });
     }
 
+<<<<<<< HEAD
     // Second chance: retry the refresh one more time after a brief pause
     try {
       await new Promise(r => setTimeout(r, 1000));
@@ -133,6 +150,11 @@ export async function apiFetch(path, options = {}) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
+=======
+    // All auth recovery attempts failed — mark session expired to stop polling
+    sessionExpired = true;
+    window.dispatchEvent(new CustomEvent('session-expired'));
+>>>>>>> 039b396c089540c9b1fdcbe59133d227554d8b52
   }
 
   return response;
