@@ -108,9 +108,17 @@ export function AuthProvider({ children }) {
     clearBootstrapToken();
     setAccessTokenGetter(async () => null);
 
+    // When apiFetch encounters an unrecoverable 401, redirect to login
+    const handleSessionExpired = () => {
+      stopSessionKeeper();
+      setUser(null);
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+
     return () => {
       setAccessTokenGetter(null);
       stopSessionKeeper();
+      window.removeEventListener('auth:session-expired', handleSessionExpired);
     };
   }, []);
 

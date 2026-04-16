@@ -7,7 +7,7 @@ import { BarChart3, ClipboardList, Layers, PlayCircle } from "lucide-react";
 export default function Execution() {
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 lg:p-6">
         <div>
           <h2 className="text-3xl font-bold text-[#232323] dark:text-white">Execution</h2>
           <p className="text-[#232323]/70 dark:text-white/70">Manage test cases, plans, runs, and reports.</p>

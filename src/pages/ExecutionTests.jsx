@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, Edit, Filter, Folder, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { AlertCircle, Copy, Edit, Filter, Folder, Loader2, Plus, Search, Trash2 } from "lucide-react";
+
 import DashboardLayout from "../components/DashboardLayout";
 import {
   createTestProject,
+  cloneProject,
   deleteTestProject,
   fetchTestProjects,
   updateTestProject,
@@ -32,6 +34,9 @@ export default function ExecutionTests() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [importMode, setImportMode] = useState(false);
+  const [cloning, setCloning] = useState(false);
 
   async function loadProjects() {
     if (!orgSlug) return;
@@ -132,6 +137,8 @@ export default function ExecutionTests() {
   const openCreateModal = () => {
     setEditingProjectId(null);
     setForm(INITIAL_FORM);
+    setImportMode(false);
+    setImportSourceId("");
     setModalMode("create");
   };
 
@@ -149,13 +156,17 @@ export default function ExecutionTests() {
     setEditingProjectId(null);
     setSubmitting(false);
     setForm(INITIAL_FORM);
+    setImportMode(false);
+    setImportSourceId("");
   };
 
   async function handleSubmit() {
     if (!orgSlug || !form.name.trim()) return;
     try {
       setSubmitting(true);
-      if (modalMode === "create") {
+      if (modalMode === "create" && importMode && importSourceId) {
+        await cloneProject(orgSlug, importSourceId, { name: form.name.trim() });
+      } else if (modalMode === "create") {
         await createTestProject(orgSlug, form);
       } else if (modalMode === "edit" && editingProjectId) {
         await updateTestProject(orgSlug, editingProjectId, form);
@@ -222,8 +233,8 @@ export default function ExecutionTests() {
 
   return (
     <DashboardLayout>
-      <div className="bg-background dark:bg-[#13112a] [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
-        <div className="border-b bg-card border-black/10 dark:border-white/10 shadow-[0_8px_26px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.22)]">
+      <div className="flex-1 min-h-0 flex flex-col bg-background dark:bg-[#13112a] [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
+        <div className="border-b bg-card border-black/10 dark:border-white/10 shadow-[0_8px_26px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.22)] shrink-0">
           <div className="w-full px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
@@ -291,7 +302,7 @@ export default function ExecutionTests() {
           </div>
         </div>
 
-        <div className="w-full px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto w-full px-6 py-4">
           {error ? <div className="mb-4 text-sm text-red-500">{error}</div> : null}
           {filtered.length === 0 ? (
             <div className="text-center py-16 space-y-3 border-t dark:border-slate-800">
@@ -391,6 +402,39 @@ export default function ExecutionTests() {
                   className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
                 />
               </div>
+              {modalMode === "create" ? (
+                <div className="space-y-2">
+                  {/*<label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={importMode}
+                      onChange={(e) => { setImportMode(e.target.checked); if (!e.target.checked) setImportSourceId(""); }}
+                      className="h-3.5 w-3.5 rounded"
+                    />
+                    <span className="text-xs font-medium text-gray-700 dark:text-slate-300 flex items-center gap-1">
+                      <Copy className="h-3 w-3" />
+                      Import from existing project
+                    </span>
+                  </label>*/}
+                  {importMode ? (
+                    <select
+                      value={importSourceId}
+                      onChange={(e) => setImportSourceId(e.target.value)}
+                      className="w-full h-9 text-sm px-3 rounded-lg border border-black/15 dark:border-white/15 bg-background/80"
+                    >
+                      <option value="">Select source project...</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  ) : null}
+                  {importMode ? (
+                    <p className="text-[11px] text-[#232323]/50 dark:text-white/50">
+                      All folders, test cases, steps, variables, environments and shared steps will be cloned from the source project.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
               <button

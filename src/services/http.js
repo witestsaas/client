@@ -92,6 +92,7 @@ export async function apiFetch(path, options = {}) {
   });
 
   if (response.status === 401 && !_retry && path !== '/auth/refresh' && path !== '/auth/logout') {
+    // Attempt silent refresh — never show unauthorized to the user
     let refreshSucceeded = false;
     try {
       const result = await refreshSession();
@@ -107,6 +108,7 @@ export async function apiFetch(path, options = {}) {
       return apiFetch(path, { ...fetchOptions, _retry: true, _usedBearerFallback });
     }
 
+    // Try bearer token fallback before giving up
     const hasAuthorizationHeader = Boolean(headers.Authorization);
     if (authMode === 'cookie' && !_usedBearerFallback && !hasAuthorizationHeader) {
       return apiFetch(path, {
@@ -115,6 +117,21 @@ export async function apiFetch(path, options = {}) {
         _retry: true,
         _usedBearerFallback: true,
       });
+    }
+
+    // Second chance: retry the refresh one more time after a brief pause
+    try {
+      await new Promise(r => setTimeout(r, 1000));
+      const lastChance = await refreshSession();
+      if (lastChance?.ok) {
+        notifyRefreshSuccess(lastChance.data?.accessTokenExpiresIn);
+        return apiFetch(path, { ...fetchOptions, _retry: true, _usedBearerFallback: true });
+      }
+    } catch { /* silent */ }
+
+    // Only signal session lost as absolute last resort
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
   }
 

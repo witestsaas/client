@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, CheckCircle2, Clock, Loader2, MessageCircle, Play, RefreshCw, Square, Folder, Send, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Clock, Loader2, MessageCircle, Play, RefreshCw, StopCircle, Folder, Send, X } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useTestRunSocket } from "../hooks/useSocket";
@@ -294,7 +294,7 @@ export default function ExecutionRunDetail() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 lg:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2">
             <button
@@ -313,9 +313,9 @@ export default function ExecutionRunDetail() {
                 type="button"
                 onClick={handleStopRun}
                 disabled={saving}
-                className="h-9 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                className="h-9 px-4 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-400/30 text-red-600 dark:text-red-400 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors duration-200"
               >
-                <Square className="h-4 w-4" />
+                <StopCircle className="h-4 w-4" />
                 Stop Run
               </button>
             ) : null}

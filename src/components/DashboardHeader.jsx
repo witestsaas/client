@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, Sparkles, X } from "lucide-react";
+import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../hooks/useSocket.tsx";
 import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, fetchOrgLlmUsage, fetchOrgCouponBalance, markOrgNotificationsAsRead } from "../services/organizations";
@@ -35,11 +35,9 @@ export default function DashboardHeader() {
   const [llmUsage, setLlmUsage] = useState(null);
   const [couponBalance, setCouponBalance] = useState(null);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
-  const [couponPanelOpen, setCouponPanelOpen] = useState(false);
   const previousInviteCountRef = useRef(0);
   const previousRunningCountRef = useRef(-1);
   const runsPanelCloseTimerRef = useRef(null);
-  const couponPanelCloseTimerRef = useRef(null);
   const testCaseCacheRef = useRef({});
   const searchInputRef = useRef(null);
 
@@ -525,7 +523,7 @@ export default function DashboardHeader() {
           </button>
 
           {projectsMenuOpen ? (
-            <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-white/10 bg-[#1F1F1F] p-3 shadow-2xl z-50">
+            <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-white/10 bg-[#1c1a2e] p-3 shadow-2xl z-50">
               <div className="max-h-64 overflow-y-auto space-y-1">
                 {projects.length === 0 ? (
                   <div className="text-xs text-white/60 px-2 py-3">No projects found.</div>
@@ -570,52 +568,25 @@ export default function DashboardHeader() {
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
-        {/* Coupon Balance – AI icon with hover panel */}
+        {/* Coupon Balance – inline progress bar */}
         {!isNoOrg && couponBalance && couponBalance.totalAmountUsd > 0 ? (() => {
           const remaining = Number(couponBalance.totalRemainingUsd || 0);
           const total = Number(couponBalance.totalAmountUsd || 0);
           const pct = total > 0 ? (remaining / total) * 100 : 0;
-          const barColor = pct > 50 ? "bg-blue-500" : pct > 20 ? "bg-blue-500" : "bg-red-500";
-          const borderColor = pct > 50 ? "border-blue-500" : pct > 20 ? "border-blue-500" : "border-red-500";
-          const textColor = pct > 50 ? "text-blue-500 dark:text-blue-300" : pct > 20 ? "text-blue-500 dark:text-blue-500" : "text-[#FFAA00] dark:text-red-400";
+          const barColor = pct > 50 ? "bg-blue-500" : pct > 20 ? "bg-[#FFAA00]" : "bg-red-500";
           return (
             <div
-              className="relative"
-              onMouseEnter={() => {
-                if (couponPanelCloseTimerRef.current) { window.clearTimeout(couponPanelCloseTimerRef.current); couponPanelCloseTimerRef.current = null; }
-                setCouponPanelOpen(true);
-              }}
-              onMouseLeave={() => {
-                couponPanelCloseTimerRef.current = window.setTimeout(() => setCouponPanelOpen(false), 160);
-              }}
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => navigate(`/dashboard/${orgSlug}/settings?tab=credits`)}
+              title={`${Math.round(pct)}% remaining of coupon credits`}
             >
-              <button
-                type="button"
-                className={`h-8 w-8 rounded-full border ${borderColor} bg-gradient-to-br from-white/10 to-white/5 inline-flex items-center justify-center`}
-                //title={`AI Credits: ${remaining.toFixed(2)} / ${total.toFixed(2)}`}
-              >
-                <Sparkles className={`h-4 w-4 ${textColor}`} />
-              </button>
-
-              {couponPanelOpen ? (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#1c1a2e] shadow-2xl p-3 z-40">
-                  {/*<div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-white/60">AI Credits</span>
-                    <span className={`text-sm font-bold ${textColor}`}>{remaining.toFixed(2)}</span>
-                  </div>*/}
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                      style={{ width: `${Math.min(100, pct)}%` }}
-                    />
-                  </div>
-                  {/*<div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-white/40">0.00</span>
-                    <span className="text-[10px] text-white/40">{total.toFixed(2)}</span>
-                  </div>*/}
-                  <p className="text-[10px] text-white/50 mt-2">{Math.round(pct)}% remaining of coupon credits</p>
-                </div>
-              ) : null}
+              <div className="w-28 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                />
+              </div>
+              {/* <span className="text-[10px] text-white/50 whitespace-nowrap">{Math.round(pct)}% remaining of coupon credits</span> */}
             </div>
           );
         })() : null}

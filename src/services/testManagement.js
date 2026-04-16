@@ -125,6 +125,35 @@ export async function deleteFolder(orgSlug, projectId, folderId) {
   return parseJson(res);
 }
 
+export async function deleteFoldersBulk(orgSlug, projectId, folderIds) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/folders/bulk-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folderIds }),
+  });
+  return parseJson(res);
+}
+
+export async function cloneProject(orgSlug, sourceProjectId, payload) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(sourceProjectId)}/clone`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(res);
+}
+
+export async function importTestsFromFile(orgSlug, projectId, file, targetFolderId) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (targetFolderId) formData.append('targetFolderId', targetFolderId);
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/import-tests`, {
+    method: 'POST',
+    body: formData,
+  });
+  return parseJson(res);
+}
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export async function createTestCase(orgSlug, projectId, payload) {

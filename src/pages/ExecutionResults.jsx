@@ -320,7 +320,7 @@ export default function ExecutionResults() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-5 text-[#232323] dark:text-white">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 text-[#232323] dark:text-white p-4 lg:p-6">
         <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_8px_24px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">Reports</h1>

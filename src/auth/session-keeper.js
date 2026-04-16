@@ -6,11 +6,11 @@
  * being hidden) to handle laptop sleep / tab-switching scenarios.
  */
 
-const DEFAULT_TTL_SEC = 15 * 60; // 15 minutes fallback
-const REFRESH_RATIO = 0.75; // refresh at 75% of TTL
+const DEFAULT_TTL_SEC = 7 * 24 * 60 * 60; // 7 days fallback
+const REFRESH_RATIO = 0.50; // refresh at 50% of TTL
 const RETRY_DELAY_MS = 30_000; // retry after 30s on network error
 const VISIBILITY_GRACE_MS = 60_000; // if tab was hidden < 1 min, skip refresh
-const MAX_TRANSIENT_RETRIES = 5; // give up after 5 consecutive transient failures
+const MAX_TRANSIENT_RETRIES = 30; // give up after 30 consecutive transient failures
 // HTTP status codes that are transient and should be retried
 const TRANSIENT_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 

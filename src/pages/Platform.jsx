@@ -214,6 +214,23 @@ export default function Platform() {
     }
   }
 
+  async function updateMemberRole(memberId, newRole) {
+    try {
+      const response = await apiFetch(`/organizations/${orgSlug}/members`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId, role: newRole }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to update role");
+      }
+      await fetchOrg();
+    } catch (e) {
+      setError(e?.message || "Failed to update member role");
+    }
+  }
+
   async function confirmDeleteOrganization() {
     if (!orgSlug || deletingOrg) return;
     setDeletingOrg(true);
@@ -281,26 +298,33 @@ export default function Platform() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-3 md:px-5 py-4 md:py-6 space-y-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[2rem] leading-tight font-bold text-[#232323] dark:text-white">{org?.name || "Organization"}</h2>
-            <p className="text-[#232323]/60 dark:text-white/60 mt-1">Manage your organization members and settings</p>
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Header */}
+        <div className="shrink-0 px-4 md:px-6 py-3 md:py-4 border-b border-black/10 dark:border-white/10 bg-card/95">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-[#232323] dark:text-white">{org?.name || "Organization"}</h2>
+              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">Manage your organization members and settings</p>
+            </div>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInviteError("");
+                  setInviteOpen(true);
+                }}
+                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/10 bg-card/90 text-[#232323] dark:text-white text-sm font-semibold inline-flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-[#232323]/5 dark:hover:bg-white/5"
+              >
+                <UserPlus className="h-4 w-4" />
+                Invite Member
+              </button>
+            )}
           </div>
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                setInviteError("");
-                setInviteOpen(true);
-              }}
-              className="h-10 px-4 rounded-xl border border-black/10 dark:border-white/10 bg-card/90 text-[#232323] dark:text-white text-sm font-semibold inline-flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-[#232323]/5 dark:hover:bg-white/5"
-            >
-              <UserPlus className="h-4 w-4" />
-              Invite Member
-            </button>
-          )}
         </div>
+
+        {/* Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="px-4 md:px-6 py-4 space-y-5">
 
         {error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 p-4 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
@@ -377,7 +401,20 @@ export default function Platform() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(member.role)}`}>{member.role}</span>
+                    {canManage && !isSelf ? (
+                      <select
+                        value={member.role}
+                        onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                        className={`px-2 py-1 text-xs font-semibold border rounded-full appearance-none cursor-pointer ${roleBadgeClass(member.role)}`}
+                      >
+                        <option value="Owner">Owner</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Tester">Tester</option>
+                        <option value="Viewer">Viewer</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-flex px-3 py-1 text-xs font-semibold border rounded-full ${roleBadgeClass(member.role)}`}>{member.role}</span>
+                    )}
                     <span className={`inline-flex px-3 py-1 text-xs font-medium border rounded-full ${availabilityBadgeClass(availability)}`}>{availability}</span>
                     {canDelete && (
                       <button
@@ -443,6 +480,8 @@ export default function Platform() {
             {leaveError ? <p className="mt-3 text-sm text-red-600 dark:text-red-400">{leaveError}</p> : null}
           </div>
         ) : null}
+          </div>
+        </div>
       </div>
 
       {deleteOrgOpen ? (

@@ -46,6 +46,7 @@ import {
   cancelFunctionalGeneration,
   cloneTestCase,
   deleteFolder,
+  deleteFoldersBulk,
   deleteProjectEnvironment,
   deleteProjectSharedStep,
   deleteProjectVariable,
@@ -56,6 +57,8 @@ import {
   fetchProjectTree,
   fetchProjectVariables,
   generateFunctionalTests,
+  importTestsFromFile,
+  cloneProject,
   moveProjectItem,
   renameFolder,
   updateTestCase,
@@ -365,6 +368,9 @@ function FolderNode({
   onDropMoveFolder,
   onDropMoveTestCase,
   onDragStart,
+  multiSelectMode,
+  selectedFolderIds,
+  onToggleSelect,
 }) {
   const [expanded, setExpanded] = useState(true);
   const [hovered, setHovered] = useState(false);
@@ -372,6 +378,7 @@ function FolderNode({
   const isActive = selectedFolderId === node.id;
   const isHighlighted = Array.isArray(highlightedFolderIds) && highlightedFolderIds.includes(node.id);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  const isChecked = Array.isArray(selectedFolderIds) && selectedFolderIds.includes(node.id);
 
   return (
     <div
@@ -415,7 +422,13 @@ function FolderNode({
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={() => onSelect(node.id)}
+        onClick={() => {
+          if (multiSelectMode) {
+            onToggleSelect(node.id);
+          } else {
+            onSelect(node.id);
+          }
+        }}
         className={`w-full flex items-center rounded px-2 py-1.5 text-left text-sm transition-all duration-150 ${
           isHighlighted
             ? "animate-[folderHighlight_1s_ease-in-out_5] ring-2 ring-emerald-400/60 bg-emerald-400/15 dark:bg-emerald-400/10"
@@ -425,7 +438,9 @@ function FolderNode({
             ? "ring-1 ring-[#FFAA00] bg-[#FFAA00]/10 dark:bg-[#FFAA00]/15 translate-x-0.5"
             : ""
         } ${
-          isActive
+          isChecked
+            ? "bg-[#FFAA00]/20 ring-1 ring-[#FFAA00]/40 text-[#232323] dark:text-white font-medium"
+            : isActive
             ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white font-medium"
             : "hover:bg-[#232323]/5 dark:hover:bg-white/10 text-[#232323]/75 dark:text-white/75"
         }`}
@@ -445,8 +460,24 @@ function FolderNode({
           <span className="mr-1 w-3.5" />
         )}
         <GripVertical className="h-3.5 w-3.5 mr-1.5 text-[#232323]/35 dark:text-white/35" />
+        {multiSelectMode ? (
+          <span
+            className="mr-1.5 inline-flex items-center"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelect(node.id);
+            }}
+          >
+            {isChecked ? (
+              <CheckSquare className="h-3.5 w-3.5 text-[#FFAA00]" />
+            ) : (
+              <Square className="h-3.5 w-3.5 text-[#232323]/40 dark:text-white/40" />
+            )}
+          </span>
+        ) : null}
         <Folder className="h-3.5 w-3.5 mr-2 text-[#FFAA00] shrink-0" />
         <span className="truncate flex-1">{node.name || node.path || "Folder"}</span>
+        {!multiSelectMode ? (
         <span className={`ml-2 inline-flex items-center gap-1 transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}>
           <span
             className="h-5 w-5 rounded inline-flex items-center justify-center hover:bg-[#232323]/10 dark:hover:bg-white/10"
@@ -476,6 +507,7 @@ function FolderNode({
             <Trash2 className="h-3 w-3" />
           </span>
         </span>
+        ) : null}
       </button>
 
       {expanded
@@ -493,6 +525,9 @@ function FolderNode({
               onDropMoveFolder={onDropMoveFolder}
               onDropMoveTestCase={onDropMoveTestCase}
               onDragStart={onDragStart}
+              multiSelectMode={multiSelectMode}
+              selectedFolderIds={selectedFolderIds}
+              onToggleSelect={onToggleSelect}
             />
           ))
         : null}
@@ -557,6 +592,14 @@ export default function ExecutionProjectTests() {
   const [folderModalMode, setFolderModalMode] = useState("create");
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedFolderIds, setSelectedFolderIds] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkFolderDeleteConfirm, setBulkFolderDeleteConfirm] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
 
   const [variableForm, setVariableForm] = useState(INITIAL_VARIABLE_FORM);
   const [sharedStepForm, setSharedStepForm] = useState(INITIAL_SHARED_STEP_FORM);
@@ -951,6 +994,47 @@ export default function ExecutionProjectTests() {
       setError(err?.message || "Failed to delete folder");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleFolderSelect = (folderId) => {
+    setSelectedFolderIds((prev) =>
+      prev.includes(folderId) ? prev.filter((id) => id !== folderId) : [...prev, folderId]
+    );
+  };
+
+  const confirmBulkDeleteFolders = async () => {
+    if (selectedFolderIds.length === 0) return;
+    setBulkDeleting(true);
+    setError("");
+    try {
+      await deleteFoldersBulk(orgSlug, projectId, selectedFolderIds);
+      if (selectedFolderIds.includes(String(selectedFolderId))) {
+        setSelectedFolderId(null);
+      }
+      setSelectedFolderIds([]);
+      setMultiSelectMode(false);
+      await loadRepositoryData(false);
+    } catch (err) {
+      setError(err?.message || "Failed to delete folders");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleImportTests = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportMessage(null);
+    try {
+      const result = await importTestsFromFile(orgSlug, projectId, importFile, selectedFolderId || null);
+      setImportMessage({ type: "success", text: result?.message || "Import completed" });
+      setImportFile(null);
+      await loadRepositoryData(false);
+    } catch (err) {
+      setImportMessage({ type: "error", text: err?.message || "Import failed" });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -2312,7 +2396,7 @@ export default function ExecutionProjectTests() {
   };
 
   const renderRepository = () => (
-    <div className="flex h-[calc(100dvh-13rem)] bg-[#F6F6F6] dark:bg-[#0f0f0f] overflow-hidden">
+    <div className="flex h-full bg-[#F6F6F6] dark:bg-[#0f0f0f] overflow-hidden">
       <div
         className="min-w-[240px] max-w-[60vw] bg-card/95 backdrop-blur-sm flex flex-col"
         style={{ width: `${hierarchyWidth}px` }}
@@ -2331,6 +2415,32 @@ export default function ExecutionProjectTests() {
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                onClick={() => {
+                  setMultiSelectMode((prev) => !prev);
+                  if (multiSelectMode) {
+                    setSelectedFolderIds([]);
+                    setBulkFolderDeleteConfirm(false);
+                  }
+                }}
+                className={`h-7 w-7 rounded-md border inline-flex items-center justify-center ${
+                  multiSelectMode
+                    ? "border-[#FFAA00] bg-[#FFAA00]/15 text-[#FFAA00]"
+                    : "border-border text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                }`}
+                title={multiSelectMode ? "Exit multi-select" : "Multi-select folders"}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+              </button>
+              {/*<button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                title="Import tests from file"
+              >
+                <Upload className="h-3.5 w-3.5" />
+              </button>*/}
+              <button
+                type="button"
                 onClick={() => openCreateFolderModal(selectedFolderId || "")}
                 disabled={saving}
                 className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60"
@@ -2338,14 +2448,14 @@ export default function ExecutionProjectTests() {
               >
                 <FolderPlus className="h-3.5 w-3.5" />
               </button>
-              <button
+              {/*<button
                 type="button"
                 onClick={() => loadRepositoryData(false)}
                 disabled={saving}
                 className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${saving ? "animate-spin" : ""}`} />
-              </button>
+              </button>*/}
             </div>
           </div>
 
@@ -2428,11 +2538,68 @@ export default function ExecutionProjectTests() {
                   onDropMoveFolder={handleMoveFolder}
                   onDropMoveTestCase={handleMoveTestCase}
                   onDragStart={() => {}}
+                  multiSelectMode={multiSelectMode}
+                  selectedFolderIds={selectedFolderIds}
+                  onToggleSelect={toggleFolderSelect}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {/* Bulk action bar */}
+        {multiSelectMode ? (
+          <div className="px-3 py-2 border-t border-black/10 dark:border-white/10 bg-[#FFAA00]/5 dark:bg-[#FFAA00]/10">
+            {selectedFolderIds.length > 0 ? (
+              bulkFolderDeleteConfirm ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-red-700 dark:text-red-300">
+                    Delete {selectedFolderIds.length} folder{selectedFolderIds.length !== 1 ? "s" : ""} and all their contents? This cannot be undone.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        confirmBulkDeleteFolders();
+                        setBulkFolderDeleteConfirm(false);
+                      }}
+                      disabled={bulkDeleting}
+                      className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold disabled:opacity-60 inline-flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {bulkDeleting ? "Deleting..." : "Confirm Delete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkFolderDeleteConfirm(false)}
+                      className="h-7 px-3 rounded-md border border-black/15 dark:border-white/15 text-xs font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-[#232323]/70 dark:text-white/70">
+                    {selectedFolderIds.length} folder{selectedFolderIds.length !== 1 ? "s" : ""} selected
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setBulkFolderDeleteConfirm(true)}
+                    className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Delete Selected
+                  </button>
+                </div>
+              )
+            ) : (
+              <p className="text-xs text-[#232323]/50 dark:text-white/50">
+                Click folders to select them for bulk deletion
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -2623,7 +2790,10 @@ export default function ExecutionProjectTests() {
                         <td className="px-2 py-2 align-top">
                           <button
                             type="button"
-                            onClick={() => toggleSelectOneTestCase(item.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleSelectOneTestCase(item.id);
+                            }}
                             className="inline-flex items-center justify-center"
                           >
                             {selectedTestCaseIds.includes(String(item.id)) ? (
@@ -2782,7 +2952,7 @@ export default function ExecutionProjectTests() {
   );
 
   const renderDocumentation = () => (
-    <div className="p-3 h-[calc(100dvh-12.75rem)] min-h-[520px] overflow-hidden space-y-3">
+    <div className="p-3 flex-1 min-h-0 flex flex-col space-y-3 overflow-hidden">
       <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Documentation</p>
@@ -2811,7 +2981,7 @@ export default function ExecutionProjectTests() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 h-[calc(100%-4.2rem)]">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 flex-1 min-h-0 overflow-hidden">
         <div className="xl:col-span-9 space-y-3 overflow-auto pr-1">
           <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
             <p className="text-sm font-semibold text-[#232323] dark:text-white">1. Project Overview</p>
@@ -2995,7 +3165,7 @@ export default function ExecutionProjectTests() {
 
   return (
     <DashboardLayout>
-      <div className="bg-card/95 overflow-hidden rounded-xl transition-all duration-200 min-h-[calc(100dvh-9rem)] flex flex-col [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_table]:border-separate [&_table]:border-spacing-0 [&_thead]:bg-[#F8F8F8]/90 dark:[&_thead]:bg-slate-900/90 [&_th]:border-black/10 dark:[&_th]:border-white/10 [&_td]:border-black/5 dark:[&_td]:border-white/10 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="bg-card/95 overflow-hidden transition-all duration-200 flex-1 min-h-0 flex flex-col [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_table]:border-separate [&_table]:border-spacing-0 [&_thead]:bg-[#F8F8F8]/90 dark:[&_thead]:bg-slate-900/90 [&_th]:border-black/10 dark:[&_th]:border-white/10 [&_td]:border-black/5 dark:[&_td]:border-white/10 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="border-b border-black/10 dark:border-white/10 px-4 py-3 flex items-center gap-3 bg-gradient-to-r from-card via-card to-card/90">
           <button
             type="button"
@@ -3032,12 +3202,12 @@ export default function ExecutionProjectTests() {
 
         {error ? <div className="px-4 py-2 text-sm text-red-500">{error}</div> : null}
 
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {activeTab === "repository" && renderRepository()}
-          {activeTab === "variables" && renderVariables()}
-          {activeTab === "shared-steps" && renderSharedSteps()}
+          {activeTab === "variables" && <div className="flex-1 min-h-0 overflow-auto">{renderVariables()}</div>}
+          {activeTab === "shared-steps" && <div className="flex-1 min-h-0 overflow-auto">{renderSharedSteps()}</div>}
           {activeTab === "documentation" && renderDocumentation()}
-          {activeTab === "configuration" && renderConfiguration()}
+          {activeTab === "configuration" && <div className="flex-1 min-h-0 overflow-auto">{renderConfiguration()}</div>}
         </div>
       </div>
 
@@ -3325,6 +3495,111 @@ export default function ExecutionProjectTests() {
           >
             {saving ? "Deleting..." : "Delete Folder"}
           </button>
+        </div>
+      </Popup>
+
+      {/* Bulk Delete Confirmation — only opens after user clicks "Delete Selected" in the bottom bar */}
+      <Popup
+        open={bulkFolderDeleteConfirm && selectedFolderIds.length > 0}
+        title={`Delete ${selectedFolderIds.length} Folder(s)`}
+        onClose={() => setBulkFolderDeleteConfirm(false)}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            Delete {selectedFolderIds.length} selected folder(s) and all their child folders/test cases? This action cannot be undone.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { confirmBulkDeleteFolders(); setBulkFolderDeleteConfirm(false); }}
+              disabled={bulkDeleting}
+              className="flex-1 h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+            >
+              {bulkDeleting ? "Deleting..." : `Delete ${selectedFolderIds.length} Folder(s)`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkFolderDeleteConfirm(false)}
+              className="h-9 px-4 rounded-md border border-border text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Popup>
+
+      {/* Import Tests Modal */}
+      <Popup
+        open={isImportModalOpen}
+        title="Import Test Cases"
+        onClose={() => { setIsImportModalOpen(false); setImportFile(null); setImportMessage(null); }}
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[#232323]/70 dark:text-white/70">
+            Upload a file to import test cases. Supports <strong>CSV</strong>, <strong>JSON</strong>, and <strong>XML</strong> formats (including Squash TM exports).
+          </p>
+
+          <div className="rounded-xl border-2 border-dashed border-border p-6 text-center">
+            <Upload className="h-8 w-8 text-[#232323]/25 dark:text-white/25 mx-auto" />
+            <p className="mt-2 text-sm text-[#232323]/60 dark:text-white/60">
+              {importFile ? importFile.name : "Drop a file here or click to browse"}
+            </p>
+            <input
+              type="file"
+              accept=".csv,.json,.xml,.xlsx"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              className="mt-2 text-xs"
+            />
+          </div>
+
+          {selectedFolder ? (
+            <p className="text-xs text-[#232323]/50 dark:text-white/50">
+              Importing into folder: <strong>{selectedFolder.name}</strong>
+            </p>
+          ) : (
+            <p className="text-xs text-[#232323]/50 dark:text-white/50">
+              Tests will be imported into auto-created folders based on file structure.
+            </p>
+          )}
+
+          {importMessage ? (
+            <div className={`rounded-lg p-3 text-sm ${
+              importMessage.type === "success"
+                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+            }`}>
+              {importMessage.text}
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleImportTests}
+              disabled={importing || !importFile}
+              className="flex-1 h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            >
+              {importing ? "Importing..." : "Import Tests"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportMessage(null); }}
+              className="h-9 px-4 rounded-md border border-border text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-border p-3 space-y-2">
+            <p className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Supported Formats</p>
+            <ul className="text-xs text-[#232323]/55 dark:text-white/55 space-y-1">
+              <li><strong>CSV:</strong> Headers: title, description, steps, expected, folder, priority, tags</li>
+              <li><strong>JSON:</strong> Array of test cases or {"{"} folders: [{"{"} name, testCases: [...] {"}"}] {"}"}</li>
+              <li><strong>XML:</strong> Squash TM export format (test-suite/test-case elements)</li>
+            </ul>
+          </div>
         </div>
       </Popup>
 

@@ -7,7 +7,6 @@ import { fetchOrgQuotaUsage } from "../services/organizations";
 import { addPlanTestCases, getExecutionSlots, getPlan, getRun, runPlan } from "../services/executionReporting";
 import { fetchProjectTree } from "../services/testManagement";
 import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
-import { useOrgSlots } from "../hooks/useSocket";
 
 const DESKTOP_PROFILES = [
   { id: "desktop-chrome", label: "Google Chrome (Desktop)", osIcon: "/os_browsers_icons/windowsOS.svg", browserIcon: "/os_browsers_icons/chrome.svg" },
@@ -437,20 +436,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
 function RunPlanModal({ open, onClose, plan, onRun }) {
   const { orgSlug } = useParams();
   const [running, setRunning] = useState(false);
-  const [parallelSessions, setParallelSessions] = useState(1);
-
-  // Real-time org slot info via Socket.IO + REST initial fetch
-  const realtimeSlots = useOrgSlots(open ? orgSlug : null);
-  const orgAvailable = realtimeSlots?.available ?? 4;
-  const orgLimit = realtimeSlots?.limit ?? 4;
-  const orgUsed = realtimeSlots?.used ?? 0;
-  const loadingSlots = realtimeSlots === null;
-
-  useEffect(() => {
-    if (!open || realtimeSlots === null) return;
-    const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), 4);
-    setParallelSessions(defaultParallel);
-  }, [open, realtimeSlots === null]);
+  const [parallelSessions, setParallelSessions] = useState(2);
 
   if (!open || !plan) return null;
 
@@ -518,24 +504,8 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60">Slot Availability</p>
-            <div className="mt-2 rounded-xl border border-black/10 dark:border-white/10 bg-background/70 p-3 flex items-center justify-between">
-              <span className="text-sm text-[#232323]/75 dark:text-white/75">Available slots</span>
-              {loadingSlots ? (
-                <span className="text-xs text-[#232323]/60 dark:text-white/60 inline-flex items-center gap-1"><Loader2 className="h-3.5 w-3.5 animate-spin" />...</span>
-              ) : (
-                <span className="text-sm font-semibold">
-                  <span className={orgAvailable > 0 ? "text-green-600" : "text-red-500"}>{orgAvailable}</span>
-                  <span className="text-[#232323]/45 dark:text-white/45"> / {orgLimit}</span>
-                  <span className="text-[#232323]/35 dark:text-white/35 text-xs ml-1">({orgUsed} in use)</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
             <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60">Parallel Sessions</p>
-            <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max 4 per organization)</p>
+            <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max 4)</p>
             <div className="mt-3 flex items-center gap-3">
               <input
                 type="range"
@@ -793,7 +763,7 @@ export default function ExecutionPlanDetail() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-0 bg-transparent overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
         <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2">
             <button

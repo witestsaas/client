@@ -324,8 +324,8 @@ export default function ExecutionPlans() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-0 bg-transparent overflow-hidden">
-        <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3">
+      <div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Plans</h2>
@@ -343,8 +343,8 @@ export default function ExecutionPlans() {
           </button>
         </div>
 
-        <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3">
-          <select
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3 shrink-0">
+          {/*<select
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
             className="h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm min-w-[160px] focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
@@ -353,7 +353,7 @@ export default function ExecutionPlans() {
             {projects.map((project) => (
               <option key={project.id} value={project.id}>{project.name}</option>
             ))}
-          </select>
+          </select>*/}
           <div className="relative flex-1">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#232323]/40 dark:text-white/40" />
             <input
@@ -371,7 +371,7 @@ export default function ExecutionPlans() {
 
         {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{error}</div> : null}
 
-        <div className="p-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <p className="p-4 text-sm text-[#232323]/60 dark:text-white/60">Loading plans...</p>
           ) : !filteredPlans.length ? (

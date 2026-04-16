@@ -140,10 +140,9 @@ export default function Profile() {
 
       const payload = await response.json();
       if (payload?.url) {
-        const absolute = payload.url.startsWith('http')
-          ? payload.url
-          : `${new URL(import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1').origin}${payload.url}`;
-        setAvatarUrl(`${absolute}?v=${Date.now()}`);
+        // Use relative path — nginx proxies /uploads/ to the middleware
+        const url = payload.url.startsWith('http') ? payload.url : payload.url;
+        setAvatarUrl(`${url}?v=${Date.now()}`);
       }
 
       await refreshProfile();
@@ -284,26 +283,33 @@ export default function Profile() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-2 md:px-3 py-3 md:py-5 space-y-5">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navigate(`/dashboard/${orgSlug}`)}
-            className="h-10 w-10 rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center"
-            title="Back"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#232323]/75 dark:text-white/75" />
-          </button>
-          <div>
-            <h2 className="text-[2rem] leading-tight font-bold text-[#232323] dark:text-white inline-flex items-center gap-2.5">
-              <span className="h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 inline-flex items-center justify-center">
-                <UserIcon className="h-5 w-5" />
-              </span>
-              Profile
-            </h2>
-            <p className="text-[#232323]/60 dark:text-white/60 mt-1">Update your basic information and profile photo</p>
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Header */}
+        <div className="shrink-0 px-4 md:px-6 py-3 md:py-4 border-b border-black/10 dark:border-white/10 bg-card/95">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(`/dashboard/${orgSlug}`)}
+              className="h-9 w-9 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center"
+              title="Back"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#232323]/75 dark:text-white/75" />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-[#232323] dark:text-white inline-flex items-center gap-2">
+                <span className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 inline-flex items-center justify-center">
+                  <UserIcon className="h-4 w-4" />
+                </span>
+                Profile
+              </h2>
+              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">Update your basic information and profile photo</p>
+            </div>
           </div>
         </div>
+
+        {/* Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="px-4 md:px-6 py-4 space-y-5">
 
         <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6">
           <form onSubmit={handleSave} className="space-y-6">
@@ -499,6 +505,8 @@ export default function Profile() {
 
           {mfaInfo ? <p className="text-sm text-emerald-700 dark:text-emerald-400">{mfaInfo}</p> : null}
           {mfaError ? <p className="text-sm text-red-600">{mfaError}</p> : null}
+        </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>

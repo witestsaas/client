@@ -6,19 +6,22 @@ import App from './App.jsx';
 import { AuthProvider } from './auth/AuthProvider.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { ThemeProvider } from './utils/theme-context.tsx';
+import { LanguageProvider } from './utils/language-context.jsx';
 import { SocketProvider } from './hooks/useSocket.tsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <ThemeProvider>
-        <SocketProvider>
-          <BrowserRouter>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </BrowserRouter>
-        </SocketProvider>
+        <LanguageProvider>
+          <SocketProvider>
+            <BrowserRouter>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </BrowserRouter>
+          </SocketProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </AuthProvider>
   </StrictMode>,

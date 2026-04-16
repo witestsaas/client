@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Layers, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
 import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
-import { useTestRunGlobalUpdates, useTestRunSocket, useOrgSlots } from "../hooks/useSocket";
+import { useTestRunGlobalUpdates, useTestRunSocket } from "../hooks/useSocket";
+import { VideoPlayer } from "../components/artifacts/VideoPlayer";
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
@@ -858,6 +859,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           type="button"
                           onClick={() => {
                             setRerunMode("all");
+                            setParallelSessions(2);
                             setRerunModalOpen(true);
                           }}
                           className="h-8 px-3.5 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-xs font-semibold transition-colors"
@@ -1022,9 +1024,11 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 
                     {activeTab === "video" ? (
                       selectedVideoUrl ? (
-                        <div className="rounded-xl border border-black/8 dark:border-white/10 overflow-hidden bg-[#0d0b1f] dark:bg-[#1a1a2e]">
-                          <video controls src={selectedVideoUrl} className="w-full max-h-[60vh]" />
-                        </div>
+                        <VideoPlayer
+                          src={selectedVideoUrl}
+                          title={selectedResult?.testCase?.title || "Test Recording"}
+                          steps={steps.map((s) => ({ name: s.name || "Step", status: s.status }))}
+                        />
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                           <Video className="h-8 w-8 mb-2 opacity-50" />
@@ -1127,7 +1131,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
             <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{rerunMode === "single" ? "This will queue the selected test case again." : "This will queue all test cases in this run."}</p>
 
             {rerunMode === "all" ? (
-              <div className="mt-4">
+              <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
                   <span>Parallel sessions</span>
                   <span className="font-semibold">{parallelSessions}</span>
@@ -1135,11 +1139,12 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 <input
                   type="range"
                   min={1}
-                  max={10}
+                  max={4}
                   value={parallelSessions}
-                  onChange={(event) => setParallelSessions(Number(event.target.value))}
+                  onChange={(event) => setParallelSessions(Math.min(Math.max(Number(event.target.value) || 1, 1), 4))}
                   className="w-full accent-[#FFAA00]"
                 />
+                <p className="text-xs text-[#232323]/40 dark:text-white/40">How many tests to run simultaneously (max 4)</p>
               </div>
             ) : null}
 
@@ -1181,6 +1186,7 @@ export default function ExecutionRuns() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState("");
@@ -1281,9 +1287,6 @@ export default function ExecutionRuns() {
     refreshRuns().catch(() => undefined);
   });
 
-  // Real-time org slot counter
-  const orgSlotsData = useOrgSlots(orgSlug);
-
   useEffect(() => {
     const onProjectChange = (event) => {
       const nextOrgSlug = event?.detail?.orgSlug;
@@ -1360,8 +1363,8 @@ export default function ExecutionRuns() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-0 bg-transparent overflow-hidden">
-        <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3">
+      <div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Runs</h2>
@@ -1371,15 +1374,6 @@ export default function ExecutionRuns() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/*{orgSlotsData && (
-              <div className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/70 px-3 py-1.5">
-                <div className={`h-2 w-2 rounded-full ${orgSlotsData.available > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-xs font-medium text-[#232323]/70 dark:text-white/70">
-                  Slots: <span className={`font-semibold ${orgSlotsData.available > 0 ? 'text-green-600' : 'text-red-500'}`}>{orgSlotsData.available}</span>
-                  <span className="text-[#232323]/40 dark:text-white/40">/{orgSlotsData.limit}</span>
-                </span>
-              </div>
-            )} */}
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
@@ -1391,17 +1385,45 @@ export default function ExecutionRuns() {
           </div>
         </div>
 
-        <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3">
-          <select
-            value={projectId}
-            onChange={(event) => setProjectId(event.target.value)}
-            className="h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm min-w-[160px]"
-          >
-            {!projects.length ? <option value="">No projects</option> : null}
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>{project.name}</option>
-            ))}
-          </select>
+        <div className="border-b border-black/10 dark:border-white/10 bg-card/90 px-6 py-3 flex items-center gap-3 shrink-0">
+            {/*<button
+              type="button"
+              onClick={() => setProjectDropdownOpen((v) => !v)}
+              className="h-9 min-w-[180px] rounded-lg border border-black/10 dark:border-white/15 bg-background/90 hover:bg-background px-3 text-sm font-medium inline-flex items-center justify-between gap-2 transition-colors"
+            >
+              <span className="inline-flex items-center gap-2 truncate">
+                <Layers className="h-3.5 w-3.5 text-[#FFAA00] shrink-0" />
+                <span className="truncate">{projects.find((p) => p.id === projectId)?.name || "Select project"}</span>
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 opacity-50 shrink-0 transition-transform ${projectDropdownOpen ? "rotate-180" : ""}`} />
+            </button>}*/}
+            {projectDropdownOpen ? (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setProjectDropdownOpen(false)} />
+                <div className="absolute left-0 top-10 z-20 w-56 rounded-xl border border-black/10 dark:border-white/10 bg-card shadow-xl p-1 max-h-64 overflow-y-auto">
+                  {!projects.length ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">No projects</p>
+                  ) : (
+                    projects.map((project) => (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => { setProjectId(project.id); setProjectDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 h-8 px-2.5 rounded-lg text-left text-[13px] font-medium transition-colors ${
+                          projectId === project.id
+                            ? "bg-[#FFAA00]/15 text-[#FFAA00]"
+                            : "text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <Layers className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                        <span className="truncate">{project.name}</span>
+                        {projectId === project.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#FFAA00] shrink-0" />}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : null}
 
           <div className="relative flex-1">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#232323]/40 dark:text-white/40" />
@@ -1451,7 +1473,7 @@ export default function ExecutionRuns() {
           </div>
         </div>
 
-        <div className="px-6 py-3 border-b border-black/10 dark:border-white/10 bg-card/85 flex flex-wrap items-center gap-2 text-xs">
+        <div className="px-6 py-3 border-b border-black/10 dark:border-white/10 bg-card/85 flex flex-wrap items-center gap-2 text-xs shrink-0">
           <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-blue-200/70 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold">
             <Loader2 className="h-3.5 w-3.5" />
             Running: {runCounters.running}
@@ -1472,7 +1494,7 @@ export default function ExecutionRuns() {
 
         {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300 inline-flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</div> : null}
 
-        <div className="p-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card p-6 text-center text-sm text-[#232323]/60 dark:text-white/60">
               <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#FFAA00]" />
