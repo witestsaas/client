@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { clearBootstrapToken, setAccessTokenGetter } from './token-manager.js';
 import { startSessionKeeper, stopSessionKeeper } from './session-keeper.js';
-import { apiFetch } from '../services/http.js';
+import { apiFetch, clearSessionExpired } from '../services/http.js';
 
 function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
@@ -199,6 +199,7 @@ export function AuthProvider({ children }) {
       accessTokenExpiresIn: payload?.accessTokenExpiresIn,
       onSessionLost: () => setUser(null),
     });
+    clearSessionExpired();
     return refreshProfile();
   }, [refreshProfile]);
 
@@ -223,6 +224,7 @@ export function AuthProvider({ children }) {
       accessTokenExpiresIn: payload?.accessTokenExpiresIn,
       onSessionLost: () => setUser(null),
     });
+    clearSessionExpired();
     return refreshProfile();
   }, [refreshProfile]);
 

@@ -1862,11 +1862,11 @@ export default function ExecutionProjectTests() {
   };
 
   const submitGenerateTests = async () => {
-    if (aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0 && !aiQuota.hasCouponCredits) {
+    if (aiQuota && !aiQuota.hasCouponCredits) {
       setQuotaPopup({
         open: true,
-        title: "AI Quota Required",
-        message: AI_QUOTA_UPGRADE_MESSAGE,
+        title: "No Credits",
+        message: "Your organization has no remaining credits. Please add credits to generate tests.",
       });
       return;
     }
@@ -1993,7 +1993,7 @@ export default function ExecutionProjectTests() {
       const rawMessage = err?.message || "Failed to generate test cases";
       const isQuotaDenied =
         isQuotaDeniedError(err) ||
-        Boolean(aiQuota && !aiQuota.isUnlimited && aiQuota.remaining <= 0 && !aiQuota.hasCouponCredits);
+        Boolean(aiQuota && !aiQuota.hasCouponCredits);
       const message = isQuotaDenied
         ? AI_QUOTA_UPGRADE_MESSAGE
         : rawMessage;
@@ -2494,13 +2494,11 @@ export default function ExecutionProjectTests() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold inline-flex items-center text-[#232323]/70 dark:text-white/70">
-                    {aiQuota?.isUnlimited
-                      ? "AI Remaining: Unlimited"
-                      : aiQuota
-                        ? aiQuota.remaining <= 0 && aiQuota.hasCouponCredits
-                          ? `Credits: ${aiQuota.couponRemainingUsd.toFixed(2)}`
-                          : `AI Remaining: ${Math.max(0, Number(aiQuota.remaining || 0))}`
-                        : "AI Remaining: --"}
+                    {aiQuota
+                      ? aiQuota.hasCouponCredits
+                        ? `Credits: $${aiQuota.couponRemainingUsd.toFixed(2)}`
+                        : "No Credits"
+                      : "Credits: --"}
                   </div>
                   {selectedTestCaseIds.length > 0 ? (
                     <>

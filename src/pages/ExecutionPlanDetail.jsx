@@ -6,7 +6,7 @@ import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
 import { fetchOrgQuotaUsage } from "../services/organizations";
 import { addPlanTestCases, getExecutionSlots, getPlan, getRun, runPlan } from "../services/executionReporting";
 import { fetchProjectTree } from "../services/testManagement";
-import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
+import { isQuotaDeniedError } from "../utils/quota";
 import { useOrgSlots } from "../hooks/useSocket";
 
 const DESKTOP_PROFILES = [
@@ -448,7 +448,7 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
 
   useEffect(() => {
     if (!open || realtimeSlots === null) return;
-    const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), 4);
+    const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), orgLimit);
     setParallelSessions(defaultParallel);
   }, [open, realtimeSlots === null]);
 
@@ -535,14 +535,14 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
 
           <div>
             <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60">Parallel Sessions</p>
-            <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max 4 per organization)</p>
+            <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max {orgLimit} per organization)</p>
             <div className="mt-3 flex items-center gap-3">
               <input
                 type="range"
                 min="1"
-                max="4"
+                max={orgLimit}
                 value={parallelSessions}
-                onChange={(event) => setParallelSessions(Math.min(Math.max(Number(event.target.value) || 1, 1), 4))}
+                onChange={(event) => setParallelSessions(Math.min(Math.max(Number(event.target.value) || 1, 1), orgLimit))}
                 className="flex-1 h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer"
               />
               <span className="w-5 text-center text-sm font-semibold text-[#232323] dark:text-white">{parallelSessions}</span>
@@ -758,12 +758,12 @@ export default function ExecutionPlanDetail() {
     setError("");
     try {
       const quotaPayload = await fetchOrgQuotaUsage(orgSlug);
-      const webQuota = getFeatureQuotaSnapshot(quotaPayload, "WebTestRun");
-      if (!webQuota.isUnknown && !webQuota.isUnlimited && webQuota.remaining <= 0 && !webQuota.hasCouponCredits) {
+      const creditBalance = Number(quotaPayload?.couponBalance?.totalRemainingUsd || 0);
+      if (creditBalance <= 0) {
         setQuotaPopup({
           open: true,
-          title: "Quota Required",
-          message: "Your organization has no remaining web run quota to execute this plan. Contact your organization admin to increase quota.",
+          title: "No Credits",
+          message: "Your organization has no remaining credits. Please add credits to run tests.",
         });
         return null;
       }
@@ -776,11 +776,16 @@ export default function ExecutionPlanDetail() {
       await loadPlan();
       return result;
     } catch (err) {
+      const errCode = err?.payload?.error || err?.code || "";
+      if (typeof errCode === "string" && errCode.startsWith("concurrency_limit")) {
+        setError(err?.payload?.message || err?.message || "Your organization has reached its concurrent test limit. Wait for running tests to complete.");
+        throw err;
+      }
       if (isQuotaDeniedError(err)) {
         setQuotaPopup({
           open: true,
-          title: "Quota Required",
-          message: "Your organization has no remaining web run quota to execute this plan. Contact your organization admin to increase quota.",
+          title: "No Credits",
+          message: "Your organization has no remaining credits. Please add credits to run tests.",
         });
         throw err;
       }
