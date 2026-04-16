@@ -75,7 +75,7 @@ function StatCard({ icon: Icon, title, value, subtitle, tone = "neutral", progre
   return (
     <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-all duration-200 p-3.5 flex items-center gap-3 h-full">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tones[tone]}`}>
-        <Icon className="h-4.5 w-4.5" />
+        <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xl font-semibold text-[#0f0f1a] dark:text-white leading-none">{value}</p>
@@ -379,7 +379,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="h-full min-h-0 overflow-hidden text-[#0f0f1a] dark:text-white flex flex-col gap-3">
+      <div className="text-[#0f0f1a] dark:text-white flex flex-col gap-3">
         <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold leading-tight" style={{ fontFamily: "'Aeonik', sans-serif" }}>Dashboard</h1>
@@ -410,7 +410,7 @@ export default function DashboardPage() {
         ) : null}
 
         {!loading || projects.length > 0 ? (
-          <div className="flex-1 min-h-0 grid grid-rows-[auto_auto_1fr] gap-3 overflow-hidden">
+          <div className="flex flex-col gap-3">
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
               {cards.map((card) => (
                 <StatCard key={card.title} {...card} />
@@ -495,19 +495,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 min-h-0">
-              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
                     Project Quality Score
                   </h3>
-                  <span className="text-[11px] text-[#0f0f1a]/60 dark:text-white/70">Auto-refresh 30s</span>
+                  <span className="text-[11px] text-[#0f0f1a]/60 dark:text-white/70">Auto-refresh 15s</span>
                 </div>
                 {projectQualityGraph.length === 0 ? (
                   <p className="text-sm text-[#0f0f1a]/60 dark:text-white/60">No project data available yet.</p>
                 ) : (
-                  <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+                  <div className="space-y-3">
                     {projectQualityGraph.map((project) => {
                       const passRatio = project.executed > 0 ? (project.passed / project.executed) * 100 : 0;
                       const failRatio = project.executed > 0 ? (project.failed / project.executed) * 100 : 0;
@@ -538,7 +538,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200 min-h-0 flex flex-col">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] p-4 transition-all duration-200">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />

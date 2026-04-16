@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { footerColumns } from '../../constants/landing';
 import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
-import logo from '../../assets/logo_white.svg';
+import logoWhite from '../../assets/logo_white.svg';
+import logoBlack from '../../assets/logo_black.svg';
 
 export default function Footer() {
   const { theme } = useTheme();
@@ -92,7 +93,7 @@ export default function Footer() {
        <div className="flex items-center gap-2.5 mb-3">
   <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
     <img 
-      src={logo} 
+      src={isDark ? logoWhite : logoBlack}
       alt="Qalion logo" 
       className="w-full h-full object-contain"
     />
