@@ -90,7 +90,7 @@ function getSocketUrl(): string {
 	if (import.meta.env.VITE_API_BASE_URL) {
 		try {
 			const apiUrl = new URL(import.meta.env.VITE_API_BASE_URL);
-			return apiUrl.origin; // e.g. https://witest-middleware.onrender.com
+			return apiUrl.origin; // e.g. https://qalion-middleware.onrender.com
 		} catch { /* fall through */ }
 	}
 

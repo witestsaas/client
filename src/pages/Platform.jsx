@@ -118,9 +118,9 @@ export default function Platform() {
       if (/Organization not found|Forbidden|Unauthorized/i.test(message)) {
         try {
           const orgs = await fetchUserOrganizations();
-          const firstOrgSlug = orgs?.organizations?.[0]?.slug;
-          if (firstOrgSlug && firstOrgSlug !== orgSlug) {
-            navigate(`/dashboard/${firstOrgSlug}/platform/organizations`, { replace: true });
+          const firstOrgId = orgs?.organizations?.[0]?.id;
+          if (firstOrgId && firstOrgId !== orgSlug) {
+            navigate(`/dashboard/${firstOrgId}/platform/organizations`, { replace: true });
             return;
           }
         } catch {
@@ -272,9 +272,9 @@ export default function Platform() {
       // Navigate to another org or the no-org page
       try {
         const orgs = await fetchUserOrganizations();
-        const firstOrgSlug = orgs?.organizations?.[0]?.slug;
-        if (firstOrgSlug) {
-          navigate(`/dashboard/${firstOrgSlug}/platform/organizations`, { replace: true });
+        const firstOrgId = orgs?.organizations?.[0]?.id;
+        if (firstOrgId) {
+          navigate(`/dashboard/${firstOrgId}/platform/organizations`, { replace: true });
         } else {
           navigate("/dashboard/no-org", { replace: true });
         }

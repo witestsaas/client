@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider.jsx';
 import { useEffect, useState } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner.jsx';
 
 export function RequireAuth({ children }) {
   const { isAuthenticated, isLoading, refreshProfile } = useAuth();
@@ -49,7 +50,7 @@ export function RequireAuth({ children }) {
   }, [isAuthenticated, isLoading, refreshProfile]);
 
   if (isLoading || !sessionChecked) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated && !sessionRecovered) {

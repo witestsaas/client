@@ -509,6 +509,20 @@ export default function DashboardHeader() {
     };
   }, [loadFunctionalQuota, activeRuns.length]);
 
+  // Refresh credits immediately when slot or test run events arrive via socket
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => loadFunctionalQuota();
+    socket.on("org:slotsUpdate", refresh);
+    socket.on("testRun:completed", refresh);
+    socket.on("testRun:statusUpdate", refresh);
+    return () => {
+      socket.off("org:slotsUpdate", refresh);
+      socket.off("testRun:completed", refresh);
+      socket.off("testRun:statusUpdate", refresh);
+    };
+  }, [socket, loadFunctionalQuota]);
+
   return (
     <header className="sticky top-0 z-40 h-11 shrink-0 relative border-b border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] px-6 flex items-center justify-between">
       {!isNoOrg ? (

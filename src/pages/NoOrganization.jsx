@@ -21,7 +21,7 @@ export default function NoOrganizationPage() {
         try {
           const data = await fetchUserOrganizations();
           if (!cancelled && data.organizations?.length > 0) {
-            navigate(`/dashboard/${data.organizations[0].slug}`, { replace: true });
+            navigate(`/dashboard/${data.organizations[0].id}`, { replace: true });
           }
           return;
         } catch {
@@ -43,7 +43,7 @@ export default function NoOrganizationPage() {
     setLoading(true);
     try {
       const org = await createOrganization(orgName.trim());
-      navigate(`/dashboard/${org.slug}`, { replace: true });
+      navigate(`/dashboard/${org.id}`, { replace: true });
     } catch (err) {
       setError(err.message || "Failed to create organization");
     } finally {
@@ -57,7 +57,7 @@ export default function NoOrganizationPage() {
     setLoading(true);
     try {
       const data = await joinOrganizationByCode(inviteCode.trim());
-      navigate(`/dashboard/${data.orgSlug}`, { replace: true });
+      navigate(`/dashboard/${data.orgId || data.orgSlug}`, { replace: true });
     } catch (err) {
       setError(err.message || "Failed to join organization");
     } finally {

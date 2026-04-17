@@ -120,7 +120,7 @@ const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)
       }
 
       const profile = result;
-      const targetPath = profile?.orgSlug ? `/dashboard/${profile.orgSlug}` : "/dashboard/no-org";
+      const targetPath = (profile?.orgId || profile?.orgSlug) ? `/dashboard/${profile.orgId || profile.orgSlug}` : "/dashboard/no-org";
       navigate(targetPath, { replace: true });
     } catch (err) {
       const message = err.message || "Invalid username or password";

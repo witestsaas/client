@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Copy,
   Filter,
   Folder,
@@ -106,8 +107,8 @@ const PRIORITY_TO_INT = {
 
 const STATUS_OPTIONS = ["all", "Active", "Draft", "InReview", "Outdated", "Rejected"];
 const PRIORITY_LABELS = { 0: "Low", 1: "Medium", 2: "High", 3: "Critical" };
-const DOC_FORM_MARKER_START = "<!-- WITEST_DOC_FORM_STATE";
-const DOC_FORM_MARKER_END = "WITEST_DOC_FORM_STATE -->";
+const DOC_FORM_MARKER_START = "<!-- QALION_DOC_FORM_STATE";
+const DOC_FORM_MARKER_END = "QALION_DOC_FORM_STATE -->";
 const AI_QUOTA_UPGRADE_MESSAGE = "No AI generation credits are available for this organization. Upgrade your plan or contact your admin to increase quota.";
 const DOCUMENTATION_TEMPLATE = `# Project Documentation Template
 
@@ -638,7 +639,7 @@ export default function ExecutionProjectTests() {
   const activeAiConversationIdRef = useRef("");
   const [highlightedFolderIds, setHighlightedFolderIds] = useState([]);
   const aiStorageKey = useMemo(
-    () => `witest-ai-conversations:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
+    () => `qalion-ai-conversations:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
     [user?.userId, orgSlug, projectId],
   );
   const [variableAutocomplete, setVariableAutocomplete] = useState({
@@ -1119,6 +1120,16 @@ export default function ExecutionProjectTests() {
     setTestCaseForm((prev) => {
       if (prev.steps.length === 1) return prev;
       return { ...prev, steps: prev.steps.filter((_, itemIndex) => itemIndex !== index) };
+    });
+  };
+
+  const moveStep = (index, direction) => {
+    setTestCaseForm((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.steps.length) return prev;
+      const next = [...prev.steps];
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...prev, steps: next };
     });
   };
 
@@ -3742,6 +3753,24 @@ export default function ExecutionProjectTests() {
                           <div className="inline-flex items-center gap-1">
                             <button
                               type="button"
+                              onClick={() => moveStep(index, -1)}
+                              disabled={index === 0}
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                              title="Move step up"
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveStep(index, 1)}
+                              disabled={index === testCaseForm.steps.length - 1}
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                              title="Move step down"
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => openVariablePicker("create", step.id, "action")}
                               className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors"
                             >
@@ -4112,6 +4141,38 @@ export default function ExecutionProjectTests() {
                           Step {index + 1}
                         </p>
                         <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingTestCase((prev) => {
+                                const steps = [...(prev?.steps || [])];
+                                if (index === 0) return prev;
+                                [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]];
+                                return { ...(prev || {}), steps };
+                              })
+                            }
+                            disabled={index === 0}
+                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                            title="Move step up"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingTestCase((prev) => {
+                                const steps = [...(prev?.steps || [])];
+                                if (index >= steps.length - 1) return prev;
+                                [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+                                return { ...(prev || {}), steps };
+                              })
+                            }
+                            disabled={index >= (editingTestCase?.steps || []).length - 1}
+                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                            title="Move step down"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => openVariablePicker("edit", index, "action")}

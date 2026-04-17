@@ -119,7 +119,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   }, [role]);
 
   const currentOrg = useMemo(
-    () => organizations.find((org) => org.slug === orgSlug) || null,
+    () => organizations.find((org) => org.id === orgSlug || org.slug === orgSlug) || null,
     [organizations, orgSlug],
   );
 
@@ -253,12 +253,12 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <p className="px-3 py-3 text-xs text-white/50">No organizations</p>
               ) : (
                 organizations.map((org) => {
-                  const active = org.slug === orgSlug;
+                  const active = org.id === orgSlug || org.slug === orgSlug;
                   return (
                     <button
                       key={org.id}
                       type="button"
-                      onClick={() => handleSwitchOrganization(org.slug)}
+                      onClick={() => handleSwitchOrganization(org.id)}
                       className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                         active
                           ? "bg-[#FFAA00] text-[#232323]"

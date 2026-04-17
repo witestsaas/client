@@ -22,7 +22,7 @@ export default function JoinOrganization() {
         throw new Error(data?.message || "Failed to accept invitation");
       }
 
-      navigate(`/dashboard/${data.orgSlug}`, { replace: true });
+      navigate(`/dashboard/${data.orgId || data.orgSlug}`, { replace: true });
     } catch (err) {
       setError(err.message || "Unable to join organization");
     } finally {

@@ -75,7 +75,7 @@ async function fetchCurrentUser() {
   return response.json();
 }
 
-async function fetchPrimaryOrgSlug() {
+async function fetchPrimaryOrgId() {
   const response = await apiFetch('/organizations/user-orgs', {
     cache: 'no-store',
   });
@@ -86,7 +86,7 @@ async function fetchPrimaryOrgSlug() {
 
   const data = await response.json().catch(() => ({}));
   const organizations = Array.isArray(data?.organizations) ? data.organizations : [];
-  return organizations[0]?.slug;
+  return organizations[0]?.id;
 }
 
 export function AuthProvider({ children }) {
@@ -95,10 +95,10 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = useCallback(async () => {
     const profile = await fetchCurrentUser();
-    const primaryOrgSlug = profile?.orgSlug || (await fetchPrimaryOrgSlug());
+    const primaryOrgId = profile?.orgId || (await fetchPrimaryOrgId());
     const normalizedProfile = normalizeUserProfile({
       ...profile,
-      orgSlug: primaryOrgSlug,
+      orgSlug: primaryOrgId || profile?.orgSlug,
     });
     setUser(normalizedProfile);
     return normalizedProfile;

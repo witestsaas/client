@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { fetchOrganization, fetchUserOrganizations } from "../services/organizations";
 import { useAuth } from "./AuthProvider.jsx";
+import LoadingSpinner from "../components/LoadingSpinner.jsx";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,7 +76,7 @@ export function RequireOrgAccess({ section = "dashboard", children }) {
         try {
           const data = await fetchUserOrganizations();
           const organizations = Array.isArray(data?.organizations) ? data.organizations : [];
-          const firstOrg = organizations[0]?.slug;
+          const firstOrg = organizations[0]?.id;
           if (firstOrg && firstOrg !== orgSlug) {
             resolvedFallbackOrgSlug = firstOrg;
           }
@@ -101,7 +102,7 @@ export function RequireOrgAccess({ section = "dashboard", children }) {
   }, [isAuthenticated, orgSlug, refreshProfile]);
 
   if (isLoading || checking || !sessionChecked) {
-    return <div className="p-6">Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated && !sessionRecovered) {

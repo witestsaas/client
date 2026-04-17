@@ -6,12 +6,8 @@ import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
 import { fetchOrgQuotaUsage } from "../services/organizations";
 import { addPlanTestCases, getExecutionSlots, getPlan, getRun, runPlan } from "../services/executionReporting";
 import { fetchProjectTree } from "../services/testManagement";
-<<<<<<< HEAD
-import { getFeatureQuotaSnapshot, isQuotaDeniedError } from "../utils/quota";
-=======
 import { isQuotaDeniedError } from "../utils/quota";
 import { useOrgSlots } from "../hooks/useSocket";
->>>>>>> 039b396c089540c9b1fdcbe59133d227554d8b52
 
 const DESKTOP_PROFILES = [
   { id: "desktop-chrome", label: "Google Chrome (Desktop)", osIcon: "/os_browsers_icons/windowsOS.svg", browserIcon: "/os_browsers_icons/chrome.svg" },
@@ -441,9 +437,6 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
 function RunPlanModal({ open, onClose, plan, onRun }) {
   const { orgSlug } = useParams();
   const [running, setRunning] = useState(false);
-<<<<<<< HEAD
-  const [parallelSessions, setParallelSessions] = useState(2);
-=======
   const [parallelSessions, setParallelSessions] = useState(1);
 
   // Real-time org slot info via Socket.IO + REST initial fetch
@@ -458,7 +451,6 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
     const defaultParallel = Math.min(Math.max(orgAvailable || 1, 1), orgLimit);
     setParallelSessions(defaultParallel);
   }, [open, realtimeSlots === null]);
->>>>>>> 039b396c089540c9b1fdcbe59133d227554d8b52
 
   if (!open || !plan) return null;
 
@@ -527,11 +519,7 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
 
           <div>
             <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60">Parallel Sessions</p>
-<<<<<<< HEAD
-            <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max 4)</p>
-=======
             <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">How many tests to run simultaneously (max {orgLimit} per organization)</p>
->>>>>>> 039b396c089540c9b1fdcbe59133d227554d8b52
             <div className="mt-3 flex items-center gap-3">
               <input
                 type="range"

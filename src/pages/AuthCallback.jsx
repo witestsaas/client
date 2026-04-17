@@ -9,12 +9,12 @@ function sleep(ms) {
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-async function resolvePrimaryOrgWithRetry(retries = 3) {
+async function resolvePrimaryOrgId(retries = 3) {
   let lastError;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
       const orgs = await fetchUserOrganizations();
-      return orgs?.organizations?.[0]?.slug;
+      return orgs?.organizations?.[0]?.id;
     } catch (error) {
       lastError = error;
       await sleep(250);
@@ -55,17 +55,17 @@ export default function AuthCallbackPage() {
 
     completeGoogleAuth()
       .then(async (profile) => {
-        let targetOrgSlug = profile?.orgSlug;
+        let targetOrgId = profile?.orgId || profile?.orgSlug;
 
-        if (!targetOrgSlug) {
+        if (!targetOrgId) {
           try {
-            targetOrgSlug = await resolvePrimaryOrgWithRetry();
+            targetOrgId = await resolvePrimaryOrgId();
           } catch {
-            targetOrgSlug = undefined;
+            targetOrgId = undefined;
           }
         }
 
-        navigate(targetOrgSlug ? `/dashboard/${targetOrgSlug}` : '/dashboard/no-org', {
+        navigate(targetOrgId ? `/dashboard/${targetOrgId}` : '/dashboard/no-org', {
           replace: true,
         });
       })

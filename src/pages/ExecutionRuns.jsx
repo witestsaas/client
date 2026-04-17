@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Layers, ListChecks, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle, Zap } from "lucide-react";
+import { VideoPlayer } from "../components/artifacts";
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
 import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
-import { useTestRunGlobalUpdates, useTestRunSocket, useOrgSlots } from "../hooks/useSocket";
+import { useRequestLiveReplay, useTestRunGlobalUpdates, useTestRunSocket, useOrgSlots } from "../hooks/useSocket";
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
@@ -1130,7 +1131,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         <VideoPlayer
                           src={selectedVideoUrl}
                           title={selectedResult?.testCase?.title || "Test Recording"}
-                          steps={steps.map((s) => ({ name: s.name || "Step", status: s.status }))}
+                          steps={structuredSteps.map((s) => ({ name: s.name || s.action || "Step", status: s.status }))}
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">

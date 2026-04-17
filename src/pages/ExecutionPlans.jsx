@@ -391,7 +391,7 @@ export default function ExecutionPlans() {
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
-            <p className="p-4 text-sm text-[#232323]/60 dark:text-white/60">Loading plans...</p>
+            <div className="flex items-center justify-center py-8"><svg className="animate-spin h-6 w-6" viewBox="0 0 24 24" fill="none"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="#FFAA00" strokeWidth="3" /><path className="opacity-80" d="M12 2a10 10 0 0 1 10 10" stroke="#FFAA00" strokeWidth="3" strokeLinecap="round" /></svg></div>
           ) : !filteredPlans.length ? (
             <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card/80 p-8 text-center">
               <p className="text-sm text-[#232323]/60 dark:text-white/60">No plans found.</p>

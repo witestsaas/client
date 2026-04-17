@@ -135,7 +135,6 @@ export async function apiFetch(path, options = {}) {
       });
     }
 
-<<<<<<< HEAD
     // Second chance: retry the refresh one more time after a brief pause
     try {
       await new Promise(r => setTimeout(r, 1000));
@@ -150,11 +149,6 @@ export async function apiFetch(path, options = {}) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
-=======
-    // All auth recovery attempts failed — mark session expired to stop polling
-    sessionExpired = true;
-    window.dispatchEvent(new CustomEvent('session-expired'));
->>>>>>> 039b396c089540c9b1fdcbe59133d227554d8b52
   }
 
   return response;

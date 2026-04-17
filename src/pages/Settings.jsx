@@ -255,7 +255,7 @@ export default function Settings() {
         description="Your organization's remaining AI Agent credit balance from redeemed coupons"
       >
         {loadingBalance ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <div className="flex items-center justify-center py-4"><svg className="animate-spin h-6 w-6" viewBox="0 0 24 24" fill="none"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="#FFAA00" strokeWidth="3" /><path className="opacity-80" d="M12 2a10 10 0 0 1 10 10" stroke="#FFAA00" strokeWidth="3" strokeLinecap="round" /></svg></div>
         ) : couponBalance ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-muted/50 p-4">

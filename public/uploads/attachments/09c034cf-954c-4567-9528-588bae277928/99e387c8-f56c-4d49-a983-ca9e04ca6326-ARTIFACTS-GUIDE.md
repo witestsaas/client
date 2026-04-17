@@ -62,14 +62,14 @@ await testExecutionService.updateTestRunStatus(testRunId, finalStatus, {
 
 ---
 
-## Accessing Artifacts from Witest
+## Accessing Artifacts from Qalion
 
 ### Method 1: Get Test Run Details (Recommended)
 
-When Witest retrieves test run details, artifacts are included in the response:
+When Qalion retrieves test run details, artifacts are included in the response:
 
 ```javascript
-// Witest backend fetches test run with artifacts
+// Qalion backend fetches test run with artifacts
 const response = await fetch('http://localhost:3001/api/v1/test-execution/test-run-123', {
   headers: {
     'x-api-key': process.env.MIDDLEWARE_API_KEY
@@ -93,7 +93,7 @@ console.log(testRun.artifacts);
 
 ### Method 2: WebSocket Real-Time Updates
 
-Witest can receive artifacts immediately after test completion via WebSocket:
+Qalion can receive artifacts immediately after test completion via WebSocket:
 
 ```javascript
 import io from 'socket.io-client';
@@ -119,11 +119,11 @@ socket.on('status:update', (data) => {
 
 ### Method 3: Webhook Callback
 
-If Witest provides a webhook URL, the middleware sends artifacts on completion:
+If Qalion provides a webhook URL, the middleware sends artifacts on completion:
 
 ```javascript
-// Middleware sends webhook to Witest
-POST https://witest.app/api/webhooks/test-complete
+// Middleware sends webhook to Qalion
+POST https://qalion.app/api/webhooks/test-complete
 
 {
   "testRunId": "frontend-test-123",
@@ -186,9 +186,9 @@ Example `artifacts` JSONB column:
 
 ---
 
-## Example Flow: Witest → Middleware → Web Agent → Witest
+## Example Flow: Qalion → Middleware → Web Agent → Qalion
 
-### 1. **Witest Triggers Test**
+### 1. **Qalion Triggers Test**
 
 ```javascript
 const response = await fetch('http://localhost:3001/api/v1/test-execution/trigger', {
@@ -265,7 +265,7 @@ await testExecutionService.updateTestRunStatus(testRunId, 'completed', {
 });
 ```
 
-### 5. **Witest Retrieves Artifacts**
+### 5. **Qalion Retrieves Artifacts**
 
 ```javascript
 // Option A: Poll for completion
@@ -273,7 +273,7 @@ const testRun = await fetch(`http://localhost:3001/api/v1/test-execution/${testR
   headers: { 'x-api-key': 'qdytR30sKwGPu/n6QggdPAcPK2RqqSlRNUs7c3uoGFY=' }
 }).then(r => r.json());
 
-// Display video in Witest UI
+// Display video in Qalion UI
 const videoUrl = testRun.artifacts.video;
 // <video src="http://localhost:4000/artifacts/test-run-1770206789/video.webm" controls />
 
@@ -330,7 +330,7 @@ const videoUrl = await uploadToGCS('artifacts/test-run-123/video.webm');
 
 ## Configuring Video Recording
 
-### In Witest (Trigger Request)
+### In Qalion (Trigger Request)
 
 ```javascript
 // Enable/disable video per test
@@ -445,7 +445,7 @@ ls web-agent/artifacts/test-run-123/
 ✅ **Accessible via:**
 - REST API: `GET /api/v1/test-execution/{testRunId}`
 - WebSocket: real-time `status:update` events
-- Webhook: automatic callback to Witest
+- Webhook: automatic callback to Qalion
 
 **Video URL Format:**  
 `http://localhost:4000/artifacts/{testRunId}/video.webm`
