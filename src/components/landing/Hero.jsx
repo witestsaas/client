@@ -6,7 +6,6 @@ import {
   BarChart3, ClipboardList, Layers, Play,
   Bot, Activity, Users, FolderOpen,
 } from 'lucide-react';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 import logoYellow from '../../assets/logo_yellow.svg';
 
@@ -299,8 +298,7 @@ function HeroCanvas() {
 
 /* ─── Hero section ───────────────────────────────────────────────── */
 export default function Hero() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
 
   return (

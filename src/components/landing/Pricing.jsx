@@ -4,7 +4,6 @@ import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Section from './ui/Section';
 import { fadeUp, staggerContainer } from '../../utils/motion';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
 const annualDiscount = 0.2;
@@ -102,8 +101,7 @@ const plans = [
 ];
 
 export default function Pricing() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
   const [annual, setAnnual] = useState(false);
 

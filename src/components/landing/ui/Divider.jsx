@@ -1,9 +1,7 @@
 import { motion } from 'framer-motion';
-import { useTheme } from '../../../utils/theme-context';
 
 export default function Divider() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
 
   const lineColor = isDark
     ? 'linear-gradient(90deg, transparent, rgba(255,183,51,0.25), rgba(100,130,255,0.18), transparent)'

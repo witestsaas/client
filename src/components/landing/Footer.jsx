@@ -1,14 +1,12 @@
 import { Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { footerColumns } from '../../constants/landing';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 import logoWhite from '../../assets/logo_white.svg';
 import logoBlack from '../../assets/logo_black.svg';
 
 export default function Footer() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
 
   return (

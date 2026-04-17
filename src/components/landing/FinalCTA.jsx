@@ -3,11 +3,9 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Section from './ui/Section';
 import { fadeUp } from '../../utils/motion';
-import { useTheme } from '../../utils/theme-context.tsx';
 
 export default function FinalCTA() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
 
   return (
     <Section className="py-20 sm:py-32 md:py-40 px-4 sm:px-6 relative overflow-hidden" style={{ background: isDark ? 'rgba(14,12,30,0.45)' : 'rgba(250,250,250,0.45)' }}>

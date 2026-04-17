@@ -3,12 +3,10 @@ import { motion } from 'framer-motion';
 import { Play, Pause, Maximize2 } from 'lucide-react';
 import Section from './ui/Section';
 import { fadeUp } from '../../utils/motion';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
 export default function VideoDemo() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);

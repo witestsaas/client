@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { useTheme } from '../utils/theme-context.tsx';
 import Navbar from '../components/landing/Navbar';
 import Hero from '../components/landing/Hero';
 import Features from '../components/landing/Features';
@@ -11,8 +10,7 @@ import Footer from '../components/landing/Footer';
 import AIChatWidget from '../components/AIChatWidget';
 
 export default function Home() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
 
   return (
     <div className="relative min-h-screen bg-[#fafafa] dark:bg-[#13112a] transition-colors duration-500">

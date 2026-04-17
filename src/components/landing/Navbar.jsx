@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Zap, Menu, X, Sun, Moon } from 'lucide-react';
+import { Zap, Menu, X } from 'lucide-react';
 import { navLinks } from '../../constants/landing';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 import logo from '../../assets/logo_yellow.svg';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
 
   useEffect(() => {
@@ -74,14 +72,6 @@ export default function Navbar() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                style={{ color: c.textMuted }}
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
               <Link
                 to="/signin"
                 className="px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200"
@@ -121,9 +111,6 @@ export default function Navbar() {
           <span className="font-bold text-sm" style={{ color: c.textPrimary }}>Qalion</span>
         </Link>
         <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center" style={{ color: c.textMuted }}>
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
           <button onClick={() => setMobileOpen(!mobileOpen)} style={{ color: c.textPrimary }}>
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

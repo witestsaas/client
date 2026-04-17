@@ -1,13 +1,11 @@
 import React, { useRef, useEffect } from 'react';
-import { useTheme } from '../../../utils/theme-context.tsx';
 
 export default function ParticleNetwork() {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const particlesRef = useRef([]);
   const mouseRef = useRef({ x: -9999, y: -9999 });
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
 
   useEffect(() => {
     const canvas = canvasRef.current;

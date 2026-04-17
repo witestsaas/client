@@ -3,12 +3,10 @@ import Section from './ui/Section';
 import Counter from './ui/Counter';
 import { fadeUp, staggerContainer } from '../../utils/motion';
 import { stats } from '../../constants/landing';
-import { useTheme } from '../../utils/theme-context.tsx';
 import { getLandingColors } from '../../utils/theme-colors';
 
 export default function Stats() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = true;
   const c = getLandingColors(isDark);
 
   return (
