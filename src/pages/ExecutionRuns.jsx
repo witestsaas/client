@@ -7,6 +7,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
 import { cancelRun, deleteRun, getResultArtifacts, getRun, getRunResultLogs, listRuns, rerunRun, rerunRunResult } from "../services/executionReporting";
 import { useRequestLiveReplay, useTestRunGlobalUpdates, useTestRunSocket, useOrgSlots } from "../hooks/useSocket";
+import { useLanguage } from "../utils/language-context";
 
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
@@ -227,6 +228,7 @@ function ArtifactImage({ candidates, alt, className, onResolved }) {
 }
 
 export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId = "" }) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [run, setRun] = useState(null);
@@ -822,7 +824,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1 font-medium">
                           Duration: <span className="text-[#232323]/65 dark:text-white/65">{formatDuration(selectedResult?.duration)}</span>
                           <span className="mx-2 text-[#232323]/20 dark:text-white/20">|</span>
-                          Browser: <span className="text-[#232323]/65 dark:text-white/65">{selectedResult?.browser || "desktop-chrome"}</span>
+                          {t("tr.browser")}: <span className="text-[#232323]/65 dark:text-white/65">{selectedResult?.browser || "desktop-chrome"}</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -847,7 +849,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           }}
                           className="h-8 px-3.5 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-xs font-semibold transition-colors"
                         >
-                          Re-run All
+                          {t("tr.rerunAll")}
                         </button>
                       </div>
                     </div>
@@ -862,12 +864,12 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                   {/* ── Tabs ── */}
                   <div className="px-5 sm:px-6 py-2.5 border-b border-black/6 dark:border-white/6 flex items-center gap-1.5 shrink-0 overflow-x-auto">
                     {[
-                      { key: "actions", label: "Agent Actions", icon: Zap },
-                      { key: "results", label: "Agent Results", icon: Bot },
-                      { key: "testcase", label: "Test Case", icon: ListChecks },
-                      { key: "video", label: "Video", icon: Video },
-                      { key: "console", label: "Console", icon: TerminalSquare },
-                      { key: "network", label: "Network", icon: Globe2 },
+                      { key: "actions", label: t("tr.tabs.agentActions"), icon: Zap },
+                      { key: "results", label: t("tr.tabs.agentResults"), icon: Bot },
+                      { key: "testcase", label: t("tr.tabs.testCase"), icon: ListChecks },
+                      { key: "video", label: t("tr.tabs.video"), icon: Video },
+                      { key: "console", label: t("tr.tabs.console"), icon: TerminalSquare },
+                      { key: "network", label: t("tr.tabs.network"), icon: Globe2 },
                     ].map(({ key, label, icon: Icon }) => (
                       <button
                         key={key}
@@ -1022,7 +1024,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         ) : agentResultSteps.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                             <Bot className="h-8 w-8 mb-2 opacity-50" />
-                            <p className="text-sm">{isActiveRunStatus(run?.status) ? "Agent is still running..." : "No agent results available."}</p>
+                            <p className="text-sm">{isActiveRunStatus(run?.status) ? t("tr.agentRunning") : t("tr.noAgentResults")}</p>
                           </div>
                         ) : (
                           agentResultSteps.map((step, index) => {
@@ -1068,7 +1070,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                   </div>
 
                                   <div className="mt-3 rounded-lg border border-black/6 dark:border-white/8 bg-black/[0.02] dark:bg-white/[0.02] px-3.5 py-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-1">AI Note</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-1">{t("tr.aiNote")}</p>
                                     <p className="text-xs text-[#232323]/70 dark:text-white/65 leading-relaxed break-words">{noteText}</p>
                                   </div>
 
@@ -1092,7 +1094,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         {testCaseDefSteps.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                             <ListChecks className="h-8 w-8 mb-2 opacity-50" />
-                            <p className="text-sm">No test case steps defined.</p>
+                            <p className="text-sm">{t("tr.noSteps")}</p>
                             {selectedResult?.testCase?.description ? (
                               <p className="mt-3 text-xs text-[#232323]/55 dark:text-white/50 max-w-md text-center leading-relaxed">{selectedResult.testCase.description}</p>
                             ) : null}
@@ -1101,7 +1103,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           <>
                             {selectedResult?.testCase?.description ? (
                               <div className="rounded-lg border border-black/6 dark:border-white/8 bg-black/[0.02] dark:bg-white/[0.02] px-4 py-3 mb-4">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-1">Description</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-1">{t("common.description")}</p>
                                 <p className="text-xs text-[#232323]/70 dark:text-white/65 leading-relaxed">{selectedResult.testCase.description}</p>
                               </div>
                             ) : null}
@@ -1114,7 +1116,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                   </div>
                                   {step?.expectedResult ? (
                                     <div className="mt-2 ml-7">
-                                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-0.5">Expected Result</p>
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35 mb-0.5">{t("tr.expectedResult")}</p>
                                       <p className="text-xs text-[#232323]/65 dark:text-white/60 leading-relaxed">{step.expectedResult}</p>
                                     </div>
                                   ) : null}
@@ -1136,7 +1138,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                           <Video className="h-8 w-8 mb-2 opacity-50" />
-                          <p className="text-sm">Video not available yet.</p>
+                          <p className="text-sm">{t("tr.videoNotAvailable")}</p>
                         </div>
                       )
                     ) : null}
@@ -1155,7 +1157,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                           <TerminalSquare className="h-8 w-8 mb-2 opacity-50" />
-                          <p className="text-sm">Console logs not available yet.</p>
+                          <p className="text-sm">{t("tr.consoleNotAvailable")}</p>
                         </div>
                       )
                     ) : null}
@@ -1164,9 +1166,9 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       selectedNetworkLogs.length ? (
                         <div className="rounded-xl border border-black/8 dark:border-white/10 bg-white/50 dark:bg-white/[0.02] divide-y divide-black/6 dark:divide-white/6 overflow-hidden">
                           <div className="grid grid-cols-12 px-4 py-2 bg-black/[0.03] dark:bg-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-[#232323]/40 dark:text-white/35">
-                            <span className="col-span-1">Method</span>
-                            <span className="col-span-1">Status</span>
-                            <span className="col-span-10">URL</span>
+                            <span className="col-span-1">{t("tr.method")}</span>
+                            <span className="col-span-1">{t("common.status")}</span>
+                            <span className="col-span-10">{t("tr.url")}</span>
                           </div>
                           {selectedNetworkLogs.map((entry, index) => (
                             <div key={`${index}-${entry?.url || ""}`} className="grid grid-cols-12 px-4 py-2.5 text-xs items-center hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
@@ -1183,7 +1185,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-[#232323]/40 dark:text-white/40">
                           <Globe2 className="h-8 w-8 mb-2 opacity-50" />
-                          <p className="text-sm">Network logs not available yet.</p>
+                          <p className="text-sm">{t("tr.networkNotAvailable")}</p>
                         </div>
                       )
                     ) : null}
@@ -1231,13 +1233,13 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
       {rerunModalOpen ? (
         <div className="fixed inset-0 z-[60] bg-black/55 flex items-center justify-center p-4" onClick={() => !rerunning && setRerunModalOpen(false)}>
           <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <p className="text-lg font-semibold text-[#232323] dark:text-white">{rerunMode === "single" ? "Re-run this test" : "Re-run all tests"}</p>
-            <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{rerunMode === "single" ? "This will queue the selected test case again." : "This will queue all test cases in this run."}</p>
+            <p className="text-lg font-semibold text-[#232323] dark:text-white">{rerunMode === "single" ? t("tr.rerunThisTitle") : t("tr.rerunAllTitle")}</p>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{rerunMode === "single" ? t("tr.rerunThisDesc") : t("tr.rerunAllDesc")}</p>
 
             {rerunMode === "all" ? (
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
-                  <span>Parallel sessions</span>
+                  <span>{t("tr.parallelSessions")}</span>
                   <span className="font-semibold">{parallelSessions}</span>
                 </div>
                 <input
@@ -1248,7 +1250,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                   onChange={(event) => setParallelSessions(Math.min(Math.max(Number(event.target.value) || 1, 1), 4))}
                   className="w-full accent-[#FFAA00]"
                 />
-                <p className="text-xs text-[#232323]/40 dark:text-white/40">How many tests to run simultaneously (max 4)</p>
+                <p className="text-xs text-[#232323]/40 dark:text-white/40">{t("tr.parallelHint")}</p>
               </div>
             ) : null}
 
@@ -1259,7 +1261,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 disabled={rerunning}
                 className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -1268,7 +1270,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
               >
                 {rerunning ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Run
+                {t("common.run")}
               </button>
             </div>
           </div>
@@ -1281,8 +1283,9 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
 export default function ExecutionRuns() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [runs, setRuns] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -1471,10 +1474,10 @@ export default function ExecutionRuns() {
         <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Runs</h2>
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white">{t("tr.title")}</h2>
               <span className="text-sm text-[#232323]/50 dark:text-white/50">({runs.length})</span>
             </div>
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">View and manage test execution history</p>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tr.subtitle")}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1506,7 +1509,7 @@ export default function ExecutionRuns() {
                 <div className="fixed inset-0 z-10" onClick={() => setProjectDropdownOpen(false)} />
                 <div className="absolute left-0 top-10 z-20 w-56 rounded-xl border border-black/10 dark:border-white/10 bg-card shadow-xl p-1 max-h-64 overflow-y-auto">
                   {!projects.length ? (
-                    <p className="px-3 py-2 text-xs text-muted-foreground">No projects</p>
+                    <p className="px-3 py-2 text-xs text-muted-foreground">{t("tr.noProjects")}</p>
                   ) : (
                     projects.map((project) => (
                       <button
@@ -1549,14 +1552,14 @@ export default function ExecutionRuns() {
                 <div className="fixed inset-0 z-10" onClick={() => setStatusDropdownOpen(false)} />
                 <div className="absolute right-0 top-10 z-20 w-40 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
                   {[
-                    { value: "", label: "All statuses" },
-                    { value: "Pending", label: "Pending" },
-                    { value: "Queued", label: "Queued" },
-                    { value: "Running", label: "Running" },
-                    { value: "Completed", label: "Completed" },
-                    { value: "Failed", label: "Failed" },
-                    { value: "Aborted", label: "Aborted" },
-                    { value: "Error", label: "Error" },
+                    { value: "", label: t("tr.allStatuses") },
+                    { value: "Pending", label: t("tr.pending") },
+                    { value: "Queued", label: t("tr.queued") },
+                    { value: "Running", label: t("tr.running") },
+                    { value: "Completed", label: t("tr.completed") },
+                    { value: "Failed", label: t("tr.failed") },
+                    { value: "Aborted", label: t("tr.aborted") },
+                    { value: "Error", label: t("tr.error") },
                   ].map((opt) => (
                     <button
                       key={opt.value}
@@ -1606,7 +1609,7 @@ export default function ExecutionRuns() {
             </div>
           ) : !filteredRuns.length ? (
             <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card p-8 text-center">
-              <p className="text-sm text-[#232323]/60 dark:text-white/60">No runs found.</p>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tr.noRuns")}</p>
             </div>
           ) : (
             filteredRuns.map((run) => {
@@ -1693,7 +1696,7 @@ export default function ExecutionRuns() {
                             className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Delete
+                            {t("common.delete")}
                           </button>
                         </div>
                       ) : null}
@@ -1701,11 +1704,11 @@ export default function ExecutionRuns() {
                   </div>
 
                   <div className="flex items-center gap-4 text-sm mb-3">
-                    <div className="flex items-center gap-1"><span className="text-green-600 font-semibold">{run.passedTests || 0}</span><span className="text-[#232323]/55 dark:text-white/55">passed</span></div>
-                    {!!run.failedTests && <div className="flex items-center gap-1"><span className="text-red-600 font-semibold">{run.failedTests}</span><span className="text-[#232323]/55 dark:text-white/55">failed</span></div>}
-                    {!!run.skippedTests && <div className="flex items-center gap-1"><span className="text-[#232323]/70 dark:text-white/70 font-semibold">{run.skippedTests}</span><span className="text-[#232323]/55 dark:text-white/55">skipped</span></div>}
+                    <div className="flex items-center gap-1"><span className="text-green-600 font-semibold">{run.passedTests || 0}</span><span className="text-[#232323]/55 dark:text-white/55">{t("tr.passed").toLowerCase()}</span></div>
+                    {!!run.failedTests && <div className="flex items-center gap-1"><span className="text-red-600 font-semibold">{run.failedTests}</span><span className="text-[#232323]/55 dark:text-white/55">{t("tr.failed").toLowerCase()}</span></div>}
+                    {!!run.skippedTests && <div className="flex items-center gap-1"><span className="text-[#232323]/70 dark:text-white/70 font-semibold">{run.skippedTests}</span><span className="text-[#232323]/55 dark:text-white/55">{t("tr.skipped")}</span></div>}
                     <span className="text-[#232323]/35 dark:text-white/35">•</span>
-                    <span className="text-[#232323]/70 dark:text-white/70">{run.totalTests || 0} total</span>
+                    <span className="text-[#232323]/70 dark:text-white/70">{run.totalTests || 0} {t("tr.total")}</span>
                     {!!run.duration && (
                       <>
                         <span className="text-[#232323]/35 dark:text-white/35">•</span>

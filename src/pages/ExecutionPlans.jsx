@@ -8,6 +8,7 @@ import { fetchProjectSettings, fetchTestProjects } from "../services/testManagem
 import { createPlan, deletePlan, listPlans, runPlan, getExecutionSlots } from "../services/executionReporting";
 import { isQuotaDeniedError } from "../utils/quota";
 import { useOrgSlots } from "../hooks/useSocket";
+import { useLanguage } from "../utils/language-context";
 
 function normalizeEnvironmentOptions(configPayload) {
   const rawRows = Array.isArray(configPayload?.environments)
@@ -44,13 +45,14 @@ function normalizeEnvironmentOptions(configPayload) {
 }
 
 function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, projectEnvironments, form, setForm, onCreate, saving }) {
+  const { t } = useLanguage();
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-lg rounded-3xl border border-black/10 dark:border-white/10 bg-card shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-background/30 flex items-center justify-between">
-          <p className="text-lg font-semibold text-[#232323] dark:text-white">Create Plan</p>
+          <p className="text-lg font-semibold text-[#232323] dark:text-white">{t("tp.createPlan")}</p>
           <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
             <X className="h-4 w-4" />
           </button>
@@ -58,13 +60,13 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
 
         <div className="p-5 space-y-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Project</label>
+            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">{t("tp.project")}</label>
             <select
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
               className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
             >
-              {!projects.length ? <option value="">No projects</option> : null}
+              {!projects.length ? <option value="">{t("tp.noProjects")}</option> : null}
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>{project.name}</option>
               ))}
@@ -72,7 +74,7 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Name</label>
+            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">{t("common.name")}</label>
             <input
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -82,7 +84,7 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Description</label>
+            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">{t("common.description")}</label>
             <textarea
               value={form.description}
               onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -93,13 +95,13 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Environment</label>
+            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">{t("tp.environment")}</label>
             <select
               value={form.environment}
               onChange={(event) => setForm((prev) => ({ ...prev, environment: event.target.value }))}
               className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
             >
-              {!projectEnvironments.length ? <option value="">No configured environments</option> : null}
+              {!projectEnvironments.length ? <option value="">{t("tp.noEnvironments")}</option> : null}
               {projectEnvironments.map((env) => (
                 <option key={env.id || env.value} value={env.value}>
                   {env.label}
@@ -108,14 +110,14 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
             </select>
             {!projectEnvironments.length ? (
               <p className="text-[11px] text-[#232323]/60 dark:text-white/60">
-                Add environments in project configuration from Test Cases page.
+                {t("tp.addEnvHint")}
               </p>
             ) : null}
           </div>
         </div>
 
         <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 bg-background/20 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold">Cancel</button>
+          <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold">{t("common.cancel")}</button>
           <button
             type="button"
             onClick={onCreate}
@@ -123,7 +125,7 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
             className="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-2"
           >
             <Plus className="h-3.5 w-3.5" />
-            Create Plan
+            {t("tp.createPlan")}
           </button>
         </div>
       </div>
@@ -150,6 +152,7 @@ function formatRelativeTime(dateString) {
 export default function ExecutionPlans() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -346,10 +349,10 @@ export default function ExecutionPlans() {
         <div className="border-b border-black/10 dark:border-white/10 bg-card/95 px-6 py-4 flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-[#232323] dark:text-white">Test Plans</h2>
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white">{t("tp.title")}</h2>
               <span className="text-sm text-[#232323]/50 dark:text-white/50">({plans.length})</span>
             </div>
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Group test cases and run them together</p>
+            <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tp.subtitle")}</p>
           </div>
           <button
             type="button"
@@ -357,7 +360,7 @@ export default function ExecutionPlans() {
             className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            Create Plan
+            {t("tp.createPlan")}
           </button>
         </div>
 
@@ -377,13 +380,13 @@ export default function ExecutionPlans() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search plans..."
+              placeholder={t("tp.searchPlans")}
               className="w-full h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
             />
           </div>
           <button type="button" className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
             <Filter className="h-3.5 w-3.5" />
-            Filter
+            {t("common.filter")}
           </button>
         </div>
 
@@ -394,7 +397,7 @@ export default function ExecutionPlans() {
             <div className="flex items-center justify-center py-8"><svg className="animate-spin h-6 w-6" viewBox="0 0 24 24" fill="none"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="#FFAA00" strokeWidth="3" /><path className="opacity-80" d="M12 2a10 10 0 0 1 10 10" stroke="#FFAA00" strokeWidth="3" strokeLinecap="round" /></svg></div>
           ) : !filteredPlans.length ? (
             <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card/80 p-8 text-center">
-              <p className="text-sm text-[#232323]/60 dark:text-white/60">No plans found.</p>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tp.noPlans")}</p>
             </div>
           ) : (
             filteredPlans.map((plan) => (
@@ -413,7 +416,7 @@ export default function ExecutionPlans() {
                       className="h-8 px-3 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60"
                     >
                       <Play className="h-3.5 w-3.5" />
-                      Run
+                      {t("tp.runPlan")}
                     </button>
 
                     <button
@@ -435,7 +438,7 @@ export default function ExecutionPlans() {
                           className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          {t("common.delete")}
                         </button>
                       </div>
                     ) : null}
@@ -443,11 +446,11 @@ export default function ExecutionPlans() {
                 </div>
 
                 <div className="text-sm text-[#232323]/65 dark:text-white/65">
-                  {plan.testCasesCount || 0} test case{(plan.testCasesCount || 0) === 1 ? "" : "s"}
+                  {plan.testCasesCount || 0} {(plan.testCasesCount || 0) === 1 ? t("tp.testCase") : t("tp.testCases")}
                   {plan.lastRun ? (
                     <>
                       <span className="mx-1.5">•</span>
-                      <span>{plan.lastRun.passedTests || 0}/{plan.lastRun.totalTests || 0} passed</span>
+                      <span>{plan.lastRun.passedTests || 0}/{plan.lastRun.totalTests || 0} {t("tp.passed")}</span>
                       <span className="mx-1.5">•</span>
                       <span>{formatRelativeTime(plan.lastRun.completedAt || plan.lastRun.createdAt || plan.createdAt)}</span>
                     </>
@@ -509,6 +512,7 @@ export default function ExecutionPlans() {
 }
 
 function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSessions, running, onRun, onClose }) {
+  const { t } = useLanguage();
   const realtimeSlots = useOrgSlots(orgSlug);
   const orgAvailable = realtimeSlots?.available ?? 4;
   const orgLimit = realtimeSlots?.limit ?? 4;
@@ -524,12 +528,12 @@ function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSes
   return (
     <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !running && onClose()}>
       <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <p className="text-lg font-semibold text-[#232323] dark:text-white">Run "{planName}"</p>
-        <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">Configure how many tests to run simultaneously.</p>
+        <p className="text-lg font-semibold text-[#232323] dark:text-white">{t("common.run")} "{planName}"</p>
+        <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">{t("tp.configureSessions")}</p>
 
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-1">
-            <span>Slot availability</span>
+            <span>{t("tp.slotAvailability")}</span>
             {loadingSlots ? (
               <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />...</span>
             ) : (
@@ -544,7 +548,7 @@ function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSes
 
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs text-[#232323]/65 dark:text-white/65 mb-2">
-            <span>Parallel sessions</span>
+            <span>{t("tp.parallelSessions")}</span>
             <span className="font-semibold">{parallelSessions}</span>
           </div>
           <input
@@ -555,11 +559,11 @@ function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSes
             onChange={(e) => setParallelSessions(Math.min(Math.max(Number(e.target.value) || 1, 1), orgLimit))}
             className="w-full accent-[#FFAA00]"
           />
-          <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">Up to {parallelSessions} browser session{parallelSessions !== 1 ? "s" : ""} will run at once</p>
+          <p className="text-xs text-[#232323]/45 dark:text-white/45 mt-1">Up to {parallelSessions} {parallelSessions !== 1 ? t("tp.browserSessions") : t("tp.browserSession")}</p>
         </div>
 
         <div className="mt-5 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} disabled={running} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">Cancel</button>
+          <button type="button" onClick={onClose} disabled={running} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">{t("common.cancel")}</button>
           <button type="button" onClick={onRun} disabled={running} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60">
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run Now

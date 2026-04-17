@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown, FolderKanban, Loader2, PlayCircle, Plus, Search, X } from "lucide-react";
+import { Bell, Check, ChevronDown, FolderKanban, Globe, Loader2, Monitor, Moon, PlayCircle, Plus, Search, Sun, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket, useOrgSlots } from "../hooks/useSocket.tsx";
 import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, fetchOrgLlmUsage, fetchOrgCouponBalance, markOrgNotificationsAsRead } from "../services/organizations";
 import { listRuns } from "../services/executionReporting";
 import { fetchProjectTree, fetchTestProjects } from "../services/testManagement";
+import { useTheme } from "../utils/theme-context";
+import { useLanguage } from "../utils/language-context";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -17,6 +19,8 @@ export default function DashboardHeader() {
   const orgParallelLimit = realtimeSlots?.limit ?? 4;
   const projectsMenuRef = useRef(null);
   const isNoOrg = !orgSlug || orgSlug === "no-org";
+  const { theme, mode, setMode } = useTheme();
+  const { lang, setLang, t } = useLanguage();
 
   const [invitations, setInvitations] = useState([]);
   const [orgNotifications, setOrgNotifications] = useState([]);
@@ -37,9 +41,15 @@ export default function DashboardHeader() {
   const [llmUsage, setLlmUsage] = useState(null);
   const [couponBalance, setCouponBalance] = useState(null);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const previousInviteCountRef = useRef(0);
   const previousRunningCountRef = useRef(-1);
   const runsPanelCloseTimerRef = useRef(null);
+  const notifCloseTimerRef = useRef(null);
+  const searchCloseTimerRef = useRef(null);
+  const appearanceCloseTimerRef = useRef(null);
+  const languageCloseTimerRef = useRef(null);
   const testCaseCacheRef = useRef({});
   const searchInputRef = useRef(null);
 
@@ -748,19 +758,102 @@ export default function DashboardHeader() {
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => setIsSearchOpen(true)}
-          className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90"
-          title="Search"
+        <div
+          className="relative"
+          onMouseEnter={() => {
+            if (searchCloseTimerRef.current) {
+              window.clearTimeout(searchCloseTimerRef.current);
+              searchCloseTimerRef.current = null;
+            }
+            setIsSearchOpen(true);
+          }}
+          onMouseLeave={() => {
+            searchCloseTimerRef.current = window.setTimeout(() => {
+              setIsSearchOpen(false);
+            }, 200);
+          }}
         >
-          <Search className="h-4 w-4" />
-        </button>
-
-        <div className="relative">
           <button
             type="button"
-            onClick={() => setNotificationsOpen((open) => !open)}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90"
+            title="Search"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
+          {(isSearchOpen || aiOpen) && !isNoOrg ? (
+            <div className="absolute right-0 mt-2 w-[min(720px,92vw)] rounded-2xl border border-white/10 bg-[#1c1a2e] dark:bg-[#1c1a2e] shadow-2xl p-4 z-50">
+              <div className="flex items-center gap-2 bg-[#1F1F1F] rounded-full pl-4 pr-3 h-11 border border-white/10">
+                <Search className="h-4 w-4 text-[#FFAA00]" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={aiPrompt}
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                  placeholder="Search test cases by title, description, or folder"
+                  className="flex-1 bg-transparent text-white text-sm font-medium focus:outline-none placeholder:text-white/40"
+                  autoFocus
+                />
+                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin text-white/50" /> : null}
+              </div>
+
+              <div className="mt-4">
+                <div className="font-semibold text-white mb-2">Test Case Results</div>
+                {aiLoading ? <div className="text-sm text-white/60">Searching...</div> : null}
+                {!aiLoading && aiError ? <div className="text-sm text-red-400">{aiError}</div> : null}
+                {!aiLoading && !aiError && aiResults.length === 0 ? (
+                  <div className="text-sm text-white/60">
+                    {aiPrompt.trim()
+                      ? `No test cases match "${aiPrompt.trim()}".`
+                      : "Start typing to search your test cases."}
+                  </div>
+                ) : null}
+                {!aiLoading && !aiError && aiResults.length > 0 ? (
+                  <ul className={`space-y-2 ${aiResults.length > 6 ? "max-h-[320px] overflow-y-auto pr-1" : ""}`}>
+                    {aiResults.map((result) => (
+                      <li
+                        key={result.testCaseId}
+                        className="group bg-[#1F1F1F] rounded-lg p-3 flex flex-col hover:bg-white/10 transition cursor-pointer"
+                        onClick={() => {
+                          const target = `/dashboard/${orgSlug}/execution/tests/${selectedProject?.id}?openTestCaseId=${encodeURIComponent(result.testCaseId)}`;
+                          setIsSearchOpen(false);
+                          setAiOpen(false);
+                          navigate(target);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-bold text-base group-hover:text-[#FFAA00]">
+                            {result.testCaseName}
+                          </span>
+                        </div>
+                        <span className="text-white/50 text-xs">{result.folderPath}</span>
+                        <span className="text-white/50 text-xs">Reason: {result.matchReason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div
+          className="relative"
+          onMouseEnter={() => {
+            if (notifCloseTimerRef.current) {
+              window.clearTimeout(notifCloseTimerRef.current);
+              notifCloseTimerRef.current = null;
+            }
+            setNotificationsOpen(true);
+          }}
+          onMouseLeave={() => {
+            notifCloseTimerRef.current = window.setTimeout(() => {
+              setNotificationsOpen(false);
+            }, 140);
+          }}
+        >
+          <button
+            type="button"
             className="relative inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90"
             title={pendingInviteLabel}
           >
@@ -822,6 +915,8 @@ export default function DashboardHeader() {
           ) : null}
         </div>
 
+       
+
         <button
           type="button"
           onClick={() => navigate(`/dashboard/${orgSlug}/execution/runs`)}
@@ -838,71 +933,6 @@ export default function DashboardHeader() {
           <button type="button" className="text-white/70 hover:text-white" onClick={() => setAlertText("")}>
             <X className="h-3 w-3" />
           </button>
-        </div>
-      ) : null}
-
-      {(isSearchOpen || aiOpen) && !isNoOrg ? (
-        <div className="fixed inset-0 z-50" aria-label="Search test cases overlay">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => {
-              setIsSearchOpen(false);
-              setAiOpen(false);
-            }}
-          />
-          <div className="absolute right-6 top-[70px] w-[min(720px,92vw)]">
-            <div className="bg-white dark:bg-[#1c1a2e] border border-border dark:border-[#FFAA00]/20 rounded-2xl shadow-2xl p-4">
-              <div className="flex items-center gap-2 bg-muted dark:bg-[#1F1F1F] rounded-full pl-4 pr-3 h-11 border border-border dark:border-white/10">
-                <Search className="h-4 w-4 text-[#FFAA00]" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={aiPrompt}
-                  onChange={(event) => setAiPrompt(event.target.value)}
-                  placeholder="Search test cases by title, description, or folder"
-                  className="flex-1 bg-transparent text-foreground text-sm font-medium focus:outline-none placeholder:text-muted-foreground"
-                />
-                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
-              </div>
-
-              <div className="mt-4">
-                <div className="font-semibold text-foreground mb-2">Test Case Results</div>
-                {aiLoading ? <div className="text-sm text-muted-foreground">Searching...</div> : null}
-                {!aiLoading && aiError ? <div className="text-sm text-red-600 dark:text-red-400">{aiError}</div> : null}
-                {!aiLoading && !aiError && aiResults.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">
-                    {aiPrompt.trim()
-                      ? `No test cases match "${aiPrompt.trim()}".`
-                      : "Start typing to search your test cases."}
-                  </div>
-                ) : null}
-                {!aiLoading && !aiError && aiResults.length > 0 ? (
-                  <ul className={`space-y-2 ${aiResults.length > 6 ? "max-h-[320px] overflow-y-auto pr-1" : ""}`}>
-                    {aiResults.map((result) => (
-                      <li
-                        key={result.testCaseId}
-                        className="group bg-muted dark:bg-[#1F1F1F] rounded-lg p-3 flex flex-col hover:bg-muted dark:hover:bg-[#1F1F1F] transition cursor-pointer"
-                        onClick={() => {
-                          const target = `/dashboard/${orgSlug}/execution/tests/${selectedProject?.id}?openTestCaseId=${encodeURIComponent(result.testCaseId)}`;
-                          setIsSearchOpen(false);
-                          setAiOpen(false);
-                          navigate(target);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-black dark:text-slate-100 font-bold text-base group-hover:text-[#FFAA00] dark:group-hover:text-[#FFAA00]">
-                            {result.testCaseName}
-                          </span>
-                        </div>
-                        <span className="text-muted-foreground text-xs">{result.folderPath}</span>
-                        <span className="text-muted-foreground text-xs">Reason: {result.matchReason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            </div>
-          </div>
         </div>
       ) : null}
     </header>

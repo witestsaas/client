@@ -67,13 +67,14 @@ import {
   updateProjectSettings,
 } from "../services/testManagement";
 import { isQuotaDeniedError } from "../utils/quota";
+import { useLanguage } from "../utils/language-context";
 
 const TABS = [
-  { key: "repository", label: "Repository" },
-  { key: "shared-steps", label: "Shared Steps" },
-  { key: "variables", label: "Variables" },
-  { key: "documentation", label: "Documentation" },
-  { key: "configuration", label: "Configuration" },
+  { key: "repository", labelKey: "tc.tabs.repository" },
+  { key: "shared-steps", labelKey: "tc.tabs.sharedSteps" },
+  { key: "variables", labelKey: "tc.tabs.variables" },
+  { key: "documentation", labelKey: "tc.tabs.documentation" },
+  { key: "configuration", labelKey: "tc.tabs.configuration" },
 ];
 
 const INITIAL_FOLDER_FORM = { id: "", name: "", parentId: "" };
@@ -570,6 +571,7 @@ export default function ExecutionProjectTests() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [project, setProject] = useState(null);
   const [folders, setFolders] = useState([]);
@@ -2475,7 +2477,7 @@ export default function ExecutionProjectTests() {
             <input
               value={folderSearch}
               onChange={(event) => setFolderSearch(event.target.value)}
-              placeholder="Search folders..."
+              placeholder={t("tc.searchFolders")}
               className="w-full h-8 rounded-md border border-border bg-background pl-8 pr-2 text-xs"
             />
           </div>
@@ -2528,7 +2530,7 @@ export default function ExecutionProjectTests() {
           ) : !folderTree.length ? (
             <div className="h-[320px] flex flex-col items-center justify-center text-center px-4">
               <Folder className="h-10 w-10 text-[#232323]/20 dark:text-white/20" />
-              <p className="mt-3 text-xl font-semibold text-[#232323]/35 dark:text-white/35">No folders yet</p>
+              <p className="mt-3 text-xl font-semibold text-[#232323]/35 dark:text-white/35">{t("tc.noFolders")}</p>
               <p className="mt-2 text-xs text-[#232323]/50 dark:text-white/50">
                 Click the + button to create your first root folder.
               </p>
@@ -2634,9 +2636,9 @@ export default function ExecutionProjectTests() {
             <div className="h-14 w-14 rounded-xl bg-[#232323]/5 dark:bg-white/5 inline-flex items-center justify-center">
               <Folder className="h-8 w-8 text-[#232323]/25 dark:text-white/25" />
             </div>
-            <p className="mt-6 text-3xl font-semibold text-[#232323] dark:text-white">Select a Folder</p>
+            <p className="mt-6 text-3xl font-semibold text-[#232323] dark:text-white">{t("tc.selectFolder")}</p>
             <p className="mt-2 text-sm text-[#232323]/45 dark:text-white/45 max-w-xl">
-              Choose a folder from the left panel to view and manage its test cases
+              {t("tc.selectFolderDesc")}
             </p>
             <button
               type="button"
@@ -2726,7 +2728,7 @@ export default function ExecutionProjectTests() {
                   <input
                     value={testCaseSearch}
                     onChange={(event) => setTestCaseSearch(event.target.value)}
-                    placeholder="Search test cases"
+                    placeholder={t("tc.searchTestCases")}
                     className="w-full h-8 rounded-md border border-border bg-background pl-8 pr-2 text-xs"
                   />
                 </div>
@@ -2754,9 +2756,9 @@ export default function ExecutionProjectTests() {
                   onChange={(event) => setTestCaseSort(event.target.value)}
                   className="h-8 rounded-md border border-border bg-background px-2 text-xs"
                 >
-                  <option value="updated">Sort: Last Updated</option>
-                  <option value="title">Sort: Title</option>
-                  <option value="priority">Sort: Priority</option>
+                  <option value="updated">{t("tc.sortLastUpdated")}</option>
+                  <option value="title">{t("tc.sortTitle")}</option>
+                  <option value="priority">{t("tc.sortPriority")}</option>
                 </select>
               </div>
             </div>
@@ -2764,7 +2766,7 @@ export default function ExecutionProjectTests() {
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               {!filteredFolderCases.length ? (
                 <div className="h-full flex items-center justify-center text-sm text-[#232323]/55 dark:text-white/55">
-                  No test cases match your filters in this folder.
+                  {t("tc.noTestCasesMatch")}
                 </div>
               ) : (
                 <table className="w-full table-fixed text-sm">
@@ -2783,10 +2785,10 @@ export default function ExecutionProjectTests() {
                           )}
                         </button>
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Title</th>
-                      <th className="w-[80px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Priority</th>
-                      <th className="w-[90px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">Type</th>
-                      <th className="w-[110px] px-3 py-2 text-right text-xs font-semibold text-[#232323]/60 dark:text-white/60">Actions</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">{t("common.title")}</th>
+                      <th className="w-[80px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">{t("tc.priority")}</th>
+                      <th className="w-[90px] px-3 py-2 text-left text-xs font-semibold text-[#232323]/60 dark:text-white/60">{t("tc.type")}</th>
+                      <th className="w-[110px] px-3 py-2 text-right text-xs font-semibold text-[#232323]/60 dark:text-white/60">{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2887,18 +2889,18 @@ export default function ExecutionProjectTests() {
   const renderVariables = () => (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Variables</p>
+        <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.projectVariables")}</p>
         <button
           type="button"
           onClick={() => setIsVariableModalOpen(true)}
           className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
         >
-          Add Variable
+          {t("tc.addVariable")}
         </button>
       </div>
       <div className="rounded-md border border-border bg-card divide-y divide-border">
         {variables.length === 0 ? (
-          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">No variables yet.</p>
+          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">{t("tc.noVariables")}</p>
         ) : (
           variables.map((item) => (
             <div key={item.id} className="p-3 flex items-center justify-between gap-3">
@@ -2926,18 +2928,18 @@ export default function ExecutionProjectTests() {
   const renderSharedSteps = () => (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#232323] dark:text-white">Shared Steps</p>
+        <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.tabs.sharedSteps")}</p>
         <button
           type="button"
           onClick={() => setIsSharedStepModalOpen(true)}
           className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
         >
-          Add Shared Step
+          {t("tc.addSharedStep")}
         </button>
       </div>
       <div className="rounded-md border border-border bg-card divide-y divide-border">
         {sharedSteps.length === 0 ? (
-          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">No shared steps yet.</p>
+          <p className="p-3 text-sm text-[#232323]/60 dark:text-white/60">{t("tc.noSharedSteps")}</p>
         ) : (
           sharedSteps.map((step) => (
             <div key={step.id} className="p-3 flex items-start justify-between gap-3">
@@ -2964,8 +2966,8 @@ export default function ExecutionProjectTests() {
     <div className="p-3 flex-1 min-h-0 flex flex-col space-y-3 overflow-hidden">
       <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Documentation</p>
-          <p className="text-xs text-[#232323]/60 dark:text-white/60">Fill all fields to provide exact business context for AI test generation.</p>
+          <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.projectDocumentation")}</p>
+          <p className="text-xs text-[#232323]/60 dark:text-white/60">{t("tc.projectDocDesc")}</p>
         </div>
         <div className="inline-flex items-center gap-2">
           <span className={`text-[11px] ${documentationDirty ? "text-[#FFAA00]" : "text-[#232323]/55 dark:text-white/55"}`}>
@@ -3078,13 +3080,13 @@ export default function ExecutionProjectTests() {
     <div className="p-4 md:p-5 space-y-5">
       <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card/80 p-4 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-[#232323] dark:text-white">Project Settings</p>
-          <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">Configure core metadata used by generation and execution contexts.</p>
+          <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.projectSettings")}</p>
+          <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{t("tc.projectSettingsDesc")}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">Project Name</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">{t("tc.projectName")}</span>
             <input
               value={settingsForm.name}
               onChange={(event) => setSettingsForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -3094,7 +3096,7 @@ export default function ExecutionProjectTests() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">Base URL</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">{t("tc.baseUrl")}</span>
             <input
               value={settingsForm.baseUrl}
               onChange={(event) => setSettingsForm((prev) => ({ ...prev, baseUrl: event.target.value }))}
@@ -3105,7 +3107,7 @@ export default function ExecutionProjectTests() {
         </div>
 
         <label className="space-y-1 block">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">Description</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">{t("common.description")}</span>
           <input
             value={settingsForm.description}
             onChange={(event) => setSettingsForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -3121,7 +3123,7 @@ export default function ExecutionProjectTests() {
             disabled={saving}
             className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
           >
-            Save Settings
+            {t("tc.saveSettings")}
           </button>
         </div>
       </div>
@@ -3129,8 +3131,8 @@ export default function ExecutionProjectTests() {
       <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card/80 p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#232323] dark:text-white">Environments</p>
-            <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">Define target environments for execution and generation context.</p>
+            <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.environments")}</p>
+            <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">{t("tc.environmentsDesc")}</p>
           </div>
           <button
             type="button"
@@ -3138,14 +3140,14 @@ export default function ExecutionProjectTests() {
             className="h-8 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add Environment
+            {t("tc.addEnvironment")}
           </button>
         </div>
 
         <div className="rounded-lg border border-border bg-card divide-y divide-border">
           {!(settings?.environments || []).length ? (
             <div className="p-4 text-center">
-              <p className="text-sm text-[#232323]/60 dark:text-white/60">No environments configured yet.</p>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tc.noEnvironments")}</p>
             </div>
           ) : (
             settings.environments.map((env) => (
@@ -3186,7 +3188,7 @@ export default function ExecutionProjectTests() {
           <div className="min-w-0">
             <p className="text-lg font-semibold text-[#232323] dark:text-white truncate inline-flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#FFAA00]" />
-              {loading ? "Loading project..." : project?.name || "Project"}
+              {loading ? t("tc.loadingProject") : project?.name || t("tc.project")}
             </p>
           </div>
         </div>
@@ -3204,7 +3206,7 @@ export default function ExecutionProjectTests() {
               }`}
             >
               {tab.key === "repository" ? <BookOpenText className="h-3.5 w-3.5" /> : null}
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -3222,7 +3224,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isGenerateModalOpen}
-        title="AI Assistant"
+        title={t("tc.aiAssistant")}
         onClose={closeGenerateModal}
         maxWidth="max-w-[min(96vw,1400px)]"
         headerActions={
@@ -3446,7 +3448,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isFolderModalOpen}
-        title={folderModalMode === "create" ? "Create Folder" : "Edit Folder"}
+        title={folderModalMode === "create" ? t("tc.createFolder") : t("tc.editFolder")}
         onClose={() => setIsFolderModalOpen(false)}
         maxWidth="max-w-lg"
       >
@@ -3481,14 +3483,14 @@ export default function ExecutionProjectTests() {
             disabled={saving}
             className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
           >
-            {saving ? "Saving..." : folderModalMode === "create" ? "Create Folder" : "Save Changes"}
+            {saving ? t("common.saving") : folderModalMode === "create" ? t("tc.createFolder") : t("tc.saveChanges")}
           </button>
         </div>
       </Popup>
 
       <Popup
         open={!!folderToDelete}
-        title="Delete Folder"
+        title={t("tc.deleteFolder")}
         onClose={() => setFolderToDelete(null)}
         maxWidth="max-w-md"
       >
@@ -3502,7 +3504,7 @@ export default function ExecutionProjectTests() {
             disabled={saving}
             className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
           >
-            {saving ? "Deleting..." : "Delete Folder"}
+            {saving ? t("common.deleting") : t("tc.deleteFolder")}
           </button>
         </div>
       </Popup>
@@ -3541,7 +3543,7 @@ export default function ExecutionProjectTests() {
       {/* Import Tests Modal */}
       <Popup
         open={isImportModalOpen}
-        title="Import Test Cases"
+        title={t("tc.importTestCases")}
         onClose={() => { setIsImportModalOpen(false); setImportFile(null); setImportMessage(null); }}
         maxWidth="max-w-lg"
       >
@@ -3646,7 +3648,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isCreateTestCaseModalOpen}
-        title="Create Test Case"
+        title={t("tc.createTestCase")}
         onClose={() => setIsCreateTestCaseModalOpen(false)}
         maxWidth="max-w-5xl"
         headerActions={
@@ -3657,7 +3659,7 @@ export default function ExecutionProjectTests() {
             className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
-            {saving ? "Creating..." : "Create"}
+            {saving ? t("common.creating") : t("common.create")}
           </button>
         }
       >
@@ -3882,7 +3884,7 @@ export default function ExecutionProjectTests() {
             {createMode === "advanced" ? (
               <div className="space-y-4 lg:sticky lg:top-0 self-start">
                 <div>
-                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Priority</label>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">{t("tc.priority")}</label>
                   <select
                     value={testCaseForm.priority}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, priority: event.target.value }))}
@@ -3895,7 +3897,7 @@ export default function ExecutionProjectTests() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Type</label>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">{t("tc.type")}</label>
                   <select
                     value={testCaseForm.testCaseType}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, testCaseType: event.target.value }))}
@@ -3909,7 +3911,7 @@ export default function ExecutionProjectTests() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Automation</label>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">{t("tc.automation")}</label>
                   <select
                     value={testCaseForm.automationStatus}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, automationStatus: event.target.value }))}
@@ -3921,7 +3923,7 @@ export default function ExecutionProjectTests() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Tags</label>
+                  <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">{t("tc.tags")}</label>
                   <input
                     value={testCaseForm.tagsInput}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, tagsInput: event.target.value }))}
@@ -3938,7 +3940,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isCreateSharedStepsPickerOpen}
-        title="Add Shared Step"
+        title={t("tc.addSharedStep")}
         onClose={() => setIsCreateSharedStepsPickerOpen(false)}
         maxWidth="max-w-2xl"
         zIndex="z-[60]"
@@ -3949,7 +3951,7 @@ export default function ExecutionProjectTests() {
             <input
               value={createSharedStepsSearch}
               onChange={(event) => setCreateSharedStepsSearch(event.target.value)}
-              placeholder="Search shared steps..."
+              placeholder={t("tc.searchSharedSteps")}
               className="w-full h-9 rounded-lg border border-black/10 dark:border-white/10 bg-background pl-9 pr-3 text-sm"
             />
           </div>
@@ -4002,7 +4004,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={isVariablePickerOpen}
-        title="Insert Variable"
+        title={t("tc.insertVariable")}
         onClose={() => setIsVariablePickerOpen(false)}
         maxWidth="max-w-lg"
         zIndex="z-[60]"
@@ -4045,7 +4047,7 @@ export default function ExecutionProjectTests() {
 
       <Popup
         open={!!editingTestCase}
-        title="Edit Test Case"
+        title={t("tc.editTestCase")}
         onClose={() => setEditingTestCase(null)}
         maxWidth="max-w-5xl"
         headerLeading={
@@ -4367,7 +4369,7 @@ export default function ExecutionProjectTests() {
         </div>
       </Popup>
 
-      <Popup open={!!deletingTestCase} title="Delete Test Case" onClose={() => setDeletingTestCase(null)} maxWidth="max-w-md">
+      <Popup open={!!deletingTestCase} title={t("tc.deleteTestCase")} onClose={() => setDeletingTestCase(null)} maxWidth="max-w-md">
         <div className="space-y-4">
           <p className="text-sm text-[#232323]/70 dark:text-white/70">
             Delete "{deletingTestCase?.title || deletingTestCase?.name || "this test case"}"?
@@ -4394,12 +4396,12 @@ export default function ExecutionProjectTests() {
             disabled={saving}
             className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
           >
-            {saving ? "Deleting..." : "Delete Selected"}
+            {saving ? t("common.deleting") : t("tc.deleteSelected")}
           </button>
         </div>
       </Popup>
 
-      <Popup open={isVariableModalOpen} title="Add Variable" onClose={() => setIsVariableModalOpen(false)} maxWidth="max-w-lg">
+      <Popup open={isVariableModalOpen} title={t("tc.addVariable")} onClose={() => setIsVariableModalOpen(false)} maxWidth="max-w-lg">
         <div className="space-y-3">
           <input
             value={variableForm.name}
@@ -4469,7 +4471,7 @@ export default function ExecutionProjectTests() {
         </div>
       </Popup>
 
-      <Popup open={isEnvironmentModalOpen} title="Add Environment" onClose={() => setIsEnvironmentModalOpen(false)} maxWidth="max-w-lg">
+      <Popup open={isEnvironmentModalOpen} title={t("tc.addEnvironment")} onClose={() => setIsEnvironmentModalOpen(false)} maxWidth="max-w-lg">
         <div className="space-y-3">
           <input
             value={envForm.name}
