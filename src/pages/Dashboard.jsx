@@ -423,7 +423,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-600 text-white text-sm font-medium transition-colors shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
             >
               <Plus className="w-4 h-4" />
               {t("dashboard.createFirstProject")}

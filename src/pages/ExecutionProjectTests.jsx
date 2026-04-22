@@ -2864,7 +2864,7 @@ export default function ExecutionProjectTests() {
         />
       </div>
 
-      <div className="flex-1 min-w-0 relative bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="flex-1 min-w-0 relative bg-card overflow-hidden">
         {!selectedFolder ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
             <div className="h-14 w-14 rounded-xl bg-[#232323]/5 dark:bg-white/5 inline-flex items-center justify-center">
@@ -2997,14 +2997,14 @@ export default function ExecutionProjectTests() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-card">
               {!filteredFolderCases.length ? (
                 <div className="h-full flex items-center justify-center text-sm text-[#232323]/55 dark:text-white/55">
                   {t("tc.noTestCasesMatch")}
                 </div>
               ) : (
                 <table className="w-full table-fixed text-sm">
-                  <thead className="bg-[#F8F8F8] dark:bg-slate-900 sticky top-0 z-10">
+                  <thead className="bg-card sticky top-0 z-10">
                     <tr className="border-b border-border">
                       <th className="w-10 px-2 py-2 text-left">
                         <button
@@ -3029,7 +3029,7 @@ export default function ExecutionProjectTests() {
                     {filteredFolderCases.map((item) => (
                       <tr
                         key={item.id}
-                        className="border-b border-border hover:bg-[#FFFAE6] dark:hover:bg-slate-900/70 transition-colors cursor-pointer"
+                        className="border-b border-border bg-card hover:bg-[#FFFAE6] dark:hover:bg-white/5 transition-colors cursor-pointer"
                         onClick={() => openEditTestCase(item)}
                       >
                         <td className="px-2 py-2 align-top">
@@ -3407,7 +3407,7 @@ export default function ExecutionProjectTests() {
 
   return (
     <DashboardLayout>
-      <div className="bg-card/95 overflow-hidden transition-all duration-200 flex-1 min-h-0 flex flex-col [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_table]:border-separate [&_table]:border-spacing-0 [&_thead]:bg-[#F8F8F8]/90 dark:[&_thead]:bg-slate-900/90 [&_th]:border-black/10 dark:[&_th]:border-white/10 [&_td]:border-black/5 dark:[&_td]:border-white/10 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="bg-card/95 overflow-hidden transition-all duration-200 flex-1 min-h-0 flex flex-col [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input]:transition-all [&_input]:duration-200 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55 [&_select]:rounded-lg [&_select]:border-black/15 dark:[&_select]:border-white/15 [&_select]:bg-background/80 [&_select]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/35 [&_select:focus]:border-[#FFAA00]/55 [&_textarea]:rounded-lg [&_textarea]:border-black/15 dark:[&_textarea]:border-white/15 [&_textarea]:bg-background/80 [&_textarea]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/35 [&_textarea:focus]:border-[#FFAA00]/55 [&_table]:border-separate [&_table]:border-spacing-0 [&_thead]:bg-card dark:[&_thead]:bg-card [&_th]:border-black/10 dark:[&_th]:border-white/10 [&_td]:border-black/5 dark:[&_td]:border-white/10 [&_.rounded-md.border]:border-black/15 dark:[&_.rounded-md.border]:border-white/15 [&_.rounded-md.border]:shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="border-b border-black/10 dark:border-white/10 px-4 py-3 flex items-center gap-3 bg-gradient-to-r from-card via-card to-card/90">
           <button
             type="button"

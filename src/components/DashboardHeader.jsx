@@ -625,16 +625,49 @@ export default function DashboardHeader() {
   className="h-8 px-3 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2.5 transition-colors cursor-pointer"
 >
   <div className="flex items-center gap-1.5">
-    <Coins className={`h-3.5 w-3.5 shrink-0 ${textColor}`} />
+    {/* Mini circular progress */}
+    <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0">
+ {/* background */}
+<circle
+   cx="9"
+   cy="9"
+   r="7"
+   stroke="currentColor"
+   strokeWidth="2"
+   fill="none"
+   className="text-white/10"
+ />
+ {/* progress */}
+<circle
+   cx="9"
+   cy="9"
+   r="7"
+   stroke="currentColor"
+   strokeWidth="2"
+   fill="none"
+   strokeDasharray={`${
+     (Math.min(100, total > 0 ? pct : 0) / 100) * (2 * Math.PI * 7)
+   } ${2 * Math.PI * 7}`}
+   strokeLinecap="round"
+   transform="rotate(-90 9 9)"
+   className={`transition-all duration-700 ${
+     pct > 50
+       ? "text-emerald-400"
+       : pct > 20
+       ? "text-[#FFAA00]"
+       : "text-red-400"
+   }`}
+ />
+</svg>
     <span className={`text-xs font-bold tabular-nums ${textColor}`}>{total > 0 ? pct : "--"}</span>
   </div>
-
-  <div className="w-14 h-1.5 rounded-full bg-white/10 overflow-hidden">
+  
+  {/*<div className="w-14 h-1.5 rounded-full bg-white/10 overflow-hidden">
     <div
       className={`h-full rounded-full transition-all duration-700 ${barColor}`}
       style={{ width: `${Math.min(100, total > 0 ? pct : 0)}%` }}
     />
-  </div>
+  </div>*/}
 </button>
           );
         })() : null}
