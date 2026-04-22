@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Check, ChevronDown, FolderKanban, Globe, Loader2, Monitor, Moon, PlayCircle, Plus, Search, Sun, X } from "lucide-react";
+import { AlertCircle, Bell, Check, ChevronDown, FolderKanban, Globe, Loader2, Monitor, Moon, Plus, Search, Sparkles, Sun, Coins, X } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSocket, useOrgSlots } from "../hooks/useSocket.tsx";
 import { fetchMyInvitations, fetchOrgNotifications, fetchOrgQuotaUsage, fetchOrgLlmUsage, fetchOrgCouponBalance, markOrgNotificationsAsRead } from "../services/organizations";
@@ -238,9 +238,21 @@ export default function DashboardHeader() {
             typeof window !== "undefined"
               ? window.localStorage.getItem(`selectedProject_${orgSlug}`) || ""
               : "";
+          const pathParts =
+            typeof window !== "undefined" ? window.location.pathname.split("/").filter(Boolean) : [];
+          const routeOrgSlug = pathParts[1] || "";
+          const routeProjectId = routeOrgSlug === orgSlug ? pathParts[4] || "" : "";
 
-          setProjects(items);
+          setProjects((prev) => {
+            const isSame =
+              prev.length === items.length &&
+              prev.every((project, index) => project.id === items[index]?.id && project.name === items[index]?.name);
+            return isSame ? prev : items;
+          });
           setSelectedProjectId((prev) => {
+            if (routeProjectId && items.some((project) => project.id === routeProjectId)) {
+              return routeProjectId;
+            }
             if (prev && items.some((project) => project.id === prev)) return prev;
             if (savedProjectId && items.some((project) => project.id === savedProjectId)) {
               return savedProjectId;
@@ -285,7 +297,7 @@ export default function DashboardHeader() {
     const pathParts = location.pathname.split("/").filter(Boolean);
     const maybeProjectId = pathParts[4];
     if (maybeProjectId && projects.some((project) => project.id === maybeProjectId)) {
-      setSelectedProjectId(maybeProjectId);
+      setSelectedProjectId((prev) => (prev === maybeProjectId ? prev : maybeProjectId));
     }
   }, [location.pathname, projects]);
 
@@ -540,7 +552,7 @@ export default function DashboardHeader() {
           <button
             type="button"
             onClick={() => setProjectsMenuOpen((open) => !open)}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+            className="ui-dropdown-trigger inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50 cursor-pointer cursor-pointer transition-colors"
             title="Switch project"
             disabled={projects.length === 0}
           >
@@ -552,7 +564,7 @@ export default function DashboardHeader() {
           </button>
 
           {projectsMenuOpen ? (
-            <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-white/10 bg-[#1c1a2e] p-3 shadow-2xl z-50">
+            <div className="ui-dropdown-panel absolute left-0 mt-3 w-72 rounded-2xl border border-white/10 bg-[#1c1a2e] p-3 shadow-2xl z-50">
               <div className="max-h-64 overflow-y-auto space-y-1">
                 {projects.length === 0 ? (
                   <div className="text-xs text-white/60 px-2 py-3">No projects found.</div>
@@ -562,7 +574,7 @@ export default function DashboardHeader() {
                       key={project.id}
                       type="button"
                       onClick={() => handleProjectSwitch(project.id)}
-                      className={`w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                      className={`ui-dropdown-item w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer ${
                         project.id === selectedProjectId
                           ? "bg-[#FFAA00]/20 text-white"
                           : "text-white/80 hover:bg-white/10"
@@ -580,7 +592,7 @@ export default function DashboardHeader() {
                 <button
                   type="button"
                   onClick={handleAddProject}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[#FFAA00] px-3 py-2 text-xs font-semibold text-[#232323] hover:bg-[#FFAA00]/90"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[#FFAA00] px-3 py-2 text-xs font-semibold text-[#232323] hover:bg-[#FFAA00]/90 cursor-pointer transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Project
@@ -597,92 +609,37 @@ export default function DashboardHeader() {
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
-        {/* Coupon Balance – AI icon with hover panel */}
-        {!isNoOrg && couponBalance && couponBalance.totalAmountUsd > 0 ? (() => {
-          const remaining = Number(couponBalance.totalRemainingUsd || 0);
-          const total = Number(couponBalance.totalAmountUsd || 0);
-          const pct = total > 0 ? (remaining / total) * 100 : 0;
-          const barColor = pct > 50 ? "bg-blue-500" : pct > 20 ? "bg-[#FFAA00]" : "bg-red-500";
+        {/* Coupon Balance – compact badge with bar + percentage */}
+        {!isNoOrg ? (() => {
+          const remaining = Number(couponBalance?.totalRemainingUsd || 0);
+          const total = Number(couponBalance?.totalAmountUsd || 0);
+          const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
+          const barColor = pct > 50 ? "bg-emerald-400" : pct > 20 ? "bg-[#FFAA00]" : "bg-red-400";
+          const textColor = total > 0
+            ? (pct > 50 ? "text-emerald-400" : pct > 20 ? "text-[#FFAA00]" : "text-red-400")
+            : "text-white/60";
           return (
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => navigate(`/dashboard/${orgSlug}/settings?tab=credits`)}
-              title={`${Math.round(pct)}% remaining of coupon credits`}
-            >
-              <div className="w-28 h-2 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                  style={{ width: `${Math.min(100, pct)}%` }}
-                />
-              </div>
-              {/* <span className="text-[10px] text-white/50 whitespace-nowrap">{Math.round(pct)}% remaining of coupon credits</span> */}
-            </div>
+            <button
+  type="button"
+  onClick={() => navigate(`/dashboard/${orgSlug}/settings?tab=credits`)}
+  className="h-8 px-3 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2.5 transition-colors cursor-pointer"
+>
+  <div className="flex items-center gap-1.5">
+    <Coins className={`h-3.5 w-3.5 shrink-0 ${textColor}`} />
+    <span className={`text-xs font-bold tabular-nums ${textColor}`}>{total > 0 ? pct : "--"}</span>
+  </div>
+
+  <div className="w-14 h-1.5 rounded-full bg-white/10 overflow-hidden">
+    <div
+      className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+      style={{ width: `${Math.min(100, total > 0 ? pct : 0)}%` }}
+    />
+  </div>
+</button>
           );
         })() : null}
-        {/* LLM Price Badge - right side, small, no animation, uses detailed LLM usage */}
-        {/* {!isNoOrg && llmUsage ? (() => {
-          const inputTokens = Number(llmUsage.totalInputTokens || 0);
-          const outputTokens = Number(llmUsage.totalOutputTokens || 0);
-          const llmPrice = (inputTokens / 1_000_000) * 0.5 + (outputTokens / 1_000_000) * 3.0;
-          return (
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#3b82f6]/20 bg-[#f0f9ff] dark:bg-[#1e293b] shadow-sm text-xs font-semibold text-[#2563eb] dark:text-[#60a5fa]"
-              title={`Realtime LLM usage: ${llmPrice.toFixed(2)} credits`}
-              style={{ minWidth: 60, justifyContent: 'center' }}
-            >
-              <svg width="13" height="13" fill="none" viewBox="0 0 16 16" className="mr-1"><circle cx="8" cy="8" r="7" stroke="#2563eb" strokeWidth="1.5" fill="#e0e7ff" /><path d="M5.5 8.5l2 2 3-3" stroke="#2563eb" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              {llmPrice.toFixed(2)}
-            </span>
-          );
-        })() : null}*/}
-       {/* } {!isNoOrg && quotaUsage ? (
-          <div className="inline-flex items-center gap-1.5">
-            <div
-              className={`h-8 px-2.5 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 ${
-                quotaUsage.ai.isUnknown
-                  ? "border-white/10 bg-white/5 text-white/70"
-                  : quotaUsage.ai.isUnlimited
-                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
-                    : quotaUsage.ai.remaining > 0
-                      ? "border-white/10 bg-white/5 text-white/90"
-                      : "border-red-400/30 bg-red-500/10 text-red-200"
-              }`}
-              title={
-                quotaUsage.ai.isUnknown
-                  ? "AI quota unavailable"
-                  : quotaUsage.ai.isUnlimited
-                    ? "AI quota unlimited"
-                    : `AI quota remaining ${quotaUsage.ai.remaining}`
-              }
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{quotaUsage.ai.isUnknown ? "--" : quotaUsage.ai.isUnlimited ? "∞" : Math.max(0, quotaUsage.ai.remaining)}</span>
-            </div>
 
-            <div
-              className={`h-8 px-2.5 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 ${
-                quotaUsage.web.isUnknown
-                  ? "border-white/10 bg-white/5 text-white/70"
-                  : quotaUsage.web.isUnlimited
-                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
-                    : quotaUsage.web.remaining > 0
-                      ? "border-white/10 bg-white/5 text-white/90"
-                      : "border-red-400/30 bg-red-500/10 text-red-200"
-              }`}
-              title={
-                quotaUsage.web.isUnknown
-                  ? "Web run quota unavailable"
-                  : quotaUsage.web.isUnlimited
-                    ? "Web run quota unlimited"
-                    : `Web run quota remaining ${quotaUsage.web.remaining}`
-              }
-            >
-              <PlayCircle className="h-3.5 w-3.5" />
-              <span>{quotaUsage.web.isUnknown ? "--" : quotaUsage.web.isUnlimited ? "∞" : Math.max(0, quotaUsage.web.remaining)}</span>
-            </div>
-          </div>
-        ) : null}   */}
-
+        {/* Parallel Sessions – fraction display with arc indicator */}
         {!isNoOrg ? (
           <div
             className="relative"
@@ -701,22 +658,38 @@ export default function DashboardHeader() {
           >
             <button
               type="button"
-              className="h-8 px-2.5 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90 inline-flex items-center gap-1.5"
-              title={`Running sessions ${runningBrowserSessions}/${orgParallelLimit} slots`}
+              className={`h-8 px-3 rounded-full border inline-flex items-center gap-2 transition-colors cursor-pointer ${
+                normalizedRunningCount > 0
+                  ? "border-[#FFAA00]/30 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              }`}
+              //title={`${runningBrowserSessions} of ${orgParallelLimit} parallel sessions in use`}
             >
-              {Array.from({ length: orgParallelLimit }).map((_, index) => {
-                const active = index < normalizedRunningCount;
-                return (
-                  <span
-                    key={`run-point-${index}`}
-                    className={`h-2 w-2 rounded-full ${
-                      active
-                        ? "bg-[#FFAA00] animate-pulse shadow-[0_0_8px_rgba(255,170,0,0.8)]"
-                        : "bg-white/30"
-                    }`}
-                  />
-                );
-              })}
+              {/* Mini circular progress */}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+                <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="2" className="text-white/10" />
+                <circle
+                  cx="9" cy="9" r="7"
+                  stroke="currentColor" strokeWidth="2"
+                  strokeDasharray={`${orgParallelLimit > 0 ? (normalizedRunningCount / orgParallelLimit) * 43.98 : 0} 43.98`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 9 9)"
+                  className={normalizedRunningCount > 0 ? "text-[#FFAA00]" : "text-white/20"}
+                  style={{ transition: "stroke-dasharray 0.5s ease" }}
+                />
+                {normalizedRunningCount > 0 ? (
+                  <circle cx="9" cy="9" r="2" className="fill-[#FFAA00] animate-pulse" />
+                ) : (
+                  <circle cx="9" cy="9" r="2" className="fill-white/30" />
+                )}
+              </svg>
+              {/* Fraction */}
+              <span className="text-xs font-bold tabular-nums text-white/90">
+                <span className={normalizedRunningCount > 0 ? "text-[#FFAA00]" : "text-white/60"}>{runningBrowserSessions}</span>
+                <span className="text-white/30 mx-0.5">/</span>
+                <span className="text-white/50">{orgParallelLimit}</span>
+              </span>
+              <span className="text-[10px] text-white/35 font-medium hidden sm:inline">sessions</span>
             </button>
 
             {runsPanelOpen ? (
@@ -745,7 +718,7 @@ export default function DashboardHeader() {
                             setRunsPanelOpen(false);
                             navigate(`/dashboard/${orgSlug}/execution/runs/${run.id}`);
                           }}
-                          className="h-7 px-2.5 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold hover:bg-[#FFAA00]/90"
+                          className="h-7 px-2.5 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold hover:bg-[#FFAA00]/90 cursor-pointer transition-colors"
                         >
                           Open
                         </button>
@@ -775,7 +748,7 @@ export default function DashboardHeader() {
         >
           <button
             type="button"
-            className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90 cursor-pointer cursor-pointer transition-colors"
             title="Search"
           >
             <Search className="h-4 w-4" />
@@ -800,7 +773,12 @@ export default function DashboardHeader() {
               <div className="mt-4">
                 <div className="font-semibold text-white mb-2">Test Case Results</div>
                 {aiLoading ? <div className="text-sm text-white/60">Searching...</div> : null}
-                {!aiLoading && aiError ? <div className="text-sm text-red-400">{aiError}</div> : null}
+                {!aiLoading && aiError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300 inline-flex items-start gap-2">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{aiError}</span>
+                  </div>
+                ) : null}
                 {!aiLoading && !aiError && aiResults.length === 0 ? (
                   <div className="text-sm text-white/60">
                     {aiPrompt.trim()
@@ -854,7 +832,7 @@ export default function DashboardHeader() {
         >
           <button
             type="button"
-            className="relative inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90"
+            className="relative inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-white/90 cursor-pointer"
             title={pendingInviteLabel}
           >
             <Bell className="h-4 w-4" />
@@ -874,7 +852,7 @@ export default function DashboardHeader() {
                     key={notification.id}
                     type="button"
                     onClick={() => handleNotificationClick(notification)}
-                    className="w-full text-left rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                    className="w-full text-left rounded-lg border border-white/10 bg-white/5 px-3 py-2 cursor-pointer transition-colors"
                   >
                     <p className="text-sm text-white font-medium truncate">{notification.title || "Notification"}</p>
                     <p className="text-xs text-white/60 line-clamp-2 mt-0.5">{notification.message || ""}</p>
@@ -898,7 +876,7 @@ export default function DashboardHeader() {
                           setNotificationsOpen(false);
                           navigate(`/dashboard/join/${invite.token}`);
                         }}
-                        className="mt-2 text-xs font-semibold text-[#FFAA00] hover:text-[#FFAA00]/80"
+                        className="mt-2 text-xs font-semibold text-[#FFAA00] hover:text-[#FFAA00]/80 cursor-pointer transition-colors"
                       >
                         Open invitation
                       </button>
@@ -919,18 +897,32 @@ export default function DashboardHeader() {
 
         <button
           type="button"
-          onClick={() => navigate(`/dashboard/${orgSlug}/execution/runs`)}
-          className="bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-xs font-semibold h-8 px-4 rounded-md inline-flex items-center gap-2"
+          onClick={() => {
+            if (!selectedProjectId || !selectedProject) {
+              navigate(`/dashboard/${orgSlug}/execution/tests`);
+              return;
+            }
+            const target = `/dashboard/${orgSlug}/execution/tests/${selectedProjectId}`;
+            if (location.pathname === target || location.pathname.startsWith(target)) {
+              window.dispatchEvent(new CustomEvent("openQalionAgent"));
+            } else {
+              navigate(target);
+              window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("openQalionAgent"));
+              }, 200);
+            }
+          }}
+          className="group relative bg-gradient-to-r from-[#FFAA00] to-[#ff8c00] hover:from-[#FFB833] hover:to-[#FFAA00] text-[#232323] text-xs font-bold h-8 px-4 rounded-lg inline-flex items-center gap-2 shadow-[0_2px_8px_rgba(255,170,0,0.3)] hover:shadow-[0_4px_16px_rgba(255,170,0,0.4)] transition-all cursor-pointer"
         >
-          <PlayCircle className="h-4 w-4" />
-          Quick Run
+          <Sparkles className="h-3.5 w-3.5" />
+          Qalion Agent
         </button>
       </div>
 
       {alertText ? (
         <div className="absolute top-[78px] right-6 flex items-center gap-2 rounded-lg border border-[#FFAA00]/40 bg-[#1c1a2e] dark:bg-[#1c1a2e] px-3 py-2 shadow-xl z-40">
           <p className="text-xs text-white">{alertText}</p>
-          <button type="button" className="text-white/70 hover:text-white" onClick={() => setAlertText("")}>
+          <button type="button" className="text-white/70 hover:text-white cursor-pointer transition-colors" onClick={() => setAlertText("")}>
             <X className="h-3 w-3" />
           </button>
         </div>

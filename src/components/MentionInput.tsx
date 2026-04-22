@@ -279,7 +279,7 @@ export function MentionInput({
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2 text-left",
                   "hover:bg-gray-100 dark:hover:bg-slate-800",
-                  "transition-colors duration-150",
+                  "transition-colors duration-150 cursor-pointer",
                   index === selectedIndex && "bg-[#FFAA00]/10 dark:bg-[#FFAA00]/20"
                 )}
               >

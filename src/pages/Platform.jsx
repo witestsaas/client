@@ -4,6 +4,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, LogOut, Mail, Settings, ShieldAlert, Trash2, UserPlus, Users, X } from "lucide-react";
 import { apiFetch } from "../services/http";
 import { fetchUserOrganizations } from "../services/organizations";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { toDisplayErrorMessage } from "../utils/api-error";
 
 function roleBadgeClass(role) {
   const map = {
@@ -71,6 +73,8 @@ export default function Platform() {
   const [deleteOrgError, setDeleteOrgError] = useState("");
   const [leavingOrg, setLeavingOrg] = useState(false);
   const [leaveError, setLeaveError] = useState("");
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState(null);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
   const isOwner = org?.currentUserRole === "Owner";
   const canManage = isOwner;
@@ -128,7 +132,7 @@ export default function Platform() {
         }
       }
 
-      setError(message);
+      setError(toDisplayErrorMessage(message, "Failed to load organization"));
     } finally {
       if (!silent) {
         setLoading(false);
@@ -196,14 +200,14 @@ export default function Platform() {
       setInviteOpen(false);
       await fetchOrg();
     } catch (e) {
-      setInviteError(e.message || "Invite failed");
+      setInviteError(toDisplayErrorMessage(e?.message, "Invite failed"));
     } finally {
       setSubmittingInvite(false);
     }
   }
 
   async function deleteMember(memberId) {
-    if (!confirm("Remove this member from the organization?")) return;
+    if (!memberId) return;
     const response = await apiFetch(`/organizations/${orgSlug}/members`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -211,7 +215,10 @@ export default function Platform() {
     });
     if (response.ok) {
       await fetchOrg();
+      return;
     }
+    const payload = await response.json().catch(() => ({}));
+    setError(toDisplayErrorMessage(payload?.message || payload?.error, "Failed to remove member"));
   }
 
   async function updateMemberRole(memberId, newRole) {
@@ -227,7 +234,7 @@ export default function Platform() {
       }
       await fetchOrg();
     } catch (e) {
-      setError(e?.message || "Failed to update member role");
+      setError(toDisplayErrorMessage(e?.message, "Failed to update member role"));
     }
   }
 
@@ -248,7 +255,7 @@ export default function Platform() {
       setDeleteConfirmText("");
       navigate("/dashboard/no-org", { replace: true });
     } catch (e) {
-      setDeleteOrgError(e?.message || "Failed to delete organization");
+      setDeleteOrgError(toDisplayErrorMessage(e?.message, "Failed to delete organization"));
     } finally {
       setDeletingOrg(false);
     }
@@ -256,7 +263,6 @@ export default function Platform() {
 
   async function handleLeaveOrganization() {
     if (!orgSlug || leavingOrg) return;
-    if (!confirm("Are you sure you want to leave this organization? You will lose access to all its projects and data.")) return;
 
     setLeavingOrg(true);
     setLeaveError("");
@@ -282,9 +288,10 @@ export default function Platform() {
         navigate("/dashboard/no-org", { replace: true });
       }
     } catch (e) {
-      setLeaveError(e?.message || "Failed to leave organization");
+      setLeaveError(toDisplayErrorMessage(e?.message, "Failed to leave organization"));
     } finally {
       setLeavingOrg(false);
+      setConfirmLeaveOpen(false);
     }
   }
 
@@ -313,7 +320,7 @@ export default function Platform() {
                   setInviteError("");
                   setInviteOpen(true);
                 }}
-                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/10 bg-card/90 text-[#232323] dark:text-white text-sm font-semibold inline-flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-[#232323]/5 dark:hover:bg-white/5"
+                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/10 bg-card/90 text-[#232323] dark:text-white text-sm font-semibold inline-flex items-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-[#232323]/5 dark:hover:bg-white/5 cursor-pointer"
               >
                 <UserPlus className="h-4 w-4" />
                 Invite Member
@@ -418,9 +425,9 @@ export default function Platform() {
                     <span className={`inline-flex px-3 py-1 text-xs font-medium border rounded-full ${availabilityBadgeClass(availability)}`}>{availability}</span>
                     {canDelete && (
                       <button
-                        onClick={() => deleteMember(member.id)}
+                        onClick={() => setConfirmRemoveMember(member)}
                         type="button"
-                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-red-500 hover:bg-red-500/10"
+                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-red-500 hover:bg-red-500/10 cursor-pointer"
                         title="Remove member"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -451,7 +458,7 @@ export default function Platform() {
                   setDeleteConfirmText("");
                   setDeleteOrgOpen(true);
                 }}
-                className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2"
+                className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2 cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete Organization
@@ -469,9 +476,9 @@ export default function Platform() {
               </div>
               <button
                 type="button"
-                onClick={handleLeaveOrganization}
+                onClick={() => setConfirmLeaveOpen(true)}
                 disabled={leavingOrg}
-                className="h-10 px-4 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+                className="h-10 px-4 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 "
               >
                 <LogOut className="h-4 w-4" />
                 {leavingOrg ? "Leaving..." : "Leave Organization"}
@@ -493,7 +500,7 @@ export default function Platform() {
                 if (deletingOrg) return;
                 setDeleteOrgOpen(false);
               }}
-              className="absolute top-4 right-4 h-8 w-8 rounded-full inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
               aria-label="Close dialog"
             >
               <X className="h-4 w-4" />
@@ -535,7 +542,7 @@ export default function Platform() {
                   type="button"
                   onClick={() => setDeleteOrgOpen(false)}
                   disabled={deletingOrg}
-                  className="h-10 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white disabled:opacity-60"
+                  className="h-10 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white disabled:opacity-60 "
                 >
                   Cancel
                 </button>
@@ -543,7 +550,7 @@ export default function Platform() {
                   type="button"
                   onClick={confirmDeleteOrganization}
                   disabled={deletingOrg || deleteConfirmText.trim() !== String(org?.name || orgSlug || "")}
-                  className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                   {deletingOrg ? "Deleting..." : "Delete Organization"}
@@ -589,14 +596,14 @@ export default function Platform() {
                     setInviteError("");
                     setInviteOpen(false);
                   }}
-                  className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/10"
+                  className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/10 cursor-pointer text-sm text-[#232323] dark:text-white"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
                   disabled={submittingInvite}
-                  className="h-9 px-3 rounded-lg bg-[#FFAA00] text-[#232323] font-semibold disabled:opacity-60"
+                  className="h-9 px-3 rounded-lg bg-[#FFAA00] text-[#232323] font-semibold disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed inline-flex items-center gap-1.5"
                 >
                   {submittingInvite ? "Sending..." : "Send Invite"}
                 </button>
@@ -612,6 +619,28 @@ export default function Platform() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmRemoveMember)}
+        onClose={() => setConfirmRemoveMember(null)}
+        onConfirm={() => deleteMember(confirmRemoveMember?.id)}
+        title="Remove team member"
+        message={`Remove ${confirmRemoveMember?.user?.firstName || "this member"} from this organization?`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={confirmLeaveOpen}
+        onClose={() => setConfirmLeaveOpen(false)}
+        onConfirm={handleLeaveOrganization}
+        title="Leave organization"
+        message="You will lose access to all projects and organization data."
+        confirmText={leavingOrg ? "Leaving..." : "Leave"}
+        cancelText="Cancel"
+        type="warning"
+      />
     </DashboardLayout>
   );
 }

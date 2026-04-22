@@ -19,7 +19,7 @@ export default function QuotaRequiredPopup({ open, onClose, title, message }) {
           <button
             type="button"
             onClick={onClose}
-            className="h-8 w-8 rounded-md inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+            className="h-8 w-8 rounded-md inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -30,7 +30,7 @@ export default function QuotaRequiredPopup({ open, onClose, title, message }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full h-10 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold transition-all duration-200"
+            className="w-full h-10 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold transition-all duration-200 cursor-pointer"
           >
             Understood
           </button>

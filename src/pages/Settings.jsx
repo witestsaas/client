@@ -32,15 +32,15 @@ import {
 import { redeemOrgCoupon, fetchOrgCouponBalance } from "../services/organizations";
 import { fetchApiKeys, createApiKey, revokeApiKey } from "../services/apiKeys";
 import { listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook } from "../services/platform";
+import { useLanguage } from "../utils/language-context";
 
 const TABS = [
-  { key: "credits", label: "Credits", icon: Ticket },
-  { key: "integrations", label: "Integrations", icon: Plug },
-  { key: "api-keys", label: "API Keys", icon: Key },
-  //{ key: "webhooks", label: "Webhooks", icon: Webhook },
-  { key: "team", label: "Team", icon: Users },
+  { key: "credits", labelKey: "settings.tab.credits", icon: Ticket },
+  { key: "integrations", labelKey: "settings.tab.integrations", icon: Plug },
+  { key: "api-keys", labelKey: "settings.tab.apiKeys", icon: Key },
+  { key: "team", labelKey: "settings.tab.team", icon: Users },
   //{ key: "notifications", label: "Notifications", icon: Bell },
-  { key: "security", label: "Security", icon: Shield },
+  { key: "security", labelKey: "settings.tab.security", icon: Shield },
 ];
 
 const INTEGRATIONS = [
@@ -104,9 +104,10 @@ function SettingsSectionCard({ title, description, children }) {
 export default function Settings() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(TABS.some(t => t.key === tabFromUrl) ? tabFromUrl : "api-keys");
+  const [activeTab, setActiveTab] = useState(TABS.some(t => t.key === tabFromUrl) ? tabFromUrl : "credits");
   const [selectedIntegrationId, setSelectedIntegrationId] = useState("");
 
   // Coupon state
@@ -260,19 +261,19 @@ export default function Settings() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="text-xs text-muted-foreground">Remaining</p>
-              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalRemainingUsd || 0).toFixed(2)}</p>
+              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance?.totalRemainingUsd || 0).toFixed(2)}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="text-xs text-muted-foreground">Total Credits</p>
-              <p className="text-xl font-bold mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalAmountUsd || 0).toFixed(2)}</p>
+              <p className="text-xl font-bold mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance?.totalAmountUsd || 0).toFixed(2)}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="text-xs text-muted-foreground">Used</p>
-              <p className="text-xl font-bold text-foreground/70 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance.totalUsedUsd || 0).toFixed(2)}</p>
+              <p className="text-xl font-bold text-foreground/70 mt-1 flex items-center gap-1.5"><Coins className="h-5 w-5" />{Number(couponBalance?.totalUsedUsd || 0).toFixed(2)}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="text-xs text-muted-foreground">Active Coupons</p>
-              <p className="text-xl font-bold mt-1">{couponBalance.activeCoupons || 0}</p>
+              <p className="text-xl font-bold mt-1">{couponBalance?.activeCoupons || 0}</p>
             </div>
           </div>
         ) : (
@@ -297,7 +298,7 @@ export default function Settings() {
             type="button"
             onClick={handleRedeemCoupon}
             disabled={redeemingCoupon || !couponCode.trim()}
-            className="h-10 px-5 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2"
+            className="h-10 px-5 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
           >
             <Gift className="h-4 w-4" />
             {redeemingCoupon ? "Redeeming..." : "Redeem"}
@@ -329,7 +330,7 @@ export default function Settings() {
                   key={integration.id}
                   type="button"
                   onClick={() => setSelectedIntegrationId(integration.id)}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
+                  className={`w-full rounded-xl border px-4 py-3 text-left transition-all duration-150 cursor-pointer ${
                     isSelected
                       ? "border-blue-300 bg-blue-50/70 dark:bg-blue-900/20 dark:border-blue-600"
                       : "border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-black/20 dark:hover:border-white/20"
@@ -375,7 +376,7 @@ export default function Settings() {
                 <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Access Token</label>
                 <input className="w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm" placeholder="••••••••••••" type="password" />
               </div>
-              <button type="button" className="w-full h-10 rounded-lg bg-[#FFAA00] text-[#232323] text-sm font-semibold">Save Configuration</button>
+              <button type="button" className="w-full h-10 rounded-lg bg-[#FFAA00] text-[#232323] text-sm font-semibold cursor-pointer">Save Configuration</button>
             </div>
           </SettingsSectionCard>
         ) : (
@@ -408,7 +409,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={() => copyKeyToClipboard(newlyCreatedKey.rawKey)}
-              className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold inline-flex items-center gap-1.5"
+              className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Copy className="h-3.5 w-3.5" />
               {keyCopied ? "Copied!" : "Copy"}
@@ -416,7 +417,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={() => setNewlyCreatedKey(null)}
-              className="h-9 px-3 rounded-lg border border-emerald-300 dark:border-emerald-700 text-sm text-emerald-800 dark:text-emerald-200"
+              className="h-9 px-3 rounded-lg border border-emerald-300 dark:border-emerald-700 text-sm text-emerald-800 dark:text-emerald-200 cursor-pointer"
             >
               Dismiss
             </button>
@@ -462,14 +463,14 @@ export default function Settings() {
                   type="button"
                   onClick={handleCreateApiKey}
                   disabled={creatingKey}
-                  className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60"
+                  className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60 cursor-pointer"
                 >
                   {creatingKey ? "Creating..." : "Generate Key"}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setIsCreateKeyOpen(false); setKeyError(""); }}
-                  className="h-9 px-4 rounded-lg border border-border text-sm"
+                  className="h-9 px-4 rounded-lg border border-border text-sm cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -479,7 +480,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={() => setIsCreateKeyOpen(true)}
-              className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5"
+              className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               Create New API Key
@@ -536,14 +537,14 @@ export default function Settings() {
                             type="button"
                             onClick={() => handleRevokeKey(key.id)}
                             disabled={revokingKey}
-                            className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold disabled:opacity-60"
+                            className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
                           >
                             {revokingKey ? "..." : "Confirm"}
                           </button>
                           <button
                             type="button"
                             onClick={() => setRevokeConfirmId(null)}
-                            className="h-8 px-3 rounded-lg border border-border text-xs"
+                            className="h-8 px-3 rounded-lg border border-border text-xs cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -552,7 +553,7 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => setRevokeConfirmId(key.id)}
-                          className="h-8 px-3 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-medium inline-flex items-center gap-1 flex-shrink-0"
+                          className="h-8 px-3 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-medium inline-flex items-center gap-1 flex-shrink-0 cursor-pointer"
                         >
                           <Trash2 className="h-3 w-3" />
                           Revoke
@@ -601,7 +602,7 @@ curl -H "Authorization: Bearer qal_your_key_here" \\
               <button
                 type="button"
                 onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/v1`); }}
-                className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center"
+                className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/10 flex items-center justify-center "
               >
                 <Copy className="w-3.5 h-3.5" />
               </button>
@@ -890,7 +891,7 @@ jobs:
       <SettingsSectionCard title="Webhooks" description="Send real-time HTTP notifications to external systems when events occur">
         <div className="space-y-4">
           {!showWebhookForm ? (
-            <button type="button" onClick={() => { resetWebhookForm(); setShowWebhookForm(true); }} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5">
+            <button type="button" onClick={() => { resetWebhookForm(); setShowWebhookForm(true); }} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer">
               <Plus className="h-3.5 w-3.5" /> New Webhook
             </button>
           ) : (
@@ -914,7 +915,7 @@ jobs:
                 <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-2">Events</label>
                 <div className="flex flex-wrap gap-2">
                   {WEBHOOK_EVENTS.map((ev) => (
-                    <button key={ev} type="button" onClick={() => toggleWebhookEvent(ev)} className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                    <button key={ev} type="button" onClick={() => toggleWebhookEvent(ev)} className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                       webhookForm.events.includes(ev)
                         ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
                         : "border-black/10 dark:border-white/10 text-[#232323]/60 dark:text-white/60"
@@ -924,8 +925,8 @@ jobs:
               </div>
               {webhookError && <p className="text-sm text-red-600 dark:text-red-400">{webhookError}</p>}
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleSaveWebhook} disabled={savingWebhook} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60">{savingWebhook ? "Saving..." : editWebhookId ? "Update" : "Create"}</button>
-                <button type="button" onClick={resetWebhookForm} className="h-9 px-4 rounded-lg border border-border text-sm">Cancel</button>
+                <button type="button" onClick={handleSaveWebhook} disabled={savingWebhook} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-sm font-semibold disabled:opacity-60 cursor-pointer">{savingWebhook ? "Saving..." : editWebhookId ? "Update" : "Create"}</button>
+                <button type="button" onClick={resetWebhookForm} className="h-9 px-4 rounded-lg border border-border text-sm cursor-pointer">Cancel</button>
               </div>
             </div>
           )}
@@ -953,19 +954,19 @@ jobs:
                       <p className="text-xs text-[#232323]/40 dark:text-white/40 mt-0.5">{(wh.events || []).join(", ") || "No events selected"}</p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button type="button" onClick={() => handleTestWebhook(wh.id)} disabled={testingWebhookId === wh.id} className="h-8 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium inline-flex items-center gap-1 disabled:opacity-60">
+                      <button type="button" onClick={() => handleTestWebhook(wh.id)} disabled={testingWebhookId === wh.id} className="h-8 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium inline-flex items-center gap-1 disabled:opacity-60 cursor-pointer">
                         {testingWebhookId === wh.id ? "..." : "Test"}
                       </button>
-                      <button type="button" onClick={() => { setEditWebhookId(wh.id); setWebhookForm({ name: wh.name, url: wh.url, secret: wh.secret || "", events: wh.events || [], enabled: wh.enabled }); setShowWebhookForm(true); }} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
+                      <button type="button" onClick={() => { setEditWebhookId(wh.id); setWebhookForm({ name: wh.name, url: wh.url, secret: wh.secret || "", events: wh.events || [], enabled: wh.enabled }); setShowWebhookForm(true); }} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer">
                         <Pencil className="h-3 w-3" />
                       </button>
                       {deleteWebhookConfirm === wh.id ? (
                         <>
-                          <button type="button" onClick={() => handleDeleteWebhook(wh.id)} className="h-7 px-2 rounded-lg bg-red-500 text-white text-xs font-semibold">Confirm</button>
-                          <button type="button" onClick={() => setDeleteWebhookConfirm(null)} className="h-7 px-2 rounded-lg border border-border text-xs">Cancel</button>
+                          <button type="button" onClick={() => handleDeleteWebhook(wh.id)} className="h-7 px-2 rounded-lg bg-red-500 text-white text-xs font-semibold cursor-pointer">Confirm</button>
+                          <button type="button" onClick={() => setDeleteWebhookConfirm(null)} className="h-7 px-2 rounded-lg border border-border text-xs cursor-pointer">Cancel</button>
                         </>
                       ) : (
-                        <button type="button" onClick={() => setDeleteWebhookConfirm(wh.id)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500">
+                        <button type="button" onClick={() => setDeleteWebhookConfirm(wh.id)} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 cursor-pointer">
                           <Trash2 className="h-3 w-3" />
                         </button>
                       )}
@@ -986,21 +987,21 @@ jobs:
   );
 
   const renderTeam = () => (
-    <SettingsSectionCard title="Team Preferences" description="Configure shared workspace behavior for your organization">
+    <SettingsSectionCard title={t("settings.team.title")} description={t("settings.team.subtitle")}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4">
-          <p className="font-medium text-[#232323] dark:text-white">Default Member Role</p>
+          <p className="font-medium text-[#232323] dark:text-white">{t("settings.team.defaultRole")}</p>
           <select className="mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
-            <option>Viewer</option>
-            <option>Tester</option>
-            <option>Admin</option>
+            <option>{t("settings.team.role.viewer")}</option>
+            <option>{t("settings.team.role.tester")}</option>
+            <option>{t("settings.team.role.admin")}</option>
           </select>
         </div>
         <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4">
-          <p className="font-medium text-[#232323] dark:text-white">Invite Policy</p>
+          <p className="font-medium text-[#232323] dark:text-white">{t("settings.team.invitePolicy")}</p>
           <select className="mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
-            <option>Owners only</option>
-            <option>Owners and Admins</option>
+            <option>{t("settings.team.policy.ownersOnly")}</option>
+            <option>{t("settings.team.policy.ownersAdmins")}</option>
           </select>
         </div>
       </div>
@@ -1026,10 +1027,10 @@ jobs:
   );*/}
   const renderSecurity = () => (
     <div className="flex-1">
-    <SettingsSectionCard title="Security" description="Harden organization access and authentication rules">
+    <SettingsSectionCard title={t("settings.security.title")} description={t("settings.security.subtitle")}>
       <div className="space-y-3">
         <label className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] px-4 py-3 flex items-center justify-between gap-3">
-          <span className="text-sm text-[#232323] dark:text-white">Require email verification for invites</span>
+          <span className="text-sm text-[#232323] dark:text-white">{t("settings.security.requireEmailVerification")}</span>
           <input type="checkbox" defaultChecked className="h-4 w-4" />
         </label>
         {/*<label className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] px-4 py-3 flex items-center justify-between gap-3">*/}
@@ -1039,15 +1040,15 @@ jobs:
         <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] px-4 py-3">
           <p className="text-sm font-medium text-[#232323] dark:text-white">Multi-factor authentication (MFA)</p>
           <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-1">
-            MFA is configured per user account from the Profile page.
+            {t("settings.security.mfaConfiguredInProfile")}
           </p>
           <button
             type="button"
             onClick={() => navigate(`/dashboard/${orgSlug}/profile`)}
-            className="mt-3 h-9 px-3 rounded-lg border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white inline-flex items-center gap-1.5"
+            className="mt-3 h-9 px-3 rounded-lg border border-black/10 dark:border-white/10 text-sm font-medium text-[#232323] dark:text-white inline-flex items-center gap-1.5 cursor-pointer"
           >
             <LinkIcon className="w-4 h-4" />
-            Go to Profile MFA Settings
+            {t("settings.security.goToProfileMfa")}
           </button>
         </div>
       </div>
@@ -1064,8 +1065,8 @@ jobs:
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}`)}
-              className="h-9 w-9 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center"
-              title="Back"
+              className="h-9 w-9 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center cursor-pointer"
+              title={t("common.back")}
             >
               <ArrowLeft className="w-4 h-4 text-[#232323]/75 dark:text-white/75" />
             </button>
@@ -1074,9 +1075,9 @@ jobs:
                 <span className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 inline-flex items-center justify-center">
                   <SettingsIcon className="h-4 w-4" />
                 </span>
-                Settings
+                {t("settings.title")}
               </h2>
-              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">Configure integrations, manage team settings, and customize your workspace</p>
+              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">{t("settings.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -1092,14 +1093,14 @@ jobs:
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`h-9 rounded-lg text-sm inline-flex items-center justify-center gap-1.5 transition-all ${
+                className={`h-9 rounded-lg text-sm inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   active
                     ? "bg-blue-500 text-white shadow-sm"
                     : "text-[#232323]/75 dark:text-white/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden md:inline">{tab.label}</span>
+                <span className="hidden md:inline">{t(tab.labelKey)}</span>
               </button>
             );
           })}
@@ -1119,11 +1120,11 @@ jobs:
               <div className="mx-auto mb-6 h-20 w-20 rounded-2xl bg-gradient-to-br from-[#FFAA00]/20 to-[#FFAA00]/5 border border-[#FFAA00]/20 flex items-center justify-center shadow-lg shadow-[#FFAA00]/10">
                 <Plug className="h-10 w-10 text-[#FFAA00]" />
               </div>
-              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">Integrations</h2>
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">{t("settings.integrations.title")}</h2>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#FFAA00]/30 bg-[#FFAA00]/10 text-[#FFAA00] text-sm font-semibold mb-5">
-                <Rocket className="h-4 w-4" /> Coming Soon <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                <Rocket className="h-4 w-4" /> {t("settings.comingSoon")} <Sparkles className="h-3.5 w-3.5 animate-pulse" />
               </div>
-              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">Connect your testing platform with JIRA, Jenkins, GitHub Actions, and more.</p>
+              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">{t("settings.integrations.desc")}</p>
             </div>
           </div>
         ) : null}
@@ -1136,11 +1137,11 @@ jobs:
               <div className="mx-auto mb-6 h-20 w-20 rounded-2xl bg-gradient-to-br from-[#FFAA00]/20 to-[#FFAA00]/5 border border-[#FFAA00]/20 flex items-center justify-center shadow-lg shadow-[#FFAA00]/10">
                 <Key className="h-10 w-10 text-[#FFAA00]" />
               </div>
-              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">API Keys</h2>
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">{t("settings.apiKeys.title")}</h2>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#FFAA00]/30 bg-[#FFAA00]/10 text-[#FFAA00] text-sm font-semibold mb-5">
-                <Rocket className="h-4 w-4" /> Coming Soon <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                <Rocket className="h-4 w-4" /> {t("settings.comingSoon")} <Sparkles className="h-3.5 w-3.5 animate-pulse" />
               </div>
-              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">Create and manage API keys for external integrations and automation.</p>
+              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">{t("settings.apiKeys.desc")}</p>
             </div>
           </div>
         ) : null}
@@ -1153,11 +1154,11 @@ jobs:
               <div className="mx-auto mb-6 h-20 w-20 rounded-2xl bg-gradient-to-br from-[#FFAA00]/20 to-[#FFAA00]/5 border border-[#FFAA00]/20 flex items-center justify-center shadow-lg shadow-[#FFAA00]/10">
                 <Webhook className="h-10 w-10 text-[#FFAA00]" />
               </div>
-              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">Webhooks</h2>
+              <h2 className="text-2xl font-bold text-[#232323] dark:text-white mb-2">{t("settings.webhooks.title")}</h2>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#FFAA00]/30 bg-[#FFAA00]/10 text-[#FFAA00] text-sm font-semibold mb-5">
-                <Rocket className="h-4 w-4" /> Coming Soon <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                <Rocket className="h-4 w-4" /> {t("settings.comingSoon")} <Sparkles className="h-3.5 w-3.5 animate-pulse" />
               </div>
-              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">Send real-time HTTP notifications to external systems when events occur.</p>
+              <p className="text-[#232323]/60 dark:text-white/60 text-base leading-relaxed max-w-md mx-auto">{t("settings.webhooks.desc")}</p>
             </div>
           </div>
         ) : null}

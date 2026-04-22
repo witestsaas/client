@@ -128,7 +128,7 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '', ste
       {/* Title bar */}
       <div className="flex-shrink-0 px-4 py-2 bg-[#0d0b1f]/80 dark:bg-[#1a1a2e]/80 border-b border-white/[0.06] flex items-center justify-between">
         <span className="text-xs font-medium text-white/60">{title}</span>
-        <button onClick={handleDownload} className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white/70 transition-colors" title="Download video">
+        <button onClick={handleDownload} className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white/70 transition-colors cursor-pointer" title="Download video">
           <Download className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -172,10 +172,10 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '', ste
         {/* Buttons row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <button onClick={handlePlayPause} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors">
+            <button onClick={handlePlayPause} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors cursor-pointer">
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
-            <button onClick={handleMuteToggle} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors">
+            <button onClick={handleMuteToggle} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors cursor-pointer">
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
             <span className="text-[10px] text-white/40 ml-1 font-mono tabular-nums">
@@ -183,11 +183,11 @@ export function VideoPlayer({ src, title = 'Test Recording', className = '', ste
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button onClick={cycleSpeed} className="h-6 px-2 rounded bg-white/[0.08] hover:bg-white/15 text-[10px] font-bold text-white/70 hover:text-[#FFAA00] transition-colors inline-flex items-center gap-1" title="Playback speed">
+            <button onClick={cycleSpeed} className="h-6 px-2 rounded bg-white/[0.08] hover:bg-white/15 text-[10px] font-bold text-white/70 hover:text-[#FFAA00] transition-colors inline-flex items-center gap-1 cursor-pointer" title="Playback speed">
               <Gauge className="h-3 w-3" />
               {playbackRate}x
             </button>
-            <button onClick={handleFullscreen} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors">
+            <button onClick={handleFullscreen} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors cursor-pointer ">
               <Maximize2 className="h-4 w-4" />
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 async function parseJson(response) {
   let data = {};
@@ -13,10 +14,7 @@ async function parseJson(response) {
   }
   if (!response.ok) {
     const fallback = `Request failed (${response.status}${response.statusText ? ` ${response.statusText}` : ''})`;
-    const error = new Error(data?.message || data?.error || fallback);
-    error.status = response.status;
-    error.payload = data;
-    throw error;
+    throw createResponseError(response, data, fallback);
   }
   return data;
 }

@@ -52,7 +52,7 @@ export default function JoinOrganization() {
           <button
             type="button"
             onClick={handleDeclineInvite}
-            className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
+            className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
           >
             Decline
           </button>
@@ -60,7 +60,7 @@ export default function JoinOrganization() {
             type="button"
             onClick={handleAcceptInvite}
             disabled={loading}
-            className="rounded-md bg-[#FFAA00] px-4 py-2 text-sm font-semibold text-[#232323] hover:bg-[#FFAA00]/90 disabled:opacity-60"
+            className="rounded-md bg-[#FFAA00] px-4 py-2 text-sm font-semibold text-[#232323] hover:bg-[#FFAA00]/90 disabled:opacity-60 cursor-pointer"
           >
             {loading ? "Joining..." : "Accept & Join"}
           </button>

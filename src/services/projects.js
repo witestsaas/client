@@ -1,11 +1,12 @@
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.message || data?.error || 'Request failed');
+    throw createResponseError(response, data, 'Project request failed.');
   }
   return data;
 }

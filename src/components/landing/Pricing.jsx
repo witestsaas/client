@@ -169,7 +169,7 @@ export default function Pricing() {
           >
             <button
               onClick={() => setAnnual(false)}
-              className="relative px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+              className="relative px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 "
               style={{
                 background: !annual ? '#F29F05' : 'transparent',
                 color: !annual ? '#000' : c.textMuted,
@@ -179,7 +179,7 @@ export default function Pricing() {
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className="relative flex items-center gap-2 px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+              className="relative flex items-center gap-2 px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer"
               style={{
                 background: annual ? '#F29F05' : 'transparent',
                 color: annual ? '#000' : c.textMuted,

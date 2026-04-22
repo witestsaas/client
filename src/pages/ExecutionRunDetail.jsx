@@ -327,7 +327,7 @@ export default function ExecutionRunDetail() {
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}/execution/runs`)}
-              className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center"
+              className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/70 dark:text-white/70 hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer transition-colors duration-200"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -340,7 +340,7 @@ export default function ExecutionRunDetail() {
                 type="button"
                 onClick={handleStopRun}
                 disabled={saving}
-                className="h-9 px-4 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-400/30 text-red-600 dark:text-red-400 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors duration-200"
+                className="h-9 px-4 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-400/30 text-red-600 dark:text-red-400 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors duration-200 cursor-pointer"
               >
                 <StopCircle className="h-4 w-4" />
                 Stop Run
@@ -356,7 +356,7 @@ export default function ExecutionRunDetail() {
                   return next;
                 });
               }}
-              className="relative h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold inline-flex items-center gap-1.5"
+              className="relative h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-200"
             >
               <MessageCircle className="h-4 w-4" />
               Activity
@@ -424,7 +424,7 @@ export default function ExecutionRunDetail() {
                 type="button"
                 onClick={() => { setRerunParallel(1); setRerunModalOpen(true); }}
                 disabled={saving || rerunning}
-                className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-200"
               >
                 <RefreshCw className="h-4 w-4" />
                 Re-run All
@@ -449,7 +449,7 @@ export default function ExecutionRunDetail() {
                           setSelectedResultId(String(result.id));
                           setDetailsModalOpen(true);
                         }}
-                        className="w-full text-left rounded-lg border border-black/10 dark:border-white/10 bg-background/80 px-3 py-2.5 hover:border-black/20 dark:hover:border-white/20 transition"
+                        className="w-full text-left rounded-lg border border-black/10 dark:border-white/10 bg-background/80 px-3 py-2.5 hover:border-black/20 dark:hover:border-white/20 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
@@ -498,8 +498,8 @@ export default function ExecutionRunDetail() {
               </div>
 
               <div className="mt-5 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => setRerunModalOpen(false)} disabled={rerunning} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">Cancel</button>
-                <button type="button" onClick={() => handleRerunAll(rerunParallel)} disabled={rerunning} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60">
+                <button type="button" onClick={() => setRerunModalOpen(false)} disabled={rerunning} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60 cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => handleRerunAll(rerunParallel)} disabled={rerunning} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer">
                   {rerunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Re-run
                 </button>
@@ -551,7 +551,7 @@ export default function ExecutionRunDetail() {
                       return next;
                     });
                   }}
-                  className="h-8 w-8 rounded-md border border-black/10 dark:border-white/15 inline-flex items-center justify-center"
+                  className="h-8 w-8 rounded-md border border-black/10 dark:border-white/15 inline-flex items-center justify-center cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -615,7 +615,7 @@ export default function ExecutionRunDetail() {
                     type="button"
                     onClick={handleSendActivity}
                     disabled={activitySending || !activityDraft.trim()}
-                    className="h-10 px-3 rounded-lg bg-[#FFAA00] text-[#232323] font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                    className="h-10 px-3 rounded-lg bg-[#FFAA00] text-[#232323] font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                   >
                     {activitySending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     Send

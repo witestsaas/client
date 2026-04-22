@@ -127,13 +127,13 @@ export default function VideoDemo() {
               >
                 <button
                   onClick={handlePlay}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
                 >
                   <Pause className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleFullscreen}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
                 >
                   <Maximize2 className="w-4 h-4" />
                 </button>

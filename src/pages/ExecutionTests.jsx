@@ -6,16 +6,20 @@ import DashboardLayout from "../components/DashboardLayout";
 import {
   createTestProject,
   cloneProject,
+  createProjectEnvironment,
   deleteTestProject,
   fetchTestProjects,
   updateTestProject,
 } from "../services/testManagement";
+import { toDisplayErrorMessage } from "../utils/api-error";
 
 const STATUS_OPTIONS = ["Draft", "Ready", "Passed", "Failed"];
 
 const INITIAL_FORM = {
   name: "",
   description: "",
+  environmentName: "",
+  environmentBaseUrl: "",
 };
 
 export default function ExecutionTests() {
@@ -34,9 +38,11 @@ export default function ExecutionTests() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [modalError, setModalError] = useState("");
   const [importSourceId, setImportSourceId] = useState("");
   const [importMode, setImportMode] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const modalStorageKey = useMemo(() => `execution-tests:modal:${orgSlug || "no-org"}`, [orgSlug]);
 
   async function loadProjects() {
     if (!orgSlug) return;
@@ -50,7 +56,7 @@ export default function ExecutionTests() {
     } catch (err) {
       setProjects([]);
       setLocalProjects([]);
-      setError(err?.message || "Failed to load projects");
+      setError(toDisplayErrorMessage(err?.message, "Failed to load projects"));
     } finally {
       setLoading(false);
     }
@@ -99,6 +105,7 @@ export default function ExecutionTests() {
     const onOpenCreate = () => {
       setEditingProjectId(null);
       setForm(INITIAL_FORM);
+      setModalError("");
       setModalMode("create");
     };
 
@@ -137,6 +144,7 @@ export default function ExecutionTests() {
   const openCreateModal = () => {
     setEditingProjectId(null);
     setForm(INITIAL_FORM);
+    setModalError("");
     setImportMode(false);
     setImportSourceId("");
     setModalMode("create");
@@ -147,7 +155,10 @@ export default function ExecutionTests() {
     setForm({
       name: project.name || "",
       description: project.description || "",
+      environmentName: "",
+      environmentBaseUrl: "",
     });
+    setModalError("");
     setModalMode("edit");
   };
 
@@ -155,26 +166,90 @@ export default function ExecutionTests() {
     setModalMode(null);
     setEditingProjectId(null);
     setSubmitting(false);
+    setModalError("");
     setForm(INITIAL_FORM);
     setImportMode(false);
     setImportSourceId("");
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem(modalStorageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.form && typeof saved.form === "object") {
+        setForm((prev) => ({ ...prev, ...saved.form }));
+      }
+      if (saved?.modalMode === "create" || saved?.modalMode === "edit") {
+        setModalMode(saved.modalMode);
+      }
+      if (saved?.editingProjectId) {
+        setEditingProjectId(saved.editingProjectId);
+      }
+      if (saved?.projectToDelete) {
+        setProjectToDelete(saved.projectToDelete);
+      }
+    } catch {
+      // ignore invalid persisted state
+    }
+  }, [modalStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!modalMode && !projectToDelete) {
+      window.sessionStorage.removeItem(modalStorageKey);
+      return;
+    }
+    const payload = {
+      modalMode,
+      editingProjectId,
+      projectToDelete,
+      form,
+    };
+    window.sessionStorage.setItem(modalStorageKey, JSON.stringify(payload));
+  }, [modalStorageKey, modalMode, editingProjectId, projectToDelete, form]);
+
   async function handleSubmit() {
     if (!orgSlug || !form.name.trim()) return;
+    if (modalMode === "create") {
+      if (!form.environmentName.trim() || !form.environmentBaseUrl.trim()) {
+        setModalError("Environment name and Base URL are required.");
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
+      setModalError("");
+      let createdProject = null;
       if (modalMode === "create" && importMode && importSourceId) {
-        await cloneProject(orgSlug, importSourceId, { name: form.name.trim() });
+        createdProject = await cloneProject(orgSlug, importSourceId, { name: form.name.trim() });
       } else if (modalMode === "create") {
-        await createTestProject(orgSlug, form);
+        createdProject = await createTestProject(orgSlug, {
+          name: form.name,
+          description: form.description,
+        });
+
+        const newProjectId = createdProject?.id;
+        if (newProjectId) {
+          await createProjectEnvironment(orgSlug, newProjectId, {
+            name: form.environmentName.trim(),
+            baseUrl: form.environmentBaseUrl.trim(),
+            slug: form.environmentName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+            isDefault: true,
+          });
+        }
       } else if (modalMode === "edit" && editingProjectId) {
-        await updateTestProject(orgSlug, editingProjectId, form);
+        await updateTestProject(orgSlug, editingProjectId, {
+          name: form.name,
+          description: form.description,
+        });
       }
       closeModal();
       await loadProjects();
     } catch (err) {
-      setError(err?.message || "Project action failed");
+      setModalError(toDisplayErrorMessage(err?.message, "Project action failed"));
       setSubmitting(false);
     }
   }
@@ -194,7 +269,7 @@ export default function ExecutionTests() {
       setProjectToDelete(null);
     } catch (err) {
       setLocalProjects(previous);
-      setError(err?.message || "Failed to delete project");
+      setError(toDisplayErrorMessage(err?.message, "Failed to delete project"));
     } finally {
       setDeletingId(null);
     }
@@ -222,7 +297,7 @@ export default function ExecutionTests() {
           <button
             type="button"
             onClick={loadProjects}
-            className="h-8 px-4 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] text-xs font-medium text-[#232323]"
+            className="h-8 px-4 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] text-xs font-medium text-[#232323] "
           >
             Retry
           </button>
@@ -249,7 +324,7 @@ export default function ExecutionTests() {
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex items-center gap-1 h-8 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium"
+              className="inline-flex items-center gap-1 h-8 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               Create Project
@@ -268,11 +343,11 @@ export default function ExecutionTests() {
                 />
               </div>
 
-              <div className="relative" onClick={(event) => event.stopPropagation()}>
+              {/*<div className="relative" onClick={(event) => event.stopPropagation()}>
                 <button
                   type="button"
                   onClick={() => setShowStatusMenu((prev) => !prev)}
-                  className="h-9 px-3 rounded-lg border border-black/15 dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.04)] inline-flex items-center gap-1 text-xs text-[#232323]/75 dark:text-white/75"
+                  className="h-9 px-3 rounded-lg border border-black/15 dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.04)] inline-flex items-center gap-1 text-xs text-[#232323]/75 dark:text-white/75 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                 >
                   <Filter className="w-3.5 h-3.5" />
                   Status
@@ -284,7 +359,7 @@ export default function ExecutionTests() {
                         key={status}
                         type="button"
                         onClick={() => toggleStatus(status)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -297,13 +372,18 @@ export default function ExecutionTests() {
                     ))}
                   </div>
                 ) : null}
-              </div>
+              </div>/* For future status filtering implementation */}
             </div>
           </div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto w-full px-6 py-4">
-          {error ? <div className="mb-4 text-sm text-red-500">{error}</div> : null}
+          {error ? (
+            <div className="mb-4 rounded-lg border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-4 py-3 inline-flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
           {filtered.length === 0 ? (
             <div className="text-center py-16 space-y-3 border-t dark:border-slate-800">
               <Folder className="w-12 h-12 mx-auto text-gray-300 dark:text-slate-700" />
@@ -319,7 +399,7 @@ export default function ExecutionTests() {
                   key={project.id}
                   type="button"
                   onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests/${project.id}`)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 focus:outline-none flex items-center group"
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 focus:outline-none flex items-center group cursor-pointer"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -347,7 +427,7 @@ export default function ExecutionTests() {
                     <button
                       type="button"
                       onClick={() => openEditModal(project)}
-                      className="h-7 w-7 p-1 rounded-lg text-gray-500 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                      className="h-7 w-7 p-1 rounded-lg text-gray-500 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </button>
@@ -355,7 +435,7 @@ export default function ExecutionTests() {
                       type="button"
                       disabled={deletingId === project.id}
                       onClick={() => setProjectToDelete(project)}
-                      className={`h-7 w-7 p-1 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 ${
+                      className={`h-7 w-7 p-1 rounded-lg transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer ${
                         deletingId === project.id
                           ? "text-gray-400 dark:text-slate-600 cursor-not-allowed"
                           : "text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
@@ -403,6 +483,28 @@ export default function ExecutionTests() {
                 />
               </div>
               {modalMode === "create" ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Environment Name</label>
+                    <input
+                      value={form.environmentName}
+                      onChange={(e) => setForm((prev) => ({ ...prev, environmentName: e.target.value }))}
+                      placeholder="Staging"
+                      className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Environment Base URL</label>
+                    <input
+                      value={form.environmentBaseUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, environmentBaseUrl: e.target.value }))}
+                      placeholder="https://staging.example.com"
+                      className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+                    />
+                  </div>
+                </>
+              ) : null}
+              {modalMode === "create" ? (
                 <div className="space-y-2">
                   {/*<label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -435,12 +537,18 @@ export default function ExecutionTests() {
                   ) : null}
                 </div>
               ) : null}
+              {modalError ? (
+                <div className="rounded-lg border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{modalError}</span>
+                </div>
+              ) : null}
             </div>
             <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
               <button
                 type="button"
                 onClick={closeModal}
-                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] cursor-pointer"
               >
                 Cancel
               </button>
@@ -448,7 +556,7 @@ export default function ExecutionTests() {
                 type="button"
                 disabled={submitting || !form.name.trim()}
                 onClick={handleSubmit}
-                className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] disabled:opacity-60 text-xs font-semibold text-[#232323]"
+                className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] disabled:opacity-60 text-xs font-semibold text-[#232323] cursor-pointer"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 {submitting ? " Saving..." : "Save"}
@@ -480,7 +588,7 @@ export default function ExecutionTests() {
                 type="button"
                 onClick={() => setProjectToDelete(null)}
                 disabled={deletingId === projectToDelete.id}
-                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-60"
+                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-60 cursor-pointer"
               >
                 Cancel
               </button>
@@ -488,7 +596,7 @@ export default function ExecutionTests() {
                 type="button"
                 disabled={deletingId === projectToDelete.id}
                 onClick={confirmDeleteProject}
-                className="h-8 px-3 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-semibold text-white inline-flex items-center gap-1"
+                className="h-8 px-3 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-semibold text-white inline-flex items-center gap-1 cursor-pointer"
               >
                 {deletingId === projectToDelete.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 {deletingId === projectToDelete.id ? "Deleting..." : "Delete Project"}

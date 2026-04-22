@@ -6,8 +6,10 @@ import {
   CheckCircle,
   FileText,
   Folder,
+  FolderPlus,
   Loader2,
   PlayCircle,
+  Plus,
   TrendingUp,
 } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
@@ -15,17 +17,17 @@ import { fetchProjectTree, fetchTestProjects } from "../services/testManagement"
 import { listPlans, listRuns } from "../services/executionReporting";
 import { useLanguage } from "../utils/language-context";
 
-function formatTimeAgo(dateString) {
+function formatTimeAgo(dateString, t) {
   if (!dateString || dateString === "-") return "-";
   const date = new Date(dateString);
   const now = new Date();
   const diffMin = Math.floor((now - date) / 60000);
-  if (diffMin < 1) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return t("dashboard.time.justNow");
+  if (diffMin < 60) return `${diffMin}${t("dashboard.time.mAgo")}`;
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}${t("dashboard.time.hAgo")}`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  return `${diffDays}${t("dashboard.time.dAgo")}`;
 }
 
 function normalizeStatus(value) {
@@ -181,7 +183,7 @@ export default function DashboardPage() {
           }
         }
       } catch (e) {
-        if (!cancelled) setError(e.message || "Failed to load dashboard");
+        if (!cancelled) setError(e.message || t("dashboard.failedLoad"));
       } finally {
         if (!cancelled) {
           isInitialLoad = false;
@@ -323,7 +325,7 @@ export default function DashboardPage() {
       const successRate = executed > 0 ? Math.round((passed / executed) * 100) : 0;
       return {
         id: projectId,
-        name: project?.name || "Project",
+        name: project?.name || t("dashboard.projectFallback"),
         runCount,
         passed,
         failed,
@@ -407,11 +409,29 @@ export default function DashboardPage() {
         {loading && projects.length === 0 ? (
           <div className="rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 bg-card/95 p-6 text-sm text-[#0f0f1a]/60 dark:text-white/60 inline-flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading organization dashboard...
+            {t("dashboard.loadingOrg")}
           </div>
         ) : null}
 
-        {!loading || projects.length > 0 ? (
+        {!loading && projects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-center justify-center mb-5">
+              <FolderPlus className="w-8 h-8 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">{t("dashboard.noProjects")}</h2>
+            <p className="text-sm text-muted-foreground max-w-md text-center mb-6">{t("dashboard.noProjectsDesc")}</p>
+            <button
+              type="button"
+              onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+            >
+              <Plus className="w-4 h-4" />
+              {t("dashboard.createFirstProject")}
+            </button>
+          </div>
+        ) : null}
+
+        {projects.length > 0 ? (
           <div className="flex flex-col gap-3">
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
               {cards.map((card) => (
@@ -427,9 +447,9 @@ export default function DashboardPage() {
                     {t("dashboard.orgVelocity")}
                   </h3>
                   <div className="text-right">
-                    <p className="text-[11px] text-[#0f0f1a]/60 dark:text-white/70">Latest window</p>
+                    <p className="text-[11px] text-[#0f0f1a]/60 dark:text-white/70">{t("dashboard.latestWindow")}</p>
                     <p className="text-xs font-semibold text-[#0f0f1a]/80 dark:text-white/90">
-                      {liveTimelineGraph.latestRuns} runs • {liveTimelineGraph.latestSuccessRate}% success
+                      {liveTimelineGraph.latestRuns} {t("common.runs")} • {liveTimelineGraph.latestSuccessRate}% {t("dashboard.success")}
                     </p>
                   </div>
                 </div>
@@ -455,11 +475,11 @@ export default function DashboardPage() {
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#0f0f1a]/75 dark:text-white/80">
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
                       <span className="w-2 h-2 rounded-full bg-[#F29F05] shrink-0" />
-                      Runs volume
+                      {t("dashboard.runsVolume")}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/50 px-2 py-1 whitespace-nowrap">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      Success ratio
+                      {t("dashboard.successRatio")}
                     </span>
                   </div>
                 </div>
@@ -481,15 +501,15 @@ export default function DashboardPage() {
                         key={run.id}
                         type="button"
                         onClick={() => navigate(`/dashboard/${orgSlug}/execution/runs/${run.id}`)}
-                        className="w-full text-left flex items-center justify-between p-2 rounded-xl bg-background/50 hover:bg-[#0f0f1a]/5 dark:hover:bg-white/5 transition-all duration-200"
+                        className="w-full text-left flex items-center justify-between p-2 rounded-xl bg-background/50 hover:bg-[#0f0f1a]/5 dark:hover:bg-white/5 transition-all duration-200 cursor-pointer"
                       >
                         <div className="min-w-0">
-                          <p className="text-xs font-medium truncate">{run.plan?.name || run.project?.name || run.id?.slice(0, 12) || "Run"}</p>
+                          <p className="text-xs font-medium truncate">{run.plan?.name || run.project?.name || run.id?.slice(0, 12) || t("dashboard.runFallback")}</p>
                           <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadgeClass(run.status)}`}>
-                            {run.status || "Unknown"}
+                            {run.status || t("common.unknown")}
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#0f0f1a]/50 dark:text-white/50">{formatTimeAgo(run.updatedAt)}</p>
+                        <p className="text-[11px] text-[#0f0f1a]/50 dark:text-white/50">{formatTimeAgo(run.updatedAt, t)}</p>
                       </button>
                     ))
                   )}

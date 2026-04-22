@@ -74,13 +74,14 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 to="/signin"
-                className="px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200"
+                className="px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer"
                 style={{ color: c.textMuted }}
               >
                 Sign in
               </Link>
-              <Link to="/signup">
-                <button className="text-sm font-semibold bg-[#F29F05] hover:bg-[#e5a22e] text-black px-5 py-2 rounded-lg transition-colors duration-200">
+              <Link 
+              to="/signup">
+                <button className="text-sm font-semibold bg-[#F29F05] hover:bg-[#e5a22e] text-black px-5 py-2 rounded-lg transition-colors duration-200 cursor-pointer">
                   Get started
                 </button>
               </Link>
@@ -144,10 +145,10 @@ export default function Navbar() {
               </a>
             ))}
             <div className="flex flex-col gap-2 pt-3 mt-2" style={{ borderTop: `1px solid ${c.borderSm}` }}>
-              <Link to="/signin" className="text-sm py-2.5 text-center rounded-lg" style={{ color: c.textMuted, border: `1px solid ${c.ghostBorder}` }}>
+              <Link to="/signin" className="text-sm py-2.5 text-center rounded-lg cursor-pointer" style={{ color: c.textMuted, border: `1px solid ${c.ghostBorder}` }}>
                 Sign in
               </Link>
-              <Link to="/signup" className="text-sm font-semibold bg-[#F29F05] text-black py-2.5 rounded-lg text-center">
+              <Link to="/signup" className="text-sm font-semibold bg-[#F29F05] text-black py-2.5 rounded-lg text-center cursor-pointer">
                 Get started
               </Link>
             </div>

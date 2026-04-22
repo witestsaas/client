@@ -13,15 +13,18 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
+  Search,
   Settings,
   Sun,
   UserCircle2,
+  UserPlus,
 } from "lucide-react";
 import { NAV_SECTIONS } from "./dashboardNav";
 import { useTheme } from "../utils/theme-context";
 import { useLanguage } from "../utils/language-context";
 import { useAuth } from "../auth/AuthProvider.jsx";
-import { fetchOrganization, fetchUserOrganizations } from "../services/organizations";
+import { createOrganization, fetchOrganization, fetchUserOrganizations, joinOrganizationByCode } from "../services/organizations";
 import logo from "../assets/logo_yellow.svg";
 
 
@@ -60,6 +63,12 @@ export default function Sidebar({ collapsed, onToggle }) {
     } catch { return []; }
   });
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switcherSearch, setSwitcherSearch] = useState("");
+  const [switcherView, setSwitcherView] = useState("list"); // "list" | "create" | "join"
+  const [newOrgName, setNewOrgName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [switcherLoading, setSwitcherLoading] = useState(false);
+  const [switcherError, setSwitcherError] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -88,10 +97,65 @@ export default function Sidebar({ collapsed, onToggle }) {
   }, [orgSlug]);
 
   // Close menus on route change
+  {/*
   useEffect(() => {
-    setSwitcherOpen(false);
+  setSwitcherOpen(false);
+  setProfileMenuOpen(false);
+  }, [location.pathname]);
+    */}
+  useEffect(() => {
+    closeSwitcher();
     setProfileMenuOpen(false);
   }, [location.pathname]);
+
+  const closeSwitcher = () => {
+    setSwitcherOpen(false);
+    setSwitcherSearch("");
+    setSwitcherView("list");
+    setNewOrgName("");
+    setJoinCode("");
+    setSwitcherError("");
+  };
+
+  const handleCreateOrg = async (e) => {
+    e.preventDefault();
+    if (!newOrgName.trim()) return;
+    setSwitcherLoading(true);
+    setSwitcherError("");
+    try {
+      const org = await createOrganization(newOrgName.trim());
+      const data = await fetchUserOrganizations();
+      const list = Array.isArray(data?.organizations) ? data.organizations : [];
+      setOrganizations(list);
+      try { localStorage.setItem("cached_orgs", JSON.stringify(list)); } catch {}
+      closeSwitcher();
+      navigate(`/dashboard/${org.id}`);
+    } catch (err) {
+      setSwitcherError(err.message || "Failed to create organization");
+    } finally {
+      setSwitcherLoading(false);
+    }
+  };
+
+  const handleJoinOrg = async (e) => {
+    e.preventDefault();
+    if (!joinCode.trim()) return;
+    setSwitcherLoading(true);
+    setSwitcherError("");
+    try {
+      const data = await joinOrganizationByCode(joinCode.trim());
+      const refreshed = await fetchUserOrganizations();
+      const list = Array.isArray(refreshed?.organizations) ? refreshed.organizations : [];
+      setOrganizations(list);
+      try { localStorage.setItem("cached_orgs", JSON.stringify(list)); } catch {}
+      closeSwitcher();
+      navigate(`/dashboard/${data.orgId || data.orgSlug}`);
+    } catch (err) {
+      setSwitcherError(err.message || "Failed to join organization");
+    } finally {
+      setSwitcherLoading(false);
+    }
+  };
 
   // Click-outside handlers
   useEffect(() => {
@@ -101,7 +165,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         setProfileMenuOpen(false);
       }
       if (switcherOpen && switcherRef.current && !switcherRef.current.contains(e.target)) {
-        setSwitcherOpen(false);
+        closeSwitcher();
       }
     }
     document.addEventListener("mousedown", onClickOutside);
@@ -149,10 +213,10 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   const handleSwitchOrganization = (targetOrgSlug) => {
     if (!targetOrgSlug || targetOrgSlug === orgSlug) {
-      setSwitcherOpen(false);
+      closeSwitcher();
       return;
     }
-    setSwitcherOpen(false);
+    closeSwitcher();
     navigate(buildSwitchPath(targetOrgSlug));
   };
 
@@ -161,7 +225,7 @@ export default function Sidebar({ collapsed, onToggle }) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left rounded-md px-3 py-2 text-[13px] inline-flex items-center gap-2.5 transition-colors ${
+      className={`w-full text-left rounded-md px-3 py-2 text-[13px] inline-flex items-center gap-2.5 transition-colors cursor-pointer ${
         danger
           ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
           : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -190,7 +254,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <button
             type="button"
             onClick={onToggle}
-            className="h-9 w-9 rounded-lg hover:bg-white/10 inline-flex items-center justify-center transition-colors"
+            className="h-9 w-9 rounded-lg hover:bg-white/10 inline-flex items-center justify-center transition-colors cursor-pointer"
             title="Expand sidebar"
           >
             <PanelLeftOpen className="h-[18px] w-[18px] text-[#FFAA00]" />
@@ -206,7 +270,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             <button
               type="button"
               onClick={onToggle}
-              className="h-7 w-7 rounded-md hover:bg-white/10 inline-flex items-center justify-center transition-colors"
+              className="h-7 w-7 rounded-md hover:bg-white/10 inline-flex items-center justify-center transition-colors cursor-pointer"
               title="Collapse sidebar"
             >
               <PanelLeftClose className="h-4 w-4 text-white/50" />
@@ -225,13 +289,14 @@ export default function Sidebar({ collapsed, onToggle }) {
         <div className="relative">
           <button
             type="button"
-            onClick={() => setSwitcherOpen((open) => !open)}
-            className={`w-full flex items-center rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-colors ${
+            //onClick={() => setSwitcherOpen((open) => !open)}
+            onClick={() => switcherOpen ? closeSwitcher() : setSwitcherOpen(true)}
+            className={`w-full flex items-center rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-colors cursor-pointer ${
               collapsed ? "justify-center h-10 w-full" : "justify-between px-2.5 py-2 gap-2"
             }`}
             title={collapsed ? (currentOrg?.name || orgSlug || "Select organization") : undefined}
           >
-            <div className={`h-7 w-7 shrink-0 rounded-md bg-[#FFAA00]/15 text-[#FFAA00] text-[11px] font-bold inline-flex items-center justify-center ${collapsed ? "" : ""}`}>
+            <div className="h-7 w-7 shrink-0 rounded-md bg-[#FFAA00]/15 text-[#FFAA00] text-[11px] font-bold inline-flex items-center justify-center">
               {getOrgInitials(currentOrg?.name || orgSlug)}
             </div>
             {!collapsed && (
@@ -243,44 +308,160 @@ export default function Sidebar({ collapsed, onToggle }) {
               </>
             )}
           </button>
-          {switcherOpen ? (
+
+          {switcherOpen && (
             <div
-              className={`absolute z-30 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 max-h-64 overflow-y-auto ${
-                collapsed ? "left-full ml-2 top-0 w-56" : "left-0 right-0 mt-1.5"
+              className={`absolute z-30 rounded-xl border border-white/10 bg-[#252340] shadow-2xl overflow-hidden ${
+                collapsed ? "left-full ml-2 top-0 w-64" : "left-0 right-0 mt-1.5"
               }`}
             >
-              {organizations.length === 0 ? (
-                <p className="px-3 py-3 text-xs text-white/50">No organizations</p>
-              ) : (
-                organizations.map((org) => {
-                  const active = org.id === orgSlug || org.slug === orgSlug;
-                  return (
+              {switcherView === "list" && (
+                <>
+                  {/* Search */}
+                  <div className="px-2 pt-2 pb-1">
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input
+                        value={switcherSearch}
+                        onChange={(e) => setSwitcherSearch(e.target.value)}
+                        placeholder={t("profile.searchOrgs")}
+                        autoFocus
+                        className="w-full h-8 rounded-lg border border-white/[0.08] bg-white/[0.04] pl-8 pr-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#FFAA00]/40 focus:ring-1 focus:ring-[#FFAA00]/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Org list */}
+                  <div className="px-1 py-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                    {(() => {
+                      const term = switcherSearch.trim().toLowerCase();
+                      const filtered = term
+                        ? organizations.filter((org) => org.name?.toLowerCase().includes(term))
+                        : organizations;
+                      if (filtered.length === 0) {
+                        return (
+                          <p className="px-3 py-3 text-xs text-white/40 text-center">
+                            {organizations.length === 0 ? t("profile.noOrgs") : t("profile.noMatch")}
+                          </p>
+                        );
+                      }
+                      return filtered.map((org) => {
+                        const active = org.id === orgSlug || org.slug === orgSlug;
+                        return (
+                          <button
+                            key={org.id}
+                            type="button"
+                            onClick={() => handleSwitchOrganization(org.id)}
+                            className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors cursor-pointer ${
+                              active
+                                ? "bg-[#FFAA00]/10 text-[#FFAA00]"
+                                : "text-white/80 hover:bg-white/[0.06] hover:text-white"
+                            }`}
+                          >
+                            <div className={`h-7 w-7 shrink-0 rounded-md text-[10px] font-bold inline-flex items-center justify-center ${active ? "bg-[#FFAA00]/20 text-[#FFAA00]" : "bg-white/10 text-white/70"}`}>
+                              {getOrgInitials(org.name)}
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="truncate font-medium text-[13px]">{org.name}</p>
+                              <p className={`truncate text-[11px] ${active ? "text-[#FFAA00]/60" : "text-white/40"}`}>
+                                {org.role}
+                              </p>
+                            </div>
+                            {active && <Check className="h-3.5 w-3.5 text-[#FFAA00] shrink-0" />}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="mx-2 border-t border-white/[0.08]" />
+
+                  {/* Create / Join actions */}
+                  <div className="px-1 py-1">
                     <button
-                      key={org.id}
                       type="button"
-                      onClick={() => handleSwitchOrganization(org.id)}
-                      className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                        active
-                          ? "bg-[#FFAA00] text-[#232323]"
-                          : "text-white/80 hover:bg-white/10 hover:text-white"
-                      }`}
+                      onClick={() => { setSwitcherView("create"); setSwitcherError(""); }}
+                      className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors cursor-pointer"
                     >
-                      <div className={`h-7 w-7 shrink-0 rounded-md text-[10px] font-bold inline-flex items-center justify-center ${active ? "bg-[#232323]/15 text-[#232323]" : "bg-white/10 text-white/70"}`}>
-                        {getOrgInitials(org.name)}
+                      <div className="h-7 w-7 shrink-0 rounded-md bg-emerald-500/15 text-emerald-400 inline-flex items-center justify-center">
+                        <Plus className="h-3.5 w-3.5" />
                       </div>
-                      <div className="min-w-0 text-left">
-                        <p className="truncate font-medium text-[13px]">{org.name}</p>
-                        <p className={`truncate text-[11px] ${active ? "text-[#232323]/70" : "text-white/40"}`}>
-                          {org.role}
-                        </p>
-                      </div>
-                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#232323]/60 shrink-0" />}
+                      <span className="font-medium">{t("profile.createOrg")}</span>
                     </button>
-                  );
-                })
+                    <button
+                      type="button"
+                      onClick={() => { setSwitcherView("join"); setSwitcherError(""); }}
+                      className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors cursor-pointer"
+                    >
+                      <div className="h-7 w-7 shrink-0 rounded-md bg-blue-500/15 text-blue-400 inline-flex items-center justify-center">
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="font-medium">{t("profile.joinOrg")}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {switcherView === "create" && (
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <button type="button" onClick={() => { setSwitcherView("list"); setSwitcherError(""); }} className="h-6 w-6 rounded-md hover:bg-white/10 inline-flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer">
+                      <ChevronDown className="h-3.5 w-3.5 rotate-90" />
+                    </button>
+                    <p className="text-[13px] font-semibold text-white">{t("profile.createOrg")}</p>
+                  </div>
+                  <form onSubmit={handleCreateOrg} className="space-y-2.5">
+                    <input
+                      value={newOrgName}
+                      onChange={(e) => setNewOrgName(e.target.value)}
+                      placeholder={t("profile.orgName")}
+                      autoFocus
+                      required
+                      className="w-full h-9 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#FFAA00]/40 focus:ring-1 focus:ring-[#FFAA00]/20"
+                    />
+                    {switcherError && <p className="text-xs text-red-400">{switcherError}</p>}
+                    <button
+                      type="submit"
+                      disabled={switcherLoading || !newOrgName.trim()}
+                      className="w-full h-9 rounded-lg bg-[#FFAA00] text-[#232323] text-sm font-semibold hover:bg-[#FFAA00]/90 disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      {switcherLoading ? t("profile.creating") : t("profile.createOrg")}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {switcherView === "join" && (
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <button type="button" onClick={() => { setSwitcherView("list"); setSwitcherError(""); }} className="h-6 w-6 rounded-md hover:bg-white/10 inline-flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer">
+                      <ChevronDown className="h-3.5 w-3.5 rotate-90" />
+                    </button>
+                    <p className="text-[13px] font-semibold text-white">{t("profile.joinOrg")}</p>
+                  </div>
+                  <form onSubmit={handleJoinOrg} className="space-y-2.5">
+                    <input
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                      placeholder={t("profile.inviteCode")}
+                      autoFocus
+                      required
+                      className="w-full h-9 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#FFAA00]/40 focus:ring-1 focus:ring-[#FFAA00]/20"
+                    />
+                    {switcherError && <p className="text-xs text-red-400">{switcherError}</p>}
+                    <button
+                      type="submit"
+                      disabled={switcherLoading || !joinCode.trim()}
+                      className="w-full h-9 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/15 disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      {switcherLoading ? t("profile.joining") : t("profile.joinOrg")}
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 
@@ -329,7 +510,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <button
             type="button"
             onClick={() => setProfileMenuOpen((open) => !open)}
-            className={`w-full flex items-center rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors ${collapsed ? "justify-center" : "gap-3"}`}
+            className={`ui-dropdown-trigger w-full flex items-center rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors cursor-pointer ${collapsed ? "justify-center" : "gap-3"}`}
           >
             <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-[#FFAA00]/60 to-[#FFAA00]/20 ring-2 ring-white/10 flex items-center justify-center text-xs font-semibold overflow-hidden">
               {user?.avatarUrl ? (
@@ -353,7 +534,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
           {profileMenuOpen ? (
             <div
-              className={`absolute z-40 rounded-xl border border-white/10 bg-[#252340] shadow-2xl ${
+              className={`ui-dropdown-panel absolute z-40 rounded-xl border border-white/10 bg-[#252340] shadow-2xl ${
                 collapsed
                   ? "bottom-0 left-full ml-2 w-60"
                   : "bottom-full left-0 right-0 mb-2"
@@ -397,11 +578,15 @@ export default function Sidebar({ collapsed, onToggle }) {
               {/* Section 3: Preferences */}
               <DropSection>
                 {/* Appearance — right-side flyout */}
-                <div className="relative">
+                <div
+                  className="relative"
+                  onMouseEnter={() => { setAppearanceOpen(true); setLanguageOpen(false); }}
+                  onMouseLeave={() => setAppearanceOpen(false)}
+                >
                   <button
                     type="button"
                     onClick={() => { setAppearanceOpen((v) => !v); setLanguageOpen(false); }}
-                    className="w-full text-left rounded-md px-3 py-2 text-[13px] text-white/80 hover:bg-white/10 hover:text-white inline-flex items-center justify-between transition-colors"
+                    className="ui-dropdown-item w-full text-left rounded-md px-3 py-2 text-[13px] text-white/80 hover:bg-white/10 hover:text-white inline-flex items-center justify-between transition-colors cursor-pointer"
                   >
                     <span className="inline-flex items-center gap-2.5">
                       {theme === "light" ? <Sun className="h-4 w-4 opacity-70" /> : <Moon className="h-4 w-4 opacity-70" />}
@@ -415,7 +600,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                     </span>
                   </button>
                   {appearanceOpen && (
-                    <div className="absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
+                    <div className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
                       {[
                         { key: "light", label: t("appearance.light"), icon: Sun },
                         { key: "dark", label: t("appearance.dark"), icon: Moon },
@@ -425,7 +610,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                           key={key}
                           type="button"
                           onClick={() => { setMode(key); setAppearanceOpen(false); }}
-                          className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                          className={`ui-dropdown-item w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors cursor-pointer ${
                             mode === key ? "text-[#FFAA00] bg-[#FFAA00]/10" : "text-white/70 hover:bg-white/10 hover:text-white"
                           }`}
                         >
@@ -439,11 +624,15 @@ export default function Sidebar({ collapsed, onToggle }) {
                 </div>
 
                 {/* Language — right-side flyout */}
-                <div className="relative">
+                <div
+                  className="relative"
+                  onMouseEnter={() => { setLanguageOpen(true); setAppearanceOpen(false); }}
+                  onMouseLeave={() => setLanguageOpen(false)}
+                >
                   <button
                     type="button"
                     onClick={() => { setLanguageOpen((v) => !v); setAppearanceOpen(false); }}
-                    className="w-full text-left rounded-md px-3 py-2 text-[13px] text-white/80 hover:bg-white/10 hover:text-white inline-flex items-center justify-between transition-colors"
+                    className="ui-dropdown-item w-full text-left rounded-md px-3 py-2 text-[13px] text-white/80 hover:bg-white/10 hover:text-white inline-flex items-center justify-between transition-colors cursor-pointer"
                   >
                     <span className="inline-flex items-center gap-2.5">
                       <Globe className="h-4 w-4 opacity-70" />
@@ -455,9 +644,9 @@ export default function Sidebar({ collapsed, onToggle }) {
                     </span>
                   </button>
                   {languageOpen && (
-                    <div className="absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
+                    <div className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
                       {[
-                        { key: "en", label: "English", flag: "🇪n" },
+                        { key: "en", label: "English", flag: "🇬🇧" },
                         { key: "fr", label: "Français", flag: "🇫🇷" },
                         { key: "es", label: "Español", flag: "🇪🇸" },
                       ].map(({ key, label, flag }) => (
@@ -465,7 +654,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                           key={key}
                           type="button"
                           onClick={() => { setLang(key); setLanguageOpen(false); }}
-                          className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                          className={`ui-dropdown-item w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors cursor-pointer ${
                             lang === key ? "text-[#FFAA00] bg-[#FFAA00]/10" : "text-white/70 hover:bg-white/10 hover:text-white"
                           }`}
                         >

@@ -195,7 +195,7 @@ export function NetworkLogsPanel({ logsUrl, logs: propLogs, className = '' }: Ne
         </div>
         <button
           onClick={handleDownload}
-          className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-accent-foreground"
+          className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-accent-foreground transition-colors cursor-pointer"
           title="Download logs"
         >
           <Download className="h-4 w-4" />

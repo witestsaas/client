@@ -124,7 +124,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
                 key={profile.id}
                 type="button"
                 onClick={() => toggleBrowser(testCaseId, profile.id, !active)}
-                className={`group relative flex items-center gap-2.5 p-3 rounded-lg border transition-all hover:shadow-sm ${
+                className={`group relative flex items-center gap-2.5 p-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${
                   active
                     ? "border-[#FFAA00] bg-[#FFAA00]/5 shadow-sm ring-1 ring-[#FFAA00]/20"
                     : "border-black/10 dark:border-white/15 hover:border-black/20 dark:hover:border-white/25 bg-background/90"
@@ -208,7 +208,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
               {step === "select" ? "Step 1 of 2: Select test cases" : "Select which browsers each test case should run on"}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
+          <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -300,19 +300,19 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
                 </div>
                 <p className="text-xs text-[#232323]/55 dark:text-white/55 mb-4">Save time by applying the same browser configuration to all selected test cases</p>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => applyBrowsersToAll(["desktop-chrome"])} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5">
+                  <button type="button" onClick={() => applyBrowsersToAll(["desktop-chrome"])} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
                     <Monitor className="h-3.5 w-3.5" /> Chrome Only
                   </button>
-                  <button type="button" onClick={() => applyBrowsersToAll(DESKTOP_PROFILES.map((p) => p.id))} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5">
+                  <button type="button" onClick={() => applyBrowsersToAll(DESKTOP_PROFILES.map((p) => p.id))} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
                     <Monitor className="h-3.5 w-3.5" /> All Desktop
                   </button>
-                  <button type="button" onClick={() => applyBrowsersToAll(MOBILE_PROFILES.map((p) => p.id))} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5">
+                  <button type="button" onClick={() => applyBrowsersToAll(MOBILE_PROFILES.map((p) => p.id))} className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
                     <Smartphone className="h-3.5 w-3.5" /> All Mobile
                   </button>
                   <button
                     type="button"
                     onClick={() => applyBrowsersToAll([...DESKTOP_PROFILES.map((p) => p.id), ...MOBILE_PROFILES.map((p) => p.id)])}
-                    className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5"
+                    className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Monitor className="h-3.5 w-3.5" />
                     <Smartphone className="h-3.5 w-3.5" />
@@ -384,7 +384,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
                   type="button"
                   onClick={proceedToConfigure}
                   disabled={selectedIds.length === 0}
-                  className="h-9 px-4 rounded-lg bg-[#FFAA00] text-[#232323] text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-1.5"
+                  className="h-9 px-4 rounded-lg bg-[#FFAA00] text-[#232323] text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   Next: Configure Browsers
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -402,7 +402,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
                   type="button"
                   onClick={() => setStep("select")}
                   disabled={saving}
-                  className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5"
+                  className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back
@@ -411,7 +411,7 @@ function AddTestCasesModal({ open, onClose, treeRows, existingIds, onSubmit, sav
                   type="button"
                   onClick={submitWithBrowsers}
                   disabled={saving || selectedIds.length === 0 || selectedIds.some((id) => !Array.isArray(browserConfig[id]) || browserConfig[id].length === 0)}
-                  className="h-9 px-4 min-w-[170px] rounded-lg bg-[#FFAA00] text-[#232323] text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+                  className="h-9 px-4 min-w-[170px] rounded-lg bg-[#FFAA00] text-[#232323] text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {saving ? (
                     <>
@@ -545,7 +545,7 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
             type="button"
             onClick={onClose}
             disabled={running}
-            className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold"
+            className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -553,7 +553,7 @@ function RunPlanModal({ open, onClose, plan, onRun }) {
             type="button"
             onClick={handleRunNow}
             disabled={running || totalExecutions === 0}
-            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run Now
@@ -788,7 +788,7 @@ export default function ExecutionPlanDetail() {
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
-              className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center"
+              className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-200"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -799,7 +799,7 @@ export default function ExecutionPlanDetail() {
             type="button"
             onClick={() => setRunModalOpen(true)}
             disabled={loading || !plan || saving}
-            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
           >
             <Play className="h-4 w-4" />
             Run Plan
@@ -845,7 +845,7 @@ export default function ExecutionPlanDetail() {
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(true)}
-                  className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/80 inline-flex items-center gap-2 text-xs font-semibold"
+                  className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/80 inline-flex items-center gap-2 text-xs font-semibold cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Test Cases

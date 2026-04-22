@@ -19,7 +19,7 @@ export default function ResetPasswordConfirmPage() {
           <>
             <p className="mb-6 text-gray-700">Click the button below to confirm your password reset.</p>
             {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
-            <button onClick={handleConfirm} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">Confirm Reset</button>
+            <button onClick={handleConfirm} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors cursor-pointer">Confirm Reset</button>
           </>
         )}
       </div>

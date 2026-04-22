@@ -333,7 +333,7 @@ export default function ExecutionResults() {
           <button
             type="button"
             onClick={() => setRefreshKey((value) => value + 1)}
-            className="h-9 px-3 rounded-md border border-black/10 dark:border-white/10 inline-flex items-center gap-2 text-sm font-semibold hover:bg-[#232323]/5 dark:hover:bg-white/5"
+            className="h-9 px-3 rounded-md border border-black/10 dark:border-white/10 inline-flex items-center gap-2 text-sm font-semibold hover:bg-[#232323]/5 dark:hover:bg-white/5 transition-colors "
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}

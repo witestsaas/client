@@ -5,16 +5,14 @@ export async function fetchOrgLlmUsage(orgSlug) {
   return data?.aiUsage || null;
 }
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data?.message || data?.error || 'Request failed');
-    error.status = response.status;
-    error.payload = data;
-    throw error;
+    throw createResponseError(response, data, 'The request could not be completed.');
   }
   return data;
 }

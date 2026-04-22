@@ -1,4 +1,5 @@
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -21,11 +22,7 @@ async function parseJson(response) {
 
   if (!response.ok) {
     const fallback = `Request failed (${response.status}${response.statusText ? ` ${response.statusText}` : ''})`;
-    const error = new Error(data?.message || data?.error || fallback);
-    error.status = response.status;
-    error.code = data?.code;
-    error.payload = data;
-    throw error;
+    throw createResponseError(response, data, fallback);
   }
   return data;
 }
@@ -305,6 +302,17 @@ export async function updateProjectSettings(orgSlug, projectId, payload) {
 export async function createProjectEnvironment(orgSlug, projectId, payload) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/environments`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(res);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+export async function updateProjectEnvironment(orgSlug, projectId, payload) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/tests/projects/${encodeURIComponent(projectId)}/environments`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {}),
   });

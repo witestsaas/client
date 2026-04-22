@@ -22,7 +22,7 @@ export default function AIChatWidget() {
     {
       role: "assistant",
       content:
-        "Hi! I'm the Qalion AI assistant. Ask me anything about our platform — features, pricing, integrations, or how to get started.",
+        "Hi! I'm the Qalion Agent assistant. Ask me anything about our platform — features, pricing, integrations, or how to get started.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -222,7 +222,7 @@ export default function AIChatWidget() {
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="h-7 w-7 rounded-lg flex items-center justify-center text-[#1c1a2e]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 transition-colors"
+              className="h-7 w-7 rounded-lg flex items-center justify-center text-[#1c1a2e]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
@@ -266,7 +266,7 @@ export default function AIChatWidget() {
                   <button
                     key={i}
                     onClick={() => sendSuggested(q)}
-                    className="group w-full text-left px-3 py-2 rounded-lg border border-black/6 dark:border-white/6 bg-white dark:bg-white/[0.03] hover:border-[#FFAA00]/30 hover:bg-[#FFAA00]/[0.04] transition-all duration-200 flex items-center justify-between gap-2"
+                    className="group w-full text-left px-3 py-2 rounded-lg border border-black/6 dark:border-white/6 bg-white dark:bg-white/[0.03] hover:border-[#FFAA00]/30 hover:bg-[#FFAA00]/[0.04] transition-all duration-200 flex items-center justify-between gap-2 cursor-pointer"
                   >
                     <span className="text-[12.5px] text-[#1c1a2e]/70 dark:text-white/60 group-hover:text-[#1c1a2e] dark:group-hover:text-white/90 transition-colors leading-snug">
                       {q}
@@ -309,7 +309,7 @@ export default function AIChatWidget() {
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
-                className="h-8 w-8 rounded-lg flex-shrink-0 flex items-center justify-center bg-[#FFAA00] text-white disabled:opacity-40 hover:bg-[#e69900] transition-colors"
+                className="h-8 w-8 rounded-lg flex-shrink-0 flex items-center justify-center bg-[#FFAA00] text-white disabled:opacity-40 hover:bg-[#e69900] transition-colors cursor-pointer"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
@@ -324,7 +324,7 @@ export default function AIChatWidget() {
       {/* Floating trigger button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`fixed bottom-4 right-4 sm:right-6 z-[9999] h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+        className={`fixed bottom-4 right-4 sm:right-6 z-[9999] h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 cursor-pointer ${
           open
             ? "bg-[#1c1a2e] dark:bg-white/15 rotate-0"
             : "bg-[#FFAA00] hover:bg-[#e69900] shadow-[0_4px_20px_rgba(255,170,0,0.4)]"

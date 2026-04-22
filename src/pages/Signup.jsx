@@ -415,7 +415,7 @@ export default function SignupPage() {
                     />
                     <button
                       type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 bottom-[9px] transition-colors"
+                      className="absolute right-3 bottom-[9px] transition-colors cursor-pointer"
                       style={{ color: textSubtle }}
                       onMouseEnter={e => e.currentTarget.style.color = textMuted}
                       onMouseLeave={e => e.currentTarget.style.color = textSubtle}
@@ -444,7 +444,7 @@ export default function SignupPage() {
                     />
                     <button
                       type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 bottom-[9px] transition-colors"
+                      className="absolute right-3 bottom-[9px] transition-colors cursor-pointer"
                       style={{ color: textSubtle }}
                       onMouseEnter={e => e.currentTarget.style.color = textMuted}
                       onMouseLeave={e => e.currentTarget.style.color = textSubtle}
@@ -484,7 +484,7 @@ export default function SignupPage() {
                           <button
                             type="button" onClick={refreshCaptcha}
                             disabled={captchaLoading || loading}
-                            className="text-xs hover:underline disabled:opacity-50"
+                            className="text-xs hover:underline disabled:opacity-50 transition-colors cursor-pointer"
                             style={{ color: "#F29F05" }}
                           >
                             Refresh
@@ -529,7 +529,7 @@ export default function SignupPage() {
                   {/* Submit */}
                   <motion.button
                     disabled={loading}
-                    className="w-full font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-70"
+                    className="w-full font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-70 cursor-pointer"
                     style={{ background: "#F29F05", color: "#000" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#d98e04"}
                     onMouseLeave={e => e.currentTarget.style.background = "#F29F05"}

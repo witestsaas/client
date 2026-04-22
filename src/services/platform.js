@@ -1,11 +1,10 @@
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data?.message || data?.error || 'Request failed');
-    error.status = response.status;
-    throw error;
+    throw createResponseError(response, data, 'Platform request failed.');
   }
   return data;
 }

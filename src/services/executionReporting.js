@@ -1,15 +1,12 @@
 import { apiFetch } from './http';
+import { createResponseError } from '../utils/api-error.js';
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data?.message || data?.error || 'Request failed');
-    error.status = response.status;
-    error.code = data?.code;
-    error.payload = data;
-    throw error;
+    throw createResponseError(response, data, 'Execution request failed.');
   }
   return data;
 }

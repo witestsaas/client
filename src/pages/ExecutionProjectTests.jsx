@@ -41,6 +41,7 @@ import { fetchOrgQuotaUsage } from "../services/organizations";
 import {
   createFolder,
   createProjectEnvironment,
+  updateProjectEnvironment,
   createProjectSharedStep,
   createProjectVariable,
   createTestCase,
@@ -68,6 +69,7 @@ import {
 } from "../services/testManagement";
 import { isQuotaDeniedError } from "../utils/quota";
 import { useLanguage } from "../utils/language-context";
+import { toDisplayErrorMessage } from "../utils/api-error";
 
 const TABS = [
   { key: "repository", labelKey: "tc.tabs.repository" },
@@ -80,8 +82,8 @@ const TABS = [
 const INITIAL_FOLDER_FORM = { id: "", name: "", parentId: "" };
 const INITIAL_VARIABLE_FORM = { name: "", value: "", description: "" };
 const INITIAL_SHARED_STEP_FORM = { name: "", action: "", expectedResult: "", description: "" };
-const INITIAL_ENV_FORM = { name: "", slug: "", baseUrl: "" };
-const INITIAL_SETTINGS_FORM = { name: "", description: "", baseUrl: "" };
+const INITIAL_ENV_FORM = { name: "", baseUrl: "" };
+const INITIAL_SETTINGS_FORM = { name: "", description: "" };
 const createDraftStep = () => ({
   id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   action: "",
@@ -95,6 +97,7 @@ const INITIAL_TEST_CASE_FORM = {
   priority: "Medium",
   testCaseType: "Functional",
   automationStatus: "Not Automated",
+  tagsKeywords: [],
   tagsInput: "",
   steps: [createDraftStep()],
 };
@@ -118,21 +121,11 @@ const DOCUMENTATION_TEMPLATE = `# Project Documentation Template
 - Product Owner:
 - QA Owner:
 - Primary Domain / Module:
-- Target Environment(s):
-
 ## 2. Business Scope
 - Core business goals:
 - In-scope features:
 - Out-of-scope features:
 
-## 3. Architecture & Integrations
-- Frontend:
-- Backend:
-- Database:
-- External APIs / Services:
-
-## 4. Component Localization Map
-Use one block per component/area so AI can generate context-accurate tests.
 
 ### Component: [Name]
 - Location (Page / Route / Module):
@@ -151,7 +144,6 @@ function createInitialDocumentationForm() {
     productOwner: "",
     qaOwner: "",
     primaryDomain: "",
-    targetEnvironments: "",
     coreBusinessGoals: "",
     inScopeFeatures: "",
     outOfScopeFeatures: "",
@@ -202,21 +194,11 @@ function buildDocumentationPayloadFromForm(formValue) {
 - Product Owner: ${line(form.productOwner)}
 - QA Owner: ${line(form.qaOwner)}
 - Primary Domain / Module: ${line(form.primaryDomain)}
-- Target Environment(s): ${line(form.targetEnvironments)}
 
 ## 2. Business Scope
 - Core business goals: ${line(form.coreBusinessGoals)}
 - In-scope features: ${line(form.inScopeFeatures)}
 - Out-of-scope features: ${line(form.outOfScopeFeatures)}
-
-## 3. Architecture & Integrations
-- Frontend: ${line(form.frontendStack)}
-- Backend: ${line(form.backendStack)}
-- Database: ${line(form.database)}
-- External APIs / Services: ${line(form.externalApis)}
-
-## 4. Component Localization Map
-${line(form.componentsMap)}
 
 ## Reference Files Data
 ${line(form.uploadedFilesData)}
@@ -431,7 +413,7 @@ function FolderNode({
             onSelect(node.id);
           }
         }}
-        className={`w-full flex items-center rounded px-2 py-1.5 text-left text-sm transition-all duration-150 ${
+        className={`w-full flex items-center rounded px-2 py-1.5 text-left text-sm transition-all duration-150 cursor-pointer ${
           isHighlighted
             ? "animate-[folderHighlight_1s_ease-in-out_5] ring-2 ring-emerald-400/60 bg-emerald-400/15 dark:bg-emerald-400/10"
             : ""
@@ -554,7 +536,7 @@ function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerL
             <button
               type="button"
               onClick={onClose}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-[#232323]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 hover:text-[#232323] dark:hover:text-white transition-colors"
+              className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-[#232323]/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/8 hover:text-[#232323] dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
@@ -582,6 +564,8 @@ export default function ExecutionProjectTests() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [envModalError, setEnvModalError] = useState("");
+  const [folderModalError, setFolderModalError] = useState("");
 
   const [documentation, setDocumentation] = useState("");
   const [documentationForm, setDocumentationForm] = useState(() => createInitialDocumentationForm());
@@ -612,6 +596,8 @@ export default function ExecutionProjectTests() {
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isSharedStepModalOpen, setIsSharedStepModalOpen] = useState(false);
   const [isEnvironmentModalOpen, setIsEnvironmentModalOpen] = useState(false);
+  const [environmentModalMode, setEnvironmentModalMode] = useState("create");
+  const [editingEnvironmentId, setEditingEnvironmentId] = useState("");
   const [isCreateTestCaseModalOpen, setIsCreateTestCaseModalOpen] = useState(false);
   const [testCaseForm, setTestCaseForm] = useState(INITIAL_TEST_CASE_FORM);
   const [createMode, setCreateMode] = useState("advanced");
@@ -669,6 +655,129 @@ export default function ExecutionProjectTests() {
     () => extractUploadedFileNames(documentationForm.uploadedFilesData),
     [documentationForm.uploadedFilesData],
   );
+  const modalPersistKey = useMemo(
+    () => `execution-project-tests:modals:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
+    [user?.userId, orgSlug, projectId],
+  );
+  const selectedFolderPersistKey = useMemo(
+    () => `execution-project-tests:selected-folder:${user?.userId || "anonymous"}:${orgSlug || "org"}:${projectId || "project"}`,
+    [user?.userId, orgSlug, projectId],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.sessionStorage.getItem(selectedFolderPersistKey);
+    if (saved) {
+      setSelectedFolderId(saved);
+    }
+  }, [selectedFolderPersistKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!selectedFolderId) {
+      window.sessionStorage.removeItem(selectedFolderPersistKey);
+      return;
+    }
+    window.sessionStorage.setItem(selectedFolderPersistKey, String(selectedFolderId));
+  }, [selectedFolderPersistKey, selectedFolderId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem(modalPersistKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.isFolderModalOpen) setIsFolderModalOpen(true);
+      if (saved?.isVariableModalOpen) setIsVariableModalOpen(true);
+      if (saved?.isSharedStepModalOpen) setIsSharedStepModalOpen(true);
+      if (saved?.isEnvironmentModalOpen) setIsEnvironmentModalOpen(true);
+      if (saved?.isCreateTestCaseModalOpen) setIsCreateTestCaseModalOpen(true);
+      if (saved?.editingTestCase && typeof saved.editingTestCase === "object") {
+        setEditingTestCase(saved.editingTestCase);
+      }
+      if (saved?.isGenerateModalOpen) setIsGenerateModalOpen(true);
+      if (saved?.isImportModalOpen) setIsImportModalOpen(true);
+      if (saved?.environmentModalMode === "edit" || saved?.environmentModalMode === "create") {
+        setEnvironmentModalMode(saved.environmentModalMode);
+      }
+      if (saved?.editingEnvironmentId) {
+        setEditingEnvironmentId(String(saved.editingEnvironmentId));
+      }
+      if (saved?.envForm && typeof saved.envForm === "object") {
+        setEnvForm((prev) => ({ ...prev, ...saved.envForm }));
+      }
+      if (saved?.folderForm && typeof saved.folderForm === "object") {
+        setFolderForm((prev) => ({ ...prev, ...saved.folderForm }));
+      }
+      if (saved?.variableForm && typeof saved.variableForm === "object") {
+        setVariableForm((prev) => ({ ...prev, ...saved.variableForm }));
+      }
+      if (saved?.sharedStepForm && typeof saved.sharedStepForm === "object") {
+        setSharedStepForm((prev) => ({ ...prev, ...saved.sharedStepForm }));
+      }
+      if (saved?.testCaseForm && typeof saved.testCaseForm === "object") {
+        setTestCaseForm((prev) => ({ ...prev, ...saved.testCaseForm }));
+      }
+    } catch {
+      // Ignore invalid persisted modal state
+    }
+  }, [modalPersistKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasOpenModal =
+      isFolderModalOpen ||
+      isVariableModalOpen ||
+      isSharedStepModalOpen ||
+      isEnvironmentModalOpen ||
+      isCreateTestCaseModalOpen ||
+      Boolean(editingTestCase) ||
+      isGenerateModalOpen ||
+      isImportModalOpen;
+
+    if (!hasOpenModal) {
+      window.sessionStorage.removeItem(modalPersistKey);
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      modalPersistKey,
+      JSON.stringify({
+        isFolderModalOpen,
+        isVariableModalOpen,
+        isSharedStepModalOpen,
+        isEnvironmentModalOpen,
+        isCreateTestCaseModalOpen,
+        editingTestCase,
+        isGenerateModalOpen,
+        isImportModalOpen,
+        environmentModalMode,
+        editingEnvironmentId,
+        envForm,
+        folderForm,
+        variableForm,
+        sharedStepForm,
+        testCaseForm,
+      }),
+    );
+  }, [
+    modalPersistKey,
+    isFolderModalOpen,
+    isVariableModalOpen,
+    isSharedStepModalOpen,
+    isEnvironmentModalOpen,
+    isCreateTestCaseModalOpen,
+    editingTestCase,
+    isGenerateModalOpen,
+    isImportModalOpen,
+    environmentModalMode,
+    editingEnvironmentId,
+    envForm,
+    folderForm,
+    variableForm,
+    sharedStepForm,
+    testCaseForm,
+  ]);
 
   const loadRepositoryData = useCallback(
     async (initial = false) => {
@@ -688,7 +797,13 @@ export default function ExecutionProjectTests() {
           })),
         );
       } catch (err) {
-        setError(err?.message || "Failed to load repository");
+        const msg = err?.message || "Failed to load repository";
+        if (/not found/i.test(msg)) {
+          window.localStorage.removeItem(`selectedProject_${orgSlug}`);
+          navigate(`/dashboard/${orgSlug}/execution/tests`, { replace: true });
+          return;
+        }
+        setError(msg);
       } finally {
         if (initial) setLoading(false);
       }
@@ -942,24 +1057,26 @@ export default function ExecutionProjectTests() {
 
   const openCreateFolderModal = (parentId = "") => {
     setFolderModalMode("create");
+    setFolderModalError("");
     setFolderForm({ ...INITIAL_FOLDER_FORM, parentId });
     setIsFolderModalOpen(true);
   };
 
   const openEditFolderModal = (folder) => {
     setFolderModalMode("edit");
+    setFolderModalError("");
     setFolderForm({ id: folder.id, name: folder.name || "", parentId: folder.parentId || "" });
     setIsFolderModalOpen(true);
   };
 
   const submitFolderModal = async () => {
     if (!folderForm.name.trim()) {
-      setError("Folder name is required");
+      setFolderModalError("Folder name is required");
       return;
     }
 
     setSaving(true);
-    setError("");
+    setFolderModalError("");
     try {
       if (folderModalMode === "create") {
         await createFolder(orgSlug, projectId, {
@@ -973,13 +1090,76 @@ export default function ExecutionProjectTests() {
         });
       }
       setIsFolderModalOpen(false);
+      setFolderModalError("");
       setFolderForm(INITIAL_FOLDER_FORM);
       await loadRepositoryData(false);
     } catch (err) {
-      setError(err?.message || "Failed to save folder");
+      setFolderModalError(err?.message || "Failed to save folder");
     } finally {
       setSaving(false);
     }
+  };
+
+  const parseTagsFromInput = (input) =>
+    String(input || "")
+      .split(/[,\s]+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  const normalizeTagKeywords = (list) => {
+    const output = [];
+    const seen = new Set();
+    for (const raw of Array.isArray(list) ? list : []) {
+      const tag = String(raw || "").trim();
+      if (!tag) continue;
+      const key = tag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      output.push(tag);
+    }
+    return output;
+  };
+
+  const addCreateTagFromInput = () => {
+    setTestCaseForm((prev) => {
+      const typed = parseTagsFromInput(prev.tagsInput);
+      if (!typed.length) return prev;
+      return {
+        ...prev,
+        tagsKeywords: normalizeTagKeywords([...(prev.tagsKeywords || []), ...typed]),
+        tagsInput: "",
+      };
+    });
+  };
+
+  const removeCreateTag = (tagToRemove) => {
+    setTestCaseForm((prev) => ({
+      ...prev,
+      tagsKeywords: (prev.tagsKeywords || []).filter((tag) => tag !== tagToRemove),
+    }));
+  };
+
+  const addEditTagFromInput = () => {
+    setEditingTestCase((prev) => {
+      if (!prev) return prev;
+      const typed = parseTagsFromInput(prev.tagsInput);
+      if (!typed.length) return prev;
+      return {
+        ...prev,
+        tagsKeywords: normalizeTagKeywords([...(prev.tagsKeywords || []), ...typed]),
+        tagsInput: "",
+      };
+    });
+  };
+
+  const removeEditTag = (tagToRemove) => {
+    setEditingTestCase((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tagsKeywords: (prev.tagsKeywords || []).filter((tag) => tag !== tagToRemove),
+      };
+    });
   };
 
   const confirmDeleteFolder = async () => {
@@ -1297,6 +1477,7 @@ export default function ExecutionProjectTests() {
     setSaving(true);
     setError("");
     try {
+      const tags = normalizeTagKeywords([...(testCaseForm.tagsKeywords || []), ...parseTagsFromInput(testCaseForm.tagsInput)]);
       await createTestCase(orgSlug, projectId, {
         title: testCaseForm.title.trim(),
         description: testCaseForm.description,
@@ -1304,10 +1485,7 @@ export default function ExecutionProjectTests() {
         priority: PRIORITY_TO_INT[testCaseForm.priority] ?? 1,
         testCaseType: testCaseForm.testCaseType,
         automationStatus: testCaseForm.automationStatus,
-        tags: testCaseForm.tagsInput
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags,
         steps: testCaseForm.steps
           .map((step) => ({
             action: step.action.trim(),
@@ -1353,7 +1531,8 @@ export default function ExecutionProjectTests() {
       priority: Number(item.priority ?? 1),
       testCaseType: item.testCaseType || "Functional",
       automationStatus: item.automationStatus || "Not Automated",
-      tagsInput: Array.isArray(item.tags) ? item.tags.join(", ") : "",
+      tagsKeywords: normalizeTagKeywords(Array.isArray(item.tags) ? item.tags : []),
+      tagsInput: "",
       steps:
         Array.isArray(item.steps) && item.steps.length
           ? item.steps.map((step) => ({
@@ -1409,6 +1588,10 @@ export default function ExecutionProjectTests() {
     setSaving(true);
     setError("");
     try {
+      const tags = normalizeTagKeywords([
+        ...((editingTestCase && editingTestCase.tagsKeywords) || []),
+        ...parseTagsFromInput(editingTestCase?.tagsInput),
+      ]);
       await updateTestCase(orgSlug, projectId, editingTestCase.id, {
         title: editingTestCase.title.trim(),
         description: editingTestCase.description,
@@ -1416,10 +1599,7 @@ export default function ExecutionProjectTests() {
         priority: Number(editingTestCase.priority ?? 1),
         testCaseType: editingTestCase.testCaseType,
         automationStatus: editingTestCase.automationStatus,
-        tags: String(editingTestCase.tagsInput || "")
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags,
         steps: (editingTestCase.steps || [])
           .map((step) => ({
             action: String(step.action || "").trim(),
@@ -1611,7 +1791,7 @@ export default function ExecutionProjectTests() {
 
   const handleAiLiveEvent = useCallback(
     (event) => {
-      const convId = activeAiConversationIdRef.current;
+      const convId = activeAiConversationIdRef.current || selectedAiConversationId;
       if (!convId) return;
       const { type, data } = event || {};
       if (!type) return;
@@ -1853,7 +2033,8 @@ export default function ExecutionProjectTests() {
       }
 
       if (type === "generation:error") {
-        const message = data?.error || data?.message || "Generation failed";
+        const rawErr = data?.error || data?.message || "Generation failed";
+        const message = typeof rawErr === "string" ? rawErr : (rawErr?.message || JSON.stringify(rawErr));
         updateAiConversation(convId, (conversation) => {
           const steps = Array.isArray(conversation?.steps) ? conversation.steps : [];
           return {
@@ -1892,7 +2073,7 @@ export default function ExecutionProjectTests() {
         upsertConversationStep(convId, "gen-cancel", type, "Generation cancelled", "error", data?.message);
       }
     },
-    [getLiveEntityStepId, upsertConversationStep, updateAiConversation],
+    [getLiveEntityStepId, upsertConversationStep, updateAiConversation, selectedAiConversationId],
   );
 
   useTestRunSocket(aiGenerationId || null, {
@@ -1913,6 +2094,12 @@ export default function ExecutionProjectTests() {
     setIsGenerateModalOpen(true);
   };
 
+  useEffect(() => {
+    const handler = () => openGenerateModal();
+    window.addEventListener("openQalionAgent", handler);
+    return () => window.removeEventListener("openQalionAgent", handler);
+  }, []);
+
   const createNewGenerationDraft = () => {
     setAiError("");
     setAiDraftPrompt("");
@@ -1928,10 +2115,11 @@ export default function ExecutionProjectTests() {
         });
       } catch {
       }
-      if (activeAiConversationId) {
-        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+      const convId = activeAiConversationId || selectedAiConversationId;
+      if (convId) {
+        updateAiConversation(convId, () => ({ phase: "cancelled" }));
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-start",
           "generation:cancelled",
           "Starting generation...",
@@ -1939,7 +2127,7 @@ export default function ExecutionProjectTests() {
           "Generation cancelled",
         );
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-cancel",
           "generation:cancelled",
           "Generation cancelled",
@@ -1997,6 +2185,7 @@ export default function ExecutionProjectTests() {
     const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setAiGenerationId(generationId);
     setActiveAiConversationId(conversationId);
+    activeAiConversationIdRef.current = conversationId;
     setSelectedAiConversationId(conversationId);
     setAiError("");
     setAiDraftPrompt("");
@@ -2087,7 +2276,8 @@ export default function ExecutionProjectTests() {
       }
       await loadRepositoryData(false);
     } catch (err) {
-      const rawMessage = err?.message || "Failed to generate test cases";
+      const rawErrMsg = err?.message || "Failed to generate test cases";
+      const rawMessage = typeof rawErrMsg === "string" ? rawErrMsg : (rawErrMsg?.message || JSON.stringify(rawErrMsg));
       const isQuotaDenied =
         isQuotaDeniedError(err) ||
         Boolean(aiQuota && !aiQuota.hasCouponCredits);
@@ -2143,18 +2333,20 @@ export default function ExecutionProjectTests() {
   };
 
   const cancelGenerateTests = async () => {
-    if (!aiGenerationId) return;
+    const convId = activeAiConversationId || selectedAiConversationId;
     try {
-      await cancelFunctionalGeneration(orgSlug, {
-        generationId: aiGenerationId,
-        reason: "User cancelled",
-      });
+      if (aiGenerationId) {
+        await cancelFunctionalGeneration(orgSlug, {
+          generationId: aiGenerationId,
+          reason: "User cancelled",
+        });
+      }
     } catch {
     } finally {
-      if (activeAiConversationId) {
-        updateAiConversation(activeAiConversationId, () => ({ phase: "cancelled" }));
+      if (convId) {
+        updateAiConversation(convId, () => ({ phase: "cancelled" }));
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-start",
           "generation:cancelled",
           "Starting generation...",
@@ -2162,7 +2354,7 @@ export default function ExecutionProjectTests() {
           "Generation cancelled",
         );
         upsertConversationStep(
-          activeAiConversationId,
+          convId,
           "gen-cancel",
           "generation:cancelled",
           "Generation cancelled",
@@ -2172,6 +2364,7 @@ export default function ExecutionProjectTests() {
       }
       setAiGenerationId("");
       setActiveAiConversationId("");
+      activeAiConversationIdRef.current = "";
     }
   };
 
@@ -2376,20 +2569,61 @@ export default function ExecutionProjectTests() {
     }
   };
 
-  const handleCreateEnvironment = async () => {
-    if (!envForm.name.trim() || !envForm.slug.trim() || !envForm.baseUrl.trim()) return;
+  const openCreateEnvironmentModal = () => {
+    setEnvironmentModalMode("create");
+    setEditingEnvironmentId("");
+    setEnvForm(INITIAL_ENV_FORM);
+    setEnvModalError("");
+    setIsEnvironmentModalOpen(true);
+  };
+
+  const openEditEnvironmentModal = (environment) => {
+    setEnvironmentModalMode("edit");
+    setEditingEnvironmentId(String(environment?.id || ""));
+    setEnvForm({
+      name: String(environment?.name || ""),
+      baseUrl: String(environment?.baseUrl || ""),
+    });
+    setEnvModalError("");
+    setIsEnvironmentModalOpen(true);
+  };
+
+  const closeEnvironmentModal = () => {
+    setEnvModalError("");
+    setIsEnvironmentModalOpen(false);
+    setEnvironmentModalMode("create");
+    setEditingEnvironmentId("");
+    setEnvForm(INITIAL_ENV_FORM);
+  };
+
+  const handleSaveEnvironment = async () => {
+    if (!envForm.name.trim() || !envForm.baseUrl.trim()) {
+      setEnvModalError("Environment name and Base URL are required.");
+      return;
+    }
     setSaving(true);
-    setError("");
+    setEnvModalError("");
     try {
-      await createProjectEnvironment(orgSlug, projectId, {
-        ...envForm,
-        isDefault: false,
-      });
-      setEnvForm(INITIAL_ENV_FORM);
-      setIsEnvironmentModalOpen(false);
+      const slug = envForm.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      if (environmentModalMode === "edit") {
+        await updateProjectEnvironment(orgSlug, projectId, {
+          id: editingEnvironmentId,
+          name: envForm.name.trim(),
+          baseUrl: envForm.baseUrl.trim(),
+          slug,
+        });
+      } else {
+        await createProjectEnvironment(orgSlug, projectId, {
+          ...envForm,
+          slug,
+          isDefault: false,
+        });
+      }
+      closeEnvironmentModal();
       setSettings(await fetchProjectSettings(orgSlug, projectId));
     } catch (err) {
-      setError(err?.message || "Failed to create environment");
+      const fallback = environmentModalMode === "edit" ? "Failed to update environment" : "Failed to create environment";
+      setEnvModalError(toDisplayErrorMessage(err?.message, fallback));
     } finally {
       setSaving(false);
     }
@@ -2435,7 +2669,7 @@ export default function ExecutionProjectTests() {
                     setBulkFolderDeleteConfirm(false);
                   }
                 }}
-                className={`h-7 w-7 rounded-md border inline-flex items-center justify-center ${
+                className={`h-7 w-7 rounded-md border inline-flex items-center justify-center cursor-pointer ${
                   multiSelectMode
                     ? "border-[#FFAA00] bg-[#FFAA00]/15 text-[#FFAA00]"
                     : "border-border text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
@@ -2447,7 +2681,7 @@ export default function ExecutionProjectTests() {
               {/*<button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
-                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer"
                 title="Import tests from file"
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -2456,7 +2690,7 @@ export default function ExecutionProjectTests() {
                 type="button"
                 onClick={() => openCreateFolderModal(selectedFolderId || "")}
                 disabled={saving}
-                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60"
+                className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 disabled:opacity-60 cursor-pointer"
                 title="Create folder"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
@@ -2577,7 +2811,7 @@ export default function ExecutionProjectTests() {
                         setBulkFolderDeleteConfirm(false);
                       }}
                       disabled={bulkDeleting}
-                      className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold disabled:opacity-60 inline-flex items-center gap-1"
+                      className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold disabled:opacity-60 inline-flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" />
                       {bulkDeleting ? "Deleting..." : "Confirm Delete"}
@@ -2585,7 +2819,7 @@ export default function ExecutionProjectTests() {
                     <button
                       type="button"
                       onClick={() => setBulkFolderDeleteConfirm(false)}
-                      className="h-7 px-3 rounded-md border border-black/15 dark:border-white/15 text-xs font-medium"
+                      className="h-7 px-3 rounded-md border border-black/15 dark:border-white/15 text-xs font-medium cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -2599,7 +2833,7 @@ export default function ExecutionProjectTests() {
                   <button
                     type="button"
                     onClick={() => setBulkFolderDeleteConfirm(true)}
-                    className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1"
+                    className="h-7 px-3 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="h-3 w-3" />
                     Delete Selected
@@ -2643,11 +2877,11 @@ export default function ExecutionProjectTests() {
             <button
               type="button"
               onClick={openGenerateModal}
-              className="mt-5 h-9 px-4 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-sm font-semibold"
+              className="mt-5 h-9 px-4 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-sm font-semibold cursor-pointer"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" />
-                Assistant AI
+                Functional Agent
               </span>
             </button>
             {/*<p className="mt-2 text-xs text-[#232323]/55 dark:text-white/55">
@@ -2673,46 +2907,46 @@ export default function ExecutionProjectTests() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold inline-flex items-center text-[#232323]/70 dark:text-white/70">
+                  {/*<div className="h-8 px-2.5 rounded-md border border-border text-xs font-semibold inline-flex items-center text-[#232323]/70 dark:text-white/70">
                     {aiQuota
                       ? aiQuota.hasCouponCredits
                         ? `Credits: $${aiQuota.couponRemainingUsd.toFixed(2)}`
                         : "No Credits"
                       : "Credits: --"}
-                  </div>
+                  </div>*/}
                   {selectedTestCaseIds.length > 0 ? (
                     <>
                       <button
                         type="button"
                         onClick={exportSelectedTestCases}
-                        className="h-8 px-3 rounded-md border border-border text-xs font-semibold"
+                        className="h-8 px-3 rounded-md border border-border text-xs font-semibold cursor-pointer"
                       >
                         Export ({selectedTestCaseIds.length})
                       </button>
                       <button
                         type="button"
                         onClick={() => setBulkDeleteOpen(true)}
-                        className="h-8 px-3 rounded-md bg-red-500/90 text-white text-xs font-semibold"
+                        className="h-8 px-3 rounded-md bg-red-500/90 text-white text-xs font-semibold cursor-pointer"
                       >
                         Delete Selected
                       </button>
                     </>
                   ) : null}
-                  <button
+                  {/*<button
                     type="button"
                     onClick={openGenerateModal}
                     className="h-8 px-3 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-xs font-semibold"
                   >
                     <span className="inline-flex items-center gap-1">
                       <Sparkles className="h-3.5 w-3.5" />
-                      Assistant AI
+                      Functional Agent
                     </span>
-                  </button>
+                  </button>*/}
                   <button
                     type="button"
                     onClick={openCreateTestCaseModal}
                     disabled={saving}
-                    className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#FFAA00]/90 text-[#232323] text-xs font-semibold disabled:opacity-60"
+                    className="h-8 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
                   >
                     <span className="inline-flex items-center gap-1">
                       <Plus className="h-3.5 w-3.5" />
@@ -2743,7 +2977,7 @@ export default function ExecutionProjectTests() {
                       className={`h-6 px-2 rounded text-[11px] font-medium ${
                         testCaseStatusFilter === option
                           ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white"
-                          : "text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+                          : "text-[#232323]/60 dark:text-white/60 hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer"
                       }`}
                     >
                       {option === "all" ? "All" : option.replace("InReview", "In Review")}
@@ -2754,7 +2988,7 @@ export default function ExecutionProjectTests() {
                 <select
                   value={testCaseSort}
                   onChange={(event) => setTestCaseSort(event.target.value)}
-                  className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                  className="ui-select h-8 rounded-md border border-border bg-background px-2 text-xs cursor-pointer"
                 >
                   <option value="updated">{t("tc.sortLastUpdated")}</option>
                   <option value="title">{t("tc.sortTitle")}</option>
@@ -2776,7 +3010,7 @@ export default function ExecutionProjectTests() {
                         <button
                           type="button"
                           onClick={toggleSelectAllTestCases}
-                          className="inline-flex items-center justify-center"
+                          className="inline-flex items-center justify-center cursor-pointer"
                         >
                           {allSelected ? (
                             <CheckSquare className="h-4 w-4 text-[#FFAA00]" />
@@ -2795,7 +3029,7 @@ export default function ExecutionProjectTests() {
                     {filteredFolderCases.map((item) => (
                       <tr
                         key={item.id}
-                        className="border-b border-border hover:bg-[#FFFAE6] dark:hover:bg-slate-900/70 transition-colors"
+                        className="border-b border-border hover:bg-[#FFFAE6] dark:hover:bg-slate-900/70 transition-colors cursor-pointer"
                         onClick={() => openEditTestCase(item)}
                       >
                         <td className="px-2 py-2 align-top">
@@ -2814,7 +3048,7 @@ export default function ExecutionProjectTests() {
                             )}
                           </button>
                         </td>
-                        <td className="px-3 py-2 overflow-hidden">
+                        <td className="px-3 py-2 overflow-hidden cursor-pointer">
                           <button
                             type="button"
                             draggable
@@ -2825,7 +3059,7 @@ export default function ExecutionProjectTests() {
                               event.stopPropagation();
                               openEditTestCase(item);
                             }}
-                            className="w-full text-left min-w-0"
+                            className="w-full text-left min-w-0 cursor-pointer"
                           >
                             <p className="font-medium text-[#232323] dark:text-white truncate">{item.title || item.name}</p>
                             <p className="text-xs text-[#232323]/50 dark:text-white/50 truncate">{item.description || "No description"}</p>
@@ -2845,7 +3079,7 @@ export default function ExecutionProjectTests() {
                                 event.stopPropagation();
                                 openEditTestCase(item);
                               }}
-                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center"
+                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center cursor-pointer"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -2856,7 +3090,7 @@ export default function ExecutionProjectTests() {
                                 event.stopPropagation();
                                 handleCloneTestCase(item);
                               }}
-                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center"
+                              className="h-7 w-7 rounded-md border border-border inline-flex items-center justify-center cursor-pointer"
                               title="Clone"
                             >
                               <Copy className="h-3.5 w-3.5" />
@@ -2867,7 +3101,7 @@ export default function ExecutionProjectTests() {
                                 event.stopPropagation();
                                 setDeletingTestCase(item);
                               }}
-                              className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+                              className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -2893,7 +3127,7 @@ export default function ExecutionProjectTests() {
         <button
           type="button"
           onClick={() => setIsVariableModalOpen(true)}
-          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
+          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold cursor-pointer"
         >
           {t("tc.addVariable")}
         </button>
@@ -2914,7 +3148,7 @@ export default function ExecutionProjectTests() {
               <button
                 type="button"
                 onClick={() => handleDeleteVariable(item.id)}
-                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -2932,7 +3166,7 @@ export default function ExecutionProjectTests() {
         <button
           type="button"
           onClick={() => setIsSharedStepModalOpen(true)}
-          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold"
+          className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold cursor-pointer"
         >
           {t("tc.addSharedStep")}
         </button>
@@ -2951,7 +3185,7 @@ export default function ExecutionProjectTests() {
               <button
                 type="button"
                 onClick={() => handleDeleteSharedStep(step.id)}
-                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
+                className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -2977,7 +3211,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={() => applyDocumentationTemplate("replace")}
             disabled={saving || docUploadBusy}
-            className="h-9 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white disabled:opacity-60"
+            className="h-9 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white disabled:opacity-60 cursor-pointer"
           >
             Reset Template
           </button>
@@ -2985,7 +3219,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={handleSaveDocumentation}
             disabled={saving || docUploadBusy}
-            className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             Save Documentation
           </button>
@@ -3002,7 +3236,6 @@ export default function ExecutionProjectTests() {
               <input value={documentationForm.productOwner} onChange={(event) => handleDocumentationFieldChange("productOwner", event.target.value)} placeholder="Product owner" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
               <input value={documentationForm.qaOwner} onChange={(event) => handleDocumentationFieldChange("qaOwner", event.target.value)} placeholder="QA owner" className="h-9 rounded-md border border-border bg-background px-3 text-sm" />
             </div>
-            <textarea value={documentationForm.targetEnvironments} onChange={(event) => handleDocumentationFieldChange("targetEnvironments", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Target environments (dev, staging, prod URLs)" />
           </section>
 
           <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
@@ -3014,7 +3247,7 @@ export default function ExecutionProjectTests() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+          {/*<section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
             <p className="text-sm font-semibold text-[#232323] dark:text-white">3. Architecture & Integrations</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <textarea value={documentationForm.frontendStack} onChange={(event) => handleDocumentationFieldChange("frontendStack", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Frontend stack" />
@@ -3022,12 +3255,12 @@ export default function ExecutionProjectTests() {
               <textarea value={documentationForm.database} onChange={(event) => handleDocumentationFieldChange("database", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Database details" />
               <textarea value={documentationForm.externalApis} onChange={(event) => handleDocumentationFieldChange("externalApis", event.target.value)} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="External APIs / services" />
             </div>
-          </section>
+          </section>*/}
 
-          <section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+          {/*<section className="rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
             <p className="text-sm font-semibold text-[#232323] dark:text-white">4. Component Localization Map</p>
             <textarea value={documentationForm.componentsMap} onChange={(event) => handleDocumentationFieldChange("componentsMap", event.target.value)} rows={8} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="For each component: location, route, entry point, roles, validations, success/error criteria" />
-          </section>
+          </section>*/}
         </div>
 
         <aside className="xl:col-span-3 rounded-2xl border border-black/10 dark:border-white/10 bg-card p-4 space-y-3 h-full overflow-auto shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
@@ -3094,16 +3327,6 @@ export default function ExecutionProjectTests() {
               className="h-9 rounded-md border border-border bg-background px-3 text-sm w-full"
             />
           </label>
-
-          <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#232323]/60 dark:text-white/60">{t("tc.baseUrl")}</span>
-            <input
-              value={settingsForm.baseUrl}
-              onChange={(event) => setSettingsForm((prev) => ({ ...prev, baseUrl: event.target.value }))}
-              placeholder="https://example.com"
-              className="h-9 rounded-md border border-border bg-background px-3 text-sm w-full"
-            />
-          </label>
         </div>
 
         <label className="space-y-1 block">
@@ -3121,7 +3344,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={handleSaveSettings}
             disabled={saving}
-            className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="h-9 px-4 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {t("tc.saveSettings")}
           </button>
@@ -3136,8 +3359,8 @@ export default function ExecutionProjectTests() {
           </div>
           <button
             type="button"
-            onClick={() => setIsEnvironmentModalOpen(true)}
-            className="h-8 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white inline-flex items-center gap-1.5"
+            onClick={openCreateEnvironmentModal}
+            className="h-8 px-3 rounded-md border border-border text-xs font-semibold text-[#232323] dark:text-white inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             {t("tc.addEnvironment")}
@@ -3155,17 +3378,25 @@ export default function ExecutionProjectTests() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#232323] dark:text-white truncate">{env.name}</p>
                   <p className="text-xs text-[#232323]/60 dark:text-white/60 mt-0.5 truncate">{env.baseUrl}</p>
-                  <span className="mt-1.5 inline-flex h-5 items-center rounded-full border border-black/10 dark:border-white/15 px-2 text-[10px] font-semibold uppercase tracking-wide text-[#232323]/65 dark:text-white/65">
-                    {env.slug}
-                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteEnvironment(env.id)}
-                  className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="inline-flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => openEditEnvironmentModal(env)}
+                    className="h-7 w-7 rounded-md border border-border text-[#232323]/70 dark:text-white/70 inline-flex items-center justify-center cursor-pointer"
+                    title="Edit environment"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteEnvironment(env.id)}
+                    className="h-7 w-7 rounded-md border border-red-400/50 text-red-500 inline-flex items-center justify-center cursor-pointer"
+                    title="Delete environment"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -3181,7 +3412,7 @@ export default function ExecutionProjectTests() {
           <button
             type="button"
             onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
-            className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/70 dark:text-white/70 hover:bg-[#232323]/5 dark:hover:bg-white/10"
+            className="h-8 w-8 rounded-md border border-border inline-flex items-center justify-center text-[#232323]/70 dark:text-white/70 hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer "
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -3199,7 +3430,7 @@ export default function ExecutionProjectTests() {
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`h-full inline-flex items-center gap-1 ${
+              className={`h-full inline-flex items-center gap-1 cursor-pointer ${
                 activeTab === tab.key
                   ? "border-b-2 border-[#FFAA00] text-[#FFAA00]"
                   : "hover:text-[#232323] dark:hover:text-white"
@@ -3211,7 +3442,12 @@ export default function ExecutionProjectTests() {
           ))}
         </div>
 
-        {error ? <div className="px-4 py-2 text-sm text-red-500">{error}</div> : null}
+        {error ? (
+          <div className="mx-4 mt-3 rounded-lg border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-4 py-3 inline-flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{toDisplayErrorMessage(error, "An error occurred")}</span>
+          </div>
+        ) : null}
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {activeTab === "repository" && renderRepository()}
@@ -3233,7 +3469,7 @@ export default function ExecutionProjectTests() {
               <button
                 type="button"
                 onClick={cancelGenerateTests}
-                className="h-8 px-3 rounded-lg border border-red-400/40 bg-red-500/10 text-red-600 dark:text-red-300 text-xs font-semibold hover:bg-red-500/20 transition-colors"
+                className="h-8 px-3 rounded-lg border border-red-400/40 bg-red-500/10 text-red-600 dark:text-red-300 text-xs font-semibold hover:bg-red-500/20 transition-colors cursor-pointer"
               >
                 Cancel Generation
               </button>
@@ -3258,7 +3494,7 @@ export default function ExecutionProjectTests() {
                       setAiError("");
                       setAiDraftPrompt("");
                     }}
-                    className="h-7 px-2 rounded-md text-[11px] font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                    className="h-7 px-2 rounded-md text-[11px] font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                     title="Clear all conversations"
                   >
                     Clear All
@@ -3267,7 +3503,7 @@ export default function ExecutionProjectTests() {
                 <button
                   type="button"
                   onClick={createNewGenerationDraft}
-                  className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/15 text-xs font-semibold text-[#232323] dark:text-white hover:bg-[#FFAA00]/25 transition-colors"
+                  className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/15 text-xs font-semibold text-[#232323] dark:text-white hover:bg-[#FFAA00]/25 transition-colors cursor-pointer"
                 >
                   + New
                 </button>
@@ -3316,7 +3552,7 @@ export default function ExecutionProjectTests() {
                             setSelectedAiConversationId("");
                           }
                         }}
-                        className="absolute top-2 right-2 h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/30 dark:text-white/30 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                        className="absolute top-2 right-2 h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/30 dark:text-white/30 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                         title="Delete conversation"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -3353,32 +3589,76 @@ export default function ExecutionProjectTests() {
                       <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
                         message.role === "user" ? "text-[#FFAA00]" : "text-[#232323]/45 dark:text-white/45"
                       }`}>
-                        {message.role === "user" ? "You" : "AI Assistant"}
+                        {message.role === "user" ? "You" : "Functional Agent"}
                       </p>
-                      <p className="text-sm text-[#232323] dark:text-white whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <p className="text-sm text-[#232323] dark:text-white whitespace-pre-wrap leading-relaxed">{typeof message.content === "string" ? message.content : JSON.stringify(message.content)}</p>
                     </div>
                   ))}
 
-                  {selectedAiConversation.phase === "generating" ? (
-                    <div className="rounded-xl border border-blue-500/15 bg-blue-500/5 p-3.5 text-sm text-blue-700 dark:text-blue-300">
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating test cases...
-                      </span>
-                    </div>
-                  ) : null}
+                  {selectedAiConversation.phase === "generating" ? (() => {
+                    const steps = Array.isArray(selectedAiConversation.steps) ? selectedAiConversation.steps : [];
+                    const totalSteps = steps.length;
+                    const doneSteps = steps.filter(s => s.status === "done").length;
+                    const pct = totalSteps > 0 ? Math.min(95, Math.round((doneSteps / Math.max(totalSteps, 6)) * 100)) : 5;
+                    const activeStep = steps.filter(s => s.status === "active").pop();
+                    return (
+                      <div className="rounded-2xl border border-blue-500/15 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="inline-flex items-center gap-2.5">
+                            <div className="relative">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                            </div>
+                            <span className="text-sm font-semibold text-[#232323] dark:text-white">Generating test cases</span>
+                          </div>
+                          <span className="text-sm font-bold tabular-nums text-blue-600 dark:text-blue-400">{pct}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[#232323]/5 dark:bg-white/5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite] transition-[width] duration-700 ease-out"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        {activeStep ? (
+                          <div className="flex items-center gap-2 text-xs text-[#232323]/60 dark:text-white/60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            {activeStep.label}
+                          </div>
+                        ) : null}
+                        {totalSteps > 0 ? (
+                          <div className="space-y-1.5 max-h-[140px] overflow-auto">
+                            {steps.map((step) => (
+                              <div key={step.id} className="flex items-center gap-2 text-xs">
+                                {step.status === "done" ? (
+                                  <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                                ) : step.status === "active" ? (
+                                  <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />
+                                ) : step.status === "error" ? (
+                                  <XCircle className="h-3 w-3 text-red-500 shrink-0" />
+                                ) : (
+                                  <span className="h-3 w-3 rounded-full border border-[#232323]/15 dark:border-white/15 shrink-0" />
+                                )}
+                                <span className={step.status === "done" ? "text-[#232323]/50 dark:text-white/50" : step.status === "active" ? "text-[#232323] dark:text-white font-medium" : "text-[#232323]/35 dark:text-white/35"}>
+                                  {step.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })() : null}
 
                   {selectedAiConversation.error ? (
-                    <div className="rounded-xl border border-red-500/15 bg-red-500/5 p-3.5 text-sm text-red-600 dark:text-red-300">
-                      {selectedAiConversation.error}
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 flex items-start gap-3">
+                      <div className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-red-700 dark:text-red-300">Generation failed</p>
+                        <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">{typeof selectedAiConversation.error === "string" ? selectedAiConversation.error : JSON.stringify(selectedAiConversation.error)}</p>
+                      </div>
                     </div>
-                  ) : null}
-
-                  {Array.isArray(selectedAiConversation.steps) && selectedAiConversation.steps.length ? (
-                    <AiThinkingTree
-                      steps={selectedAiConversation.steps}
-                      phase={selectedAiConversation.phase}
-                    />
                   ) : null}
 
                   {Array.isArray(selectedAiConversation.generatedTests) && selectedAiConversation.generatedTests.length ? (
@@ -3405,7 +3685,12 @@ export default function ExecutionProjectTests() {
             </div>
 
             <div className="border-t border-black/6 dark:border-white/6 p-3">
-              {aiError ? <div className="text-xs text-red-500 mb-2 px-1">{aiError}</div> : null}
+              {aiError ? (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2.5 mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                  <span className="text-xs text-red-600 dark:text-red-400">{typeof aiError === "string" ? aiError : JSON.stringify(aiError)}</span>
+                </div>
+              ) : null}
               <div className="relative">
                 <textarea
                   value={aiDraftPrompt}
@@ -3416,7 +3701,7 @@ export default function ExecutionProjectTests() {
                       submitGenerateTests();
                     }
                   }}
-                  placeholder="Describe what to test... (Shift+Enter for new line)"
+                  placeholder="What do you want to Generate?"
                   rows={2}
                   className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-background/80 pl-4 pr-12 py-3 text-sm resize-none focus:ring-2 focus:ring-[#FFAA00]/30 focus:border-[#FFAA00]/50 transition-all"
                 />
@@ -3426,7 +3711,7 @@ export default function ExecutionProjectTests() {
                   disabled={isAiGenerating || !aiDraftPrompt.trim()}
                   className={`absolute right-2.5 bottom-6 h-8 w-8 rounded-lg inline-flex items-center justify-center transition-all ${
   aiDraftPrompt.trim() && !isAiGenerating
-    ? "bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] shadow-sm"
+    ? "bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] shadow-sm cursor-pointer"
     : "bg-black/5 dark:bg-white/5 text-[#232323]/25 dark:text-white/25 cursor-not-allowed"
 }`}
                   title="Send"
@@ -3449,15 +3734,26 @@ export default function ExecutionProjectTests() {
       <Popup
         open={isFolderModalOpen}
         title={folderModalMode === "create" ? t("tc.createFolder") : t("tc.editFolder")}
-        onClose={() => setIsFolderModalOpen(false)}
+        onClose={() => {
+          setFolderModalError("");
+          setIsFolderModalOpen(false);
+        }}
         maxWidth="max-w-lg"
       >
         <div className="space-y-4">
+          {folderModalError ? (
+            <div className="rounded-md border border-red-300/50 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+              {folderModalError}
+            </div>
+          ) : null}
           <div>
             <label className="block text-xs text-[#232323]/60 dark:text-white/60 mb-1">Folder Name</label>
             <input
               value={folderForm.name}
-              onChange={(event) => setFolderForm((prev) => ({ ...prev, name: event.target.value }))}
+              onChange={(event) => {
+                if (folderModalError) setFolderModalError("");
+                setFolderForm((prev) => ({ ...prev, name: event.target.value }));
+              }}
               className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
               placeholder="Folder name"
             />
@@ -3481,7 +3777,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={submitFolderModal}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {saving ? t("common.saving") : folderModalMode === "create" ? t("tc.createFolder") : t("tc.saveChanges")}
           </button>
@@ -3502,7 +3798,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={confirmDeleteFolder}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {saving ? t("common.deleting") : t("tc.deleteFolder")}
           </button>
@@ -3525,14 +3821,14 @@ export default function ExecutionProjectTests() {
               type="button"
               onClick={() => { confirmBulkDeleteFolders(); setBulkFolderDeleteConfirm(false); }}
               disabled={bulkDeleting}
-              className="flex-1 h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+              className="flex-1 h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
             >
               {bulkDeleting ? "Deleting..." : `Delete ${selectedFolderIds.length} Folder(s)`}
             </button>
             <button
               type="button"
               onClick={() => setBulkFolderDeleteConfirm(false)}
-              className="h-9 px-4 rounded-md border border-border text-xs"
+              className="h-9 px-4 rounded-md border border-border text-xs cursor-pointer"
             >
               Cancel
             </button>
@@ -3590,14 +3886,14 @@ export default function ExecutionProjectTests() {
               type="button"
               onClick={handleImportTests}
               disabled={importing || !importFile}
-              className="flex-1 h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+              className="flex-1 h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
             >
               {importing ? "Importing..." : "Import Tests"}
             </button>
             <button
               type="button"
               onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportMessage(null); }}
-              className="h-9 px-4 rounded-md border border-border text-xs"
+              className="h-9 px-4 rounded-md border border-border text-xs cursor-pointer"
             >
               Cancel
             </button>
@@ -3639,7 +3935,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={confirmMoveItem}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {saving ? "Moving..." : "Confirm Move"}
           </button>
@@ -3656,7 +3952,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={submitCreateTestCase}
             disabled={saving}
-            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             {saving ? t("common.creating") : t("common.create")}
@@ -3670,7 +3966,7 @@ export default function ExecutionProjectTests() {
                 type="button"
                 onClick={() => setCreateMode("advanced")}
                 className={`h-7 px-3 rounded text-xs font-semibold transition ${
-                  createMode === "advanced" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60"
+                  createMode === "advanced" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60 cursor-pointer"
                 }`}
               >
                 Advanced Mode
@@ -3679,7 +3975,7 @@ export default function ExecutionProjectTests() {
                 type="button"
                 onClick={() => setCreateMode("simple")}
                 className={`h-7 px-3 rounded text-xs font-semibold transition ${
-                  createMode === "simple" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60"
+                  createMode === "simple" ? "bg-[#FFAA00]/20 text-[#232323] dark:text-white" : "text-[#232323]/60 dark:text-white/60 cursor-pointer"
                 }`}
               >
                 Simple Mode
@@ -3722,12 +4018,12 @@ export default function ExecutionProjectTests() {
                         setSharedStepPickerMode("create");
                         setIsCreateSharedStepsPickerOpen(true);
                       }}
-                      className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1"
+                      className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1 cursor-pointer"
                     >
                       <ListChecks className="h-3 w-3" />
                       Shared Step
                     </button>
-                    <button type="button" onClick={addStep} className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1">
+                    <button type="button" onClick={addStep} className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1 cursor-pointer">
                       <Plus className="h-3 w-3" />
                       Add Step
                     </button>
@@ -3757,7 +4053,7 @@ export default function ExecutionProjectTests() {
                               type="button"
                               onClick={() => moveStep(index, -1)}
                               disabled={index === 0}
-                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors cursor-pointer"
                               title="Move step up"
                             >
                               <ChevronUp className="h-3.5 w-3.5" />
@@ -3766,7 +4062,7 @@ export default function ExecutionProjectTests() {
                               type="button"
                               onClick={() => moveStep(index, 1)}
                               disabled={index === testCaseForm.steps.length - 1}
-                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors cursor-pointer"
                               title="Move step down"
                             >
                               <ChevronDown className="h-3.5 w-3.5" />
@@ -3774,12 +4070,12 @@ export default function ExecutionProjectTests() {
                             <button
                               type="button"
                               onClick={() => openVariablePicker("create", step.id, "action")}
-                              className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors"
+                              className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors cursor-pointer"
                             >
                               {"$"} Var
                             </button>
                             {testCaseForm.steps.length > 1 ? (
-                              <button type="button" onClick={() => removeStep(index)} className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors" title="Remove step">
+                              <button type="button" onClick={() => removeStep(index)} className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer" title="Remove step">
                                 <Trash2 className="h-3 w-3" />
                               </button>
                             ) : null}
@@ -3813,7 +4109,7 @@ export default function ExecutionProjectTests() {
                                   type="button"
                                   onMouseDown={(event) => event.preventDefault()}
                                   onClick={() => applyVariableAutocomplete(item.name)}
-                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10 cursor-pointer"
                                 >
                                   <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
                                 </button>
@@ -3851,7 +4147,7 @@ export default function ExecutionProjectTests() {
                                   type="button"
                                   onMouseDown={(event) => event.preventDefault()}
                                   onClick={() => applyVariableAutocomplete(item.name)}
-                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10 cursor-pointer"
                                 >
                                   <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
                                 </button>
@@ -3869,7 +4165,7 @@ export default function ExecutionProjectTests() {
                           <button
                             type="button"
                             onClick={() => insertStepAfter(index)}
-                            className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all"
+                            className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all cursor-pointer"
                           >
                             + Insert Step Between
                           </button>
@@ -3927,9 +4223,32 @@ export default function ExecutionProjectTests() {
                   <input
                     value={testCaseForm.tagsInput}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, tagsInput: event.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === " ") {
+                        event.preventDefault();
+                        addCreateTagFromInput();
+                      }
+                    }}
                     placeholder="login, checkout"
                     className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
                   />
+                  {Array.isArray(testCaseForm.tagsKeywords) && testCaseForm.tagsKeywords.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {testCaseForm.tagsKeywords.map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/15 px-2 py-0.5 text-xs text-[#232323]/80 dark:text-white/80 bg-background/80">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeCreateTag(tag)}
+                            className="inline-flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+                            aria-label={`Remove ${tag}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -3989,7 +4308,7 @@ export default function ExecutionProjectTests() {
                     onClick={() =>
                       sharedStepPickerMode === "edit" ? addSharedStepToEditForm(item) : addSharedStepToCreateForm(item)
                     }
-                    className="w-full text-left p-3 hover:bg-[#FFAA00]/5 transition-colors group"
+                    className="w-full text-left p-3 hover:bg-[#FFAA00]/5 transition-colors group cursor-pointer"
                   >
                     <p className="text-sm font-medium text-[#232323] dark:text-white group-hover:text-[#FFAA00] transition-colors">{item.name}</p>
                     <p className="text-xs text-[#232323]/55 dark:text-white/55 mt-1 truncate">Action: {item.action}</p>
@@ -4035,7 +4354,7 @@ export default function ExecutionProjectTests() {
                   <button
                     type="button"
                     onClick={() => insertVariableIntoStep(item.name)}
-                    className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold"
+                    className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold "
                   >
                     Insert
                   </button>
@@ -4056,7 +4375,7 @@ export default function ExecutionProjectTests() {
               type="button"
               onClick={() => navigateEditingTestCase(-1)}
               disabled={activeEditingIndex <= 0}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               title="Previous test case"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -4065,7 +4384,7 @@ export default function ExecutionProjectTests() {
               type="button"
               onClick={() => navigateEditingTestCase(1)}
               disabled={activeEditingIndex < 0 || activeEditingIndex >= filteredFolderCases.length - 1}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-border text-[#232323]/70 dark:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               title="Next test case"
             >
               <ChevronRight className="h-4 w-4" />
@@ -4077,7 +4396,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={submitEditTestCase}
             disabled={saving}
-            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5"
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#e5a22e] text-[#232323] text-sm font-semibold disabled:opacity-60 shadow-sm transition-colors inline-flex items-center gap-1.5 cursor-pointer"
           >
             <CheckCircle className="h-3.5 w-3.5" />
             {saving ? "Saving..." : "Save Changes"}
@@ -4113,14 +4432,14 @@ export default function ExecutionProjectTests() {
                       setSharedStepPickerMode("edit");
                       setIsCreateSharedStepsPickerOpen(true);
                     }}
-                    className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1"
+                    className="h-7 px-2.5 rounded-lg border border-black/10 dark:border-white/10 text-xs font-medium text-[#232323]/70 dark:text-white/70 hover:border-[#FFAA00]/40 hover:bg-[#FFAA00]/5 transition-colors inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ListChecks className="h-3 w-3" />
                     Shared Step
                   </button>
                   <button
                     type="button"
-                    className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1"
+                    className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/12 hover:bg-[#FFAA00]/20 text-xs font-medium text-[#232323] dark:text-white transition-colors inline-flex items-center gap-1 cursor-pointer"
                     onClick={() =>
                       setEditingTestCase((prev) => ({
                         ...(prev || {}),
@@ -4154,7 +4473,7 @@ export default function ExecutionProjectTests() {
                               })
                             }
                             disabled={index === 0}
-                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors cursor-pointer"
                             title="Move step up"
                           >
                             <ChevronUp className="h-3.5 w-3.5" />
@@ -4170,7 +4489,7 @@ export default function ExecutionProjectTests() {
                               })
                             }
                             disabled={index >= (editingTestCase?.steps || []).length - 1}
-                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors"
+                            className="h-6 w-6 rounded-md inline-flex items-center justify-center text-[#232323]/50 dark:text-white/50 hover:bg-[#FFAA00]/10 hover:text-[#FFAA00] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#232323]/50 dark:disabled:hover:text-white/50 transition-colors cursor-pointer"
                             title="Move step down"
                           >
                             <ChevronDown className="h-3.5 w-3.5" />
@@ -4178,7 +4497,7 @@ export default function ExecutionProjectTests() {
                           <button
                             type="button"
                             onClick={() => openVariablePicker("edit", index, "action")}
-                            className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors"
+                            className="h-6 px-2 rounded-md border border-black/8 dark:border-white/8 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/8 transition-colors cursor-pointer"
                           >
                             {"$"} Var
                           </button>
@@ -4191,7 +4510,7 @@ export default function ExecutionProjectTests() {
                                   steps: (prev?.steps || []).filter((_, stepIndex) => stepIndex !== index),
                                 }))
                               }
-                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              className="h-6 w-6 rounded-md inline-flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                               title="Remove step"
                             >
                               <Trash2 className="h-3 w-3" />
@@ -4229,7 +4548,7 @@ export default function ExecutionProjectTests() {
                                 type="button"
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => applyVariableAutocomplete(item.name)}
-                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10 cursor-pointer"
                               >
                                 <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
                               </button>
@@ -4270,7 +4589,7 @@ export default function ExecutionProjectTests() {
                                 type="button"
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => applyVariableAutocomplete(item.name)}
-                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10"
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-500/10 cursor-pointer"
                               >
                                 <span className="text-blue-600 dark:text-blue-300 font-semibold">${item.name}</span>
                               </button>
@@ -4295,7 +4614,7 @@ export default function ExecutionProjectTests() {
                               return { ...(prev || {}), steps: nextSteps };
                             })
                           }
-                          className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all"
+                          className="h-6 px-2 rounded-full text-[11px] border border-dashed border-border text-[#232323]/60 dark:text-white/60 hover:border-[#FFAA00] hover:text-[#FFAA00] transition-all cursor-pointer"
                         >
                           + Insert Step Between
                         </button>
@@ -4329,7 +4648,7 @@ export default function ExecutionProjectTests() {
                 onChange={(event) =>
                   setEditingTestCase((prev) => ({ ...(prev || {}), priority: Number(event.target.value) }))
                 }
-                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm "
               >
                 <option value="0">Low</option>
                 <option value="1">Medium</option>
@@ -4362,8 +4681,31 @@ export default function ExecutionProjectTests() {
               <input
                 value={editingTestCase?.tagsInput || ""}
                 onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), tagsInput: event.target.value }))}
+                onKeyDown={(event) => {
+                  if (event.key === " ") {
+                    event.preventDefault();
+                    addEditTagFromInput();
+                  }
+                }}
                 className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
               />
+              {Array.isArray(editingTestCase?.tagsKeywords) && editingTestCase.tagsKeywords.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {editingTestCase.tagsKeywords.map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/15 px-2 py-0.5 text-xs text-[#232323]/80 dark:text-white/80 bg-background/80">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeEditTag(tag)}
+                        className="inline-flex items-center justify-center h-4 w-4 rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+                        aria-label={`Remove ${tag}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -4378,7 +4720,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={confirmDeleteTestCase}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {saving ? "Deleting..." : "Delete"}
           </button>
@@ -4394,7 +4736,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={confirmBulkDelete}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-red-500 text-white text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             {saving ? t("common.deleting") : t("tc.deleteSelected")}
           </button>
@@ -4425,7 +4767,7 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={handleCreateVariable}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             Add Variable
           </button>
@@ -4464,40 +4806,54 @@ export default function ExecutionProjectTests() {
             type="button"
             onClick={handleCreateSharedStep}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
             Add Shared Step
           </button>
         </div>
       </Popup>
 
-      <Popup open={isEnvironmentModalOpen} title={t("tc.addEnvironment")} onClose={() => setIsEnvironmentModalOpen(false)} maxWidth="max-w-lg">
+      <Popup
+        open={isEnvironmentModalOpen}
+        title={environmentModalMode === "edit" ? "Edit Environment" : t("tc.addEnvironment")}
+        onClose={closeEnvironmentModal}
+        maxWidth="max-w-lg"
+      >
         <div className="space-y-3">
           <input
             value={envForm.name}
-            onChange={(event) => setEnvForm((prev) => ({ ...prev, name: event.target.value }))}
-            placeholder="Name"
-            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
-          />
-          <input
-            value={envForm.slug}
-            onChange={(event) => setEnvForm((prev) => ({ ...prev, slug: event.target.value }))}
-            placeholder="Slug"
+            onChange={(event) => {
+              if (envModalError) setEnvModalError("");
+              setEnvForm((prev) => ({ ...prev, name: event.target.value }));
+            }}
+            placeholder="Environment name (Staging, Production...)"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
           <input
             value={envForm.baseUrl}
-            onChange={(event) => setEnvForm((prev) => ({ ...prev, baseUrl: event.target.value }))}
+            onChange={(event) => {
+              if (envModalError) setEnvModalError("");
+              setEnvForm((prev) => ({ ...prev, baseUrl: event.target.value }));
+            }}
             placeholder="Base URL"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
+          {!envForm.baseUrl.trim() && envForm.name.trim() ? (
+            <p className="text-xs text-amber-500">Base URL is required for AI to generate accurate test cases.</p>
+          ) : null}
+          {envModalError ? (
+            <div className="rounded-md border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{envModalError}</span>
+            </div>
+          ) : null}
           <button
             type="button"
-            onClick={handleCreateEnvironment}
+            onClick={handleSaveEnvironment}
             disabled={saving}
-            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60"
+            className="w-full h-9 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold disabled:opacity-60 cursor-pointer"
           >
-            Add Environment
+            {environmentModalMode === "edit" ? "Save Environment" : "Add Environment"}
           </button>
         </div>
       </Popup>

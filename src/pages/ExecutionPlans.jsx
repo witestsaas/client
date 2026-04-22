@@ -53,18 +53,18 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
       <div className="w-full max-w-lg rounded-3xl border border-black/10 dark:border-white/10 bg-card shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-background/30 flex items-center justify-between">
           <p className="text-lg font-semibold text-[#232323] dark:text-white">{t("tp.createPlan")}</p>
-          <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10">
+          <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="p-5 space-y-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">{t("tp.project")}</label>
+            <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70 ">{t("tp.project")}</label>
             <select
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
-              className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
+              className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25 cursor-pointer"
             >
               {!projects.length ? <option value="">{t("tp.noProjects")}</option> : null}
               {projects.map((project) => (
@@ -117,12 +117,12 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
         </div>
 
         <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 bg-background/20 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold">{t("common.cancel")}</button>
+          <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-xs font-semibold cursor-pointer">{t("common.cancel")}</button>
           <button
             type="button"
             onClick={onCreate}
             disabled={saving || !projectId || !form.name.trim() || !projectEnvironments.length || !form.environment}
-            className="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-2"
+            className="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             {t("tp.createPlan")}
@@ -167,11 +167,50 @@ export default function ExecutionPlans() {
   const [runModalPlanId, setRunModalPlanId] = useState("");
   const [runModalParallel, setRunModalParallel] = useState(1);
   const [runModalRunning, setRunModalRunning] = useState(false);
+  const [runModalHydrated, setRunModalHydrated] = useState(false);
   const [form, setForm] = useState({
     name: "",
     description: "",
     environment: "",
   });
+  const runModalPersistKey = useMemo(() => {
+    if (!orgSlug) return "execution-plans-run-modal";
+    return `execution-plans-run-modal:${orgSlug}`;
+  }, [orgSlug]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem(runModalPersistKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.runModalPlanId) {
+        setRunModalPlanId(String(saved.runModalPlanId));
+      }
+      if (typeof saved?.runModalParallel === "number" && saved.runModalParallel > 0) {
+        setRunModalParallel(saved.runModalParallel);
+      }
+    } catch {
+      // Ignore invalid persisted state.
+    } finally {
+      setRunModalHydrated(true);
+    }
+  }, [runModalPersistKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!runModalHydrated) return;
+    if (!runModalPlanId) {
+      window.sessionStorage.removeItem(runModalPersistKey);
+      return;
+    }
+
+    const payload = {
+      runModalPlanId,
+      runModalParallel,
+    };
+    window.sessionStorage.setItem(runModalPersistKey, JSON.stringify(payload));
+  }, [runModalPersistKey, runModalPlanId, runModalParallel, runModalHydrated]);
 
   const loadData = async (initial = false) => {
     if (!orgSlug) return;
@@ -308,6 +347,9 @@ export default function ExecutionPlans() {
 
       await runPlan(orgSlug, planId, { parallelSessions });
       setRunModalPlanId("");
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(runModalPersistKey);
+      }
       setPlans(await listPlans(orgSlug, { projectId: projectId || undefined }));
     } catch (err) {
       // Concurrency limit = too many parallel tests running right now (429 with concurrency_limit_* error)
@@ -357,7 +399,7 @@ export default function ExecutionPlans() {
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm inline-flex items-center gap-1.5"
+            className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             {t("tp.createPlan")}
@@ -384,17 +426,20 @@ export default function ExecutionPlans() {
               className="w-full h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAA00]/25"
             />
           </div>
-          <button type="button" className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
+          {/*<button type="button" className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
             <Filter className="h-3.5 w-3.5" />
             {t("common.filter")}
-          </button>
+          </button>*/}
         </div>
 
         {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{error}</div> : null}
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
-            <div className="flex items-center justify-center py-8"><svg className="animate-spin h-6 w-6" viewBox="0 0 24 24" fill="none"><circle className="opacity-20" cx="12" cy="12" r="10" stroke="#FFAA00" strokeWidth="3" /><path className="opacity-80" d="M12 2a10 10 0 0 1 10 10" stroke="#FFAA00" strokeWidth="3" strokeLinecap="round" /></svg></div>
+            <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card p-6 text-center text-sm text-[#232323]/60 dark:text-white/60">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#FFAA00]" />
+              Loading plans...
+            </div>
           ) : !filteredPlans.length ? (
             <div className="rounded-xl border border-black/10 dark:border-white/10 bg-card/80 p-8 text-center">
               <p className="text-sm text-[#232323]/60 dark:text-white/60">{t("tp.noPlans")}</p>
@@ -413,7 +458,7 @@ export default function ExecutionPlans() {
                       type="button"
                       onClick={() => openRunModal(plan.id)}
                       disabled={saving}
-                      className="h-8 px-3 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60"
+                      className="h-8 px-3 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                     >
                       <Play className="h-3.5 w-3.5" />
                       {t("tp.runPlan")}
@@ -422,20 +467,20 @@ export default function ExecutionPlans() {
                     <button
                       type="button"
                       onClick={() => setOpenMenuId((prev) => (prev === plan.id ? "" : plan.id))}
-                      className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center"
+                      className="ui-dropdown-trigger h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center cursor-pointer"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
 
                     {openMenuId === plan.id ? (
-                      <div className="absolute right-0 top-9 z-20 w-32 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
+                      <div className="ui-dropdown-panel absolute right-0 top-9 z-20 w-32 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
                         <button
                           type="button"
                           onClick={() => {
                             setOpenMenuId("");
                             handleDeletePlan(plan.id);
                           }}
-                          className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5"
+                          className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           {t("common.delete")}
@@ -564,7 +609,7 @@ function RunPlanQuickModal({ orgSlug, planName, parallelSessions, setParallelSes
 
         <div className="mt-5 flex items-center justify-end gap-2">
           <button type="button" onClick={onClose} disabled={running} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60">{t("common.cancel")}</button>
-          <button type="button" onClick={onRun} disabled={running} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60">
+          <button type="button" onClick={onRun} disabled={running} className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer">
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run Now
           </button>

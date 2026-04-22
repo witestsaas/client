@@ -86,7 +86,7 @@ export default function MfaChallengePage() {
             {error ? <p className="text-red-600 text-sm mb-3">{error}</p> : null}
             <button
               disabled={loading || secondsLeft <= 0}
-              className="w-full bg-[#FFAA00] dark:bg-[#FFAA00] text-white dark:text-[#232323] py-2 rounded-md transition hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 disabled:opacity-70"
+              className="w-full bg-[#FFAA00] dark:bg-[#FFAA00] text-white dark:text-[#232323] py-2 rounded-md transition hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 disabled:opacity-70 cursor-pointer"
             >
               {loading ? 'Verifying...' : 'Verify and continue'}
             </button>

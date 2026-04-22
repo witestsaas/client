@@ -24,6 +24,7 @@ function resolveApiBaseUrl() {
 const API_BASE_URL = resolveApiBaseUrl();
 import { getAccessToken } from '../auth/token-manager.js';
 import { notifyRefreshSuccess } from '../auth/session-keeper.js';
+import { toDisplayErrorMessage } from '../utils/api-error.js';
 
 function getCookieValue(name) {
   if (typeof document === 'undefined') return undefined;
@@ -100,12 +101,17 @@ export async function apiFetch(path, options = {}) {
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...fetchOptions,
-    headers,
-    cache: cacheMode,
-    credentials: 'include',
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...fetchOptions,
+      headers,
+      cache: cacheMode,
+      credentials: 'include',
+    });
+  } catch (err) {
+    throw new Error(toDisplayErrorMessage(err, 'Unable to reach the server.'));
+  }
 
   if (response.status === 401 && !_retry && path !== '/auth/refresh' && path !== '/auth/logout') {
     // Attempt silent refresh — never show unauthorized to the user

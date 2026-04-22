@@ -186,7 +186,7 @@ export function ActivitySidebar({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full"
+            className="text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
           >
             <XIcon className="h-5 w-5" />
           </Button>
@@ -216,7 +216,7 @@ export function ActivitySidebar({
               variant="ghost"
               size="sm"
               onClick={toggleSort}
-              className="text-xs text-muted-foreground hover:text-[#FFAA00] gap-1.5"
+              className="text-xs text-muted-foreground hover:text-[#FFAA00] gap-1.5 h-6 px-2 rounded-md transition-colors cursor-pointer"
             >
               {sortOrder === "newest" ? (
                 <>
@@ -299,7 +299,7 @@ export function ActivitySidebar({
                   "bg-[#FFAA00] hover:bg-[#F4A200]",
                   "text-black shadow-lg",
                   "disabled:opacity-50 disabled:shadow-none",
-                  "transition-all duration-200"
+                  "transition-all duration-200  cursor-pointer"
                 )}
               >
                 {submitting ? (

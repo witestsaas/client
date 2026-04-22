@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-gray-500 dark:text-white/60 hover:text-gray-700 dark:hover:text-white"
+              className="absolute right-3 top-2.5 text-gray-500 dark:text-white/60 hover:text-gray-700 dark:hover:text-white "
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-2.5 text-gray-500 dark:text-white/60 hover:text-gray-700 dark:hover:text-white"
+              className="absolute right-3 top-2.5 text-gray-500 dark:text-white/60 hover:text-gray-700 dark:hover:text-white cursor-pointer"
               aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
             >
               {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -147,7 +147,7 @@ export default function ResetPasswordPage() {
           </div>
 
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
-          <button disabled={loading} type="submit" className="w-full bg-blue-600 dark:bg-[#FFAA00] hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 text-white dark:text-[#232323] font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-70">{loading ? "Updating..." : "Reset Password"}</button>
+          <button disabled={loading} type="submit" className="w-full bg-blue-600 dark:bg-[#FFAA00] hover:bg-blue-700 dark:hover:bg-[#FFAA00]/90 text-white dark:text-[#232323] font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-70 cursor-pointer">{loading ? "Updating..." : "Reset Password"}</button>
         </form>
       </div>
     </main>

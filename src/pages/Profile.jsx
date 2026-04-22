@@ -5,10 +5,12 @@ import DashboardLayout from "../components/DashboardLayout";
 import { Input } from "../components/Input.tsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { apiFetch } from "../services/http.js";
+import { useLanguage } from "../utils/language-context";
 
 export default function Profile() {
   const { orgSlug } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { user, refreshProfile } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -104,9 +106,9 @@ export default function Profile() {
       }
 
       await refreshProfile();
-      setMessage('Profile updated successfully');
+      setMessage(t("profile.updatedSuccess"));
     } catch {
-      setMessage('Failed to update profile');
+      setMessage(t("profile.updatedFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -146,9 +148,9 @@ export default function Profile() {
       }
 
       await refreshProfile();
-      setMessage('Avatar updated successfully');
+      setMessage(t("profile.avatarUpdated"));
     } catch (error) {
-      setMessage(error?.message || 'Failed to upload avatar');
+      setMessage(error?.message || t("profile.avatarUploadFailed"));
     } finally {
       setIsUploading(false);
       // Reset file input so re-selecting the same file triggers onChange
@@ -182,9 +184,9 @@ export default function Profile() {
       }
       const payload = await response.json().catch(() => ({}));
       setSetupData(payload);
-      setMfaInfo('Scan the QR code, then enter the authenticator code to enable MFA.');
+      setMfaInfo(t("profile.mfa.scanHint"));
     } catch (error) {
-      setMfaError(error?.message || 'Failed to start MFA setup');
+      setMfaError(error?.message || t("profile.mfa.startFailed"));
     } finally {
       setMfaActionLoading(false);
     }
@@ -213,9 +215,9 @@ export default function Profile() {
       setMfaCode('');
       await refreshMfaStatus();
       await refreshProfile();
-      setMfaInfo('MFA enabled successfully. Save your recovery codes in a secure location.');
+      setMfaInfo(t("profile.mfa.enabledSuccess"));
     } catch (error) {
-      setMfaError(error?.message || 'Failed to enable MFA');
+      setMfaError(error?.message || t("profile.mfa.enableFailed"));
     } finally {
       setMfaActionLoading(false);
     }
@@ -244,9 +246,9 @@ export default function Profile() {
       setSetupData(null);
       await refreshMfaStatus();
       await refreshProfile();
-      setMfaInfo('MFA disabled successfully.');
+      setMfaInfo(t("profile.mfa.disabledSuccess"));
     } catch (error) {
-      setMfaError(error?.message || 'Failed to disable MFA');
+      setMfaError(error?.message || t("profile.mfa.disableFailed"));
     } finally {
       setMfaActionLoading(false);
     }
@@ -273,9 +275,9 @@ export default function Profile() {
       setRecoveryCodes(Array.isArray(payload?.recoveryCodes) ? payload.recoveryCodes : []);
       setRegenCode('');
       await refreshMfaStatus();
-      setMfaInfo('Recovery codes regenerated. Replace old codes immediately.');
+      setMfaInfo(t("profile.mfa.recoveryRegenerated"));
     } catch (error) {
-      setMfaError(error?.message || 'Failed to regenerate recovery codes');
+      setMfaError(error?.message || t("profile.mfa.regenerateFailed"));
     } finally {
       setMfaActionLoading(false);
     }
@@ -290,8 +292,8 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}`)}
-              className="h-9 w-9 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center"
-              title="Back"
+              className="h-9 w-9 rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] inline-flex items-center justify-center cursor-pointer hover:bg-white/90 dark:hover:bg-white/[0.05] transition-colors "
+              title={t("common.back")}
             >
               <ArrowLeft className="w-4 h-4 text-[#232323]/75 dark:text-white/75" />
             </button>
@@ -300,9 +302,9 @@ export default function Profile() {
                 <span className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 inline-flex items-center justify-center">
                   <UserIcon className="h-4 w-4" />
                 </span>
-                Profile
+                {t("profile.title")}
               </h2>
-              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">Update your basic information and profile photo</p>
+              <p className="text-[#232323]/60 dark:text-white/60 text-sm mt-0.5">{t("profile.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -318,11 +320,11 @@ export default function Profile() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="relative h-16 w-16 rounded-full border border-gray-200 dark:border-gray-700 bg-muted/40 overflow-hidden group disabled:opacity-70"
-                aria-label="Upload profile photo"
+                className="relative h-16 w-16 rounded-full border border-gray-200 dark:border-gray-700 bg-muted/40 overflow-hidden group disabled:opacity-70 cursor-pointer"
+                aria-label={t("profile.uploadPhoto")}
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile avatar" className="h-full w-full object-cover" />
+                  <img src={avatarUrl} alt={t("profile.photo")} className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-sm font-semibold text-muted-foreground">
                     {getInitials()}
@@ -341,16 +343,16 @@ export default function Profile() {
                 className="hidden"
               />
               <div>
-                <p className="text-sm font-medium text-[#232323] dark:text-white">Profile photo</p>
+                <p className="text-sm font-medium text-[#232323] dark:text-white">{t("profile.photo")}</p>
                 <p className="text-xs text-[#232323]/60 dark:text-white/60">
-                  Click the avatar to upload a new photo
+                  {t("profile.photoHint")}
                 </p>
               </div>
             </div>
 
             <div>
-              <Input label="First name" value={firstName} onChange={setFirstName} />
-              <Input label="Last name" value={lastName} onChange={setLastName} />
+              <Input label={t("profile.firstName")} value={firstName} onChange={setFirstName} />
+              <Input label={t("profile.lastName")} value={lastName} onChange={setLastName} />
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/10 dark:border-white/10">
@@ -358,16 +360,16 @@ export default function Profile() {
                 type="button"
                 onClick={() => navigate(`/dashboard/${orgSlug}`)}
                 disabled={isSaving}
-                className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-medium disabled:opacity-70"
+                className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-medium disabled:opacity-70 cursor-pointer"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70"
+                className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70 cursor-pointer"
               >
-                {isSaving ? "Saving..." : "Save profile"}
+                {isSaving ? t("common.saving") : t("profile.saveProfile")}
               </button>
             </div>
 
@@ -377,18 +379,18 @@ export default function Profile() {
 
         <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-[#F6F6F6] dark:bg-[#13112a] shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_10px_28px_rgba(0,0,0,0.28)] p-5 md:p-6 space-y-4">
           <div>
-            <h3 className="text-xl font-semibold text-[#232323] dark:text-white">Multi-factor authentication</h3>
+            <h3 className="text-xl font-semibold text-[#232323] dark:text-white">{t("profile.mfa.title")}</h3>
             <p className="text-sm text-[#232323]/60 dark:text-white/60 mt-1">
-              Protect your account with an authenticator app and recovery codes.
+              {t("profile.mfa.subtitle")}
             </p>
           </div>
 
           {mfaLoading ? (
-            <p className="text-sm text-[#232323]/70 dark:text-white/70">Loading MFA status...</p>
+            <p className="text-sm text-[#232323]/70 dark:text-white/70">{t("profile.mfa.loading")}</p>
           ) : (
             <p className="text-sm text-[#232323]/70 dark:text-white/70">
-              Status: <span className="font-semibold">{mfaStatus?.enabled ? 'Enabled' : 'Disabled'}</span>
-              {mfaStatus?.enabled ? ` · Recovery codes left: ${mfaStatus?.recoveryCodesRemaining ?? 0}` : ''}
+              {t("common.status")}: <span className="font-semibold">{mfaStatus?.enabled ? t("profile.mfa.enabled") : t("profile.mfa.disabled")}</span>
+              {mfaStatus?.enabled ? ` · ${t("profile.mfa.recoveryLeft")}: ${mfaStatus?.recoveryCodesRemaining ?? 0}` : ''}
             </p>
           )}
 
@@ -399,9 +401,9 @@ export default function Profile() {
                   type="button"
                   onClick={startMfaSetup}
                   disabled={mfaActionLoading}
-                  className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70"
+                  className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70 cursor-pointer"
                 >
-                  {mfaActionLoading ? 'Preparing setup...' : 'Start MFA setup'}
+                  {mfaActionLoading ? t("profile.mfa.preparing") : t("profile.mfa.start")}
                 </button>
               ) : (
                 <div className="space-y-3 border border-black/10 dark:border-white/10 rounded-xl p-4">
@@ -410,16 +412,16 @@ export default function Profile() {
                       <img src={setupData.qrCodeDataUrl} alt="MFA QR code" className="h-40 w-40 rounded-md border border-black/10 dark:border-white/10 bg-white" />
                     ) : null}
                     <div className="text-sm text-[#232323]/80 dark:text-white/80 space-y-2">
-                      <p className="font-medium">Manual key</p>
+                      <p className="font-medium">{t("profile.mfa.manualKey")}</p>
                       <p className="break-all font-mono text-xs bg-black/5 dark:bg-white/10 rounded px-2 py-1">
-                        {setupData?.manualEntryKey || 'Unavailable'}
+                        {setupData?.manualEntryKey || t("common.unavailable")}
                       </p>
-                      <p className="text-xs">Expires in {setupData?.expiresInSec || 600}s</p>
+                      <p className="text-xs">{t("profile.mfa.expiresIn")} {setupData?.expiresInSec || 600}s</p>
                     </div>
                   </div>
 
                   <Input
-                    label="Authenticator code"
+                    label={t("profile.mfa.authCode")}
                     value={mfaCode}
                     onChange={setMfaCode}
                   />
@@ -429,9 +431,9 @@ export default function Profile() {
                       type="button"
                       onClick={enableMfa}
                       disabled={mfaActionLoading}
-                      className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70"
+                      className="h-9 px-4 rounded-md bg-[#232323] hover:bg-[#111827] dark:bg-white dark:text-[#232323] dark:hover:bg-white/90 text-white text-sm font-semibold disabled:opacity-70 cursor-pointer"
                     >
-                      {mfaActionLoading ? 'Enabling...' : 'Enable MFA'}
+                      {mfaActionLoading ? t("profile.mfa.enabling") : t("profile.mfa.enable")}
                     </button>
                     <button
                       type="button"
@@ -442,9 +444,9 @@ export default function Profile() {
                         setMfaError('');
                       }}
                       disabled={mfaActionLoading}
-                      className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-medium disabled:opacity-70"
+                      className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-medium disabled:opacity-70 cursor-pointer"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </div>
@@ -453,9 +455,9 @@ export default function Profile() {
           ) : (
             <div className="space-y-4">
               <div className="border border-black/10 dark:border-white/10 rounded-xl p-4 space-y-3">
-                <p className="text-sm font-medium text-[#232323] dark:text-white">Disable MFA</p>
+                <p className="text-sm font-medium text-[#232323] dark:text-white">{t("profile.mfa.disable")}</p>
                 <Input
-                  label="Current authenticator/recovery code"
+                  label={t("profile.mfa.currentCode")}
                   value={disableCode}
                   onChange={setDisableCode}
                 />
@@ -463,16 +465,16 @@ export default function Profile() {
                   type="button"
                   onClick={disableMfa}
                   disabled={mfaActionLoading}
-                  className="h-9 px-4 rounded-md border border-red-300 text-red-600 dark:border-red-400/40 dark:text-red-400 text-sm font-semibold disabled:opacity-70"
+                  className="h-9 px-4 rounded-md border border-red-300 text-red-600 dark:border-red-400/40 dark:text-red-400 text-sm font-semibold disabled:opacity-70 cursor-pointer"
                 >
-                  {mfaActionLoading ? 'Disabling...' : 'Disable MFA'}
+                  {mfaActionLoading ? t("profile.mfa.disabling") : t("profile.mfa.disable")}
                 </button>
               </div>
 
               <div className="border border-black/10 dark:border-white/10 rounded-xl p-4 space-y-3">
-                <p className="text-sm font-medium text-[#232323] dark:text-white">Regenerate recovery codes</p>
+                <p className="text-sm font-medium text-[#232323] dark:text-white">{t("profile.mfa.regenerate")}</p>
                 <Input
-                  label="Current authenticator/recovery code"
+                  label={t("profile.mfa.currentCode")}
                   value={regenCode}
                   onChange={setRegenCode}
                 />
@@ -480,9 +482,9 @@ export default function Profile() {
                   type="button"
                   onClick={regenerateRecoveryCodes}
                   disabled={mfaActionLoading}
-                  className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-semibold disabled:opacity-70"
+                  className="h-9 px-4 rounded-md border border-black/10 dark:border-white/10 text-[#232323] dark:text-white text-sm font-semibold disabled:opacity-70 cursor-pointer"
                 >
-                  {mfaActionLoading ? 'Regenerating...' : 'Regenerate codes'}
+                  {mfaActionLoading ? t("profile.mfa.regenerating") : t("profile.mfa.regenerateCodes")}
                 </button>
               </div>
             </div>
@@ -491,7 +493,7 @@ export default function Profile() {
           {recoveryCodes.length > 0 ? (
             <div className="border border-amber-300/60 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-400/30 rounded-xl p-4">
               <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">
-                Save these recovery codes now
+                {t("profile.mfa.saveRecoveryNow")}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {recoveryCodes.map((item) => (

@@ -24,7 +24,7 @@ export function GoogleButton({ label = "Continue with Google", disabled, onClick
       type="button"
       onClick={handleGoogleAuth}
       disabled={disabled}
-      className={`w-full flex items-center justify-center gap-2 border border-border rounded-md py-2 transition text-foreground
+      className={`w-full flex items-center justify-center gap-2 border border-border rounded-md py-2 transition text-foreground cursor-pointer
         ${disabled ? 'opacity-60 cursor-not-allowed bg-muted' : 'hover:bg-accent hover:text-accent-foreground'}
         dark:text-white`}
     >

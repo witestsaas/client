@@ -72,7 +72,7 @@ export function ConfirmDialog({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
         >
           <X className="w-4 h-4 text-gray-500 dark:text-slate-400" />
         </button>
@@ -98,13 +98,13 @@ export function ConfirmDialog({
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors cursor-pointer"
             >
               {cancelText}
             </button>
             <button
               onClick={handleConfirm}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${styles.buttonColor}`}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors cursor-pointer ${styles.buttonColor}`}
             >
               {confirmText}
             </button>

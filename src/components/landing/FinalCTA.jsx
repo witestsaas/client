@@ -47,13 +47,13 @@ export default function FinalCTA() {
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <Link to="/signup" className="w-full sm:w-auto">
-            <button className="w-full sm:w-auto flex items-center justify-center gap-2 font-semibold px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base bg-[#F29F05] hover:bg-[#e5a22e] text-black transition-colors duration-200">
+            <button className="w-full sm:w-auto flex items-center justify-center gap-2 font-semibold px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base bg-[#F29F05] hover:bg-[#e5a22e] text-black transition-colors duration-200 cursor-pointer">
               Get started free <ArrowRight className="w-4 h-4" />
             </button>
           </Link>
           <Link to="/signin" className="w-full sm:w-auto">
             <button
-              className="w-full sm:w-auto flex items-center justify-center px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base transition-colors duration-200"
+              className="w-full sm:w-auto flex items-center justify-center px-6 sm:px-10 py-3.5 rounded-xl text-sm sm:text-base transition-colors duration-200 cursor-pointer"
               style={{
                 color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
                 border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.12)',

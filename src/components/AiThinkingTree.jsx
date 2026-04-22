@@ -279,7 +279,7 @@ function PhaseNode({ phase, steps, isLast, isGenerating }) {
       {/* Phase Header */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all duration-300 group text-left ${
+        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all duration-300 group text-left cursor-pointer ${
           isActive
             ? `${colors.activeBg} ring-1 ${colors.ring}`
             : "hover:bg-[#1c1a2e]/[0.03] dark:hover:bg-white/[0.03]"

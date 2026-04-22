@@ -79,7 +79,7 @@ export default function NoOrganizationPage() {
               required
               className="w-full rounded-md border border-border dark:border-white/[0.08] px-3 py-2 bg-white dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/30"
             />
-            <button disabled={loading} className="w-full rounded-md bg-[#F29F05] hover:bg-[#e5a22e] text-[#0f0f1a] font-semibold py-2 transition-colors duration-200">
+            <button disabled={loading} className="w-full rounded-md bg-[#F29F05] hover:bg-[#e5a22e] text-[#0f0f1a] font-semibold py-2 transition-colors duration-200 cursor-pointer">
               {loading ? "Processing..." : "Create Organization"}
             </button>
           </form>
@@ -96,7 +96,7 @@ export default function NoOrganizationPage() {
               required
               className="w-full rounded-md border border-border dark:border-white/[0.08] px-3 py-2 bg-white dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/30"
             />
-            <button disabled={loading} className="w-full rounded-md border border-border dark:border-white/[0.12] text-[#0f0f1a] dark:text-white font-semibold py-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-200">
+            <button disabled={loading} className="w-full rounded-md border border-border dark:border-white/[0.12] text-[#0f0f1a] dark:text-white font-semibold py-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-200 cursor-pointer">
               {loading ? "Processing..." : "Join Organization"}
             </button>
           </form>

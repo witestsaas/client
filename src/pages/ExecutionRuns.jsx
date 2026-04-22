@@ -752,7 +752,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
               ) : null}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="h-9 w-9 rounded-xl border border-black/8 dark:border-white/12 inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/8 transition-colors">
+          <button type="button" onClick={onClose} className="h-9 w-9 rounded-xl border border-black/8 dark:border-white/12 inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/8 transition-colors cursor-pointer">
             <X className="h-4 w-4 text-[#232323]/70 dark:text-white/70" />
           </button>
         </div>
@@ -784,7 +784,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                       key={result.id}
                       type="button"
                       onClick={() => setActiveResultId(String(result.id))}
-                      className={`w-full text-left rounded-xl border px-3.5 py-3 transition-all duration-150 ${selected ? "border-[#FFAA00]/50 bg-[#FFAA00]/8 shadow-sm shadow-[#FFAA00]/10" : "border-black/6 dark:border-white/8 hover:border-black/15 dark:hover:border-white/15 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"}`}
+                      className={`w-full text-left rounded-xl border px-3.5 py-3 transition-all duration-150 ${selected ? "border-[#FFAA00]/50 bg-[#FFAA00]/8 shadow-sm shadow-[#FFAA00]/10" : "border-black/6 dark:border-white/8 hover:border-black/15 dark:hover:border-white/15 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"} cursor-pointer`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -836,7 +836,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                             setParallelSessions(1);
                             setRerunModalOpen(true);
                           }}
-                          className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/12 text-xs font-semibold text-[#232323]/80 dark:text-white/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors"
+                          className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/12 text-xs font-semibold text-[#232323]/80 dark:text-white/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
                         >
                           Re-run This
                         </button>
@@ -847,7 +847,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                             setParallelSessions(2);
                             setRerunModalOpen(true);
                           }}
-                          className="h-8 px-3.5 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-xs font-semibold transition-colors"
+                          className="h-8 px-3.5 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-xs font-semibold transition-colors cursor-pointer"
                         >
                           {t("tr.rerunAll")}
                         </button>
@@ -875,7 +875,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                         key={key}
                         type="button"
                         onClick={() => setActiveTab(key)}
-                        className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                        className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
                           activeTab === key
                             ? "bg-[#FFAA00] text-[#232323] shadow-sm shadow-[#FFAA00]/20"
                             : "border border-black/8 dark:border-white/10 text-[#232323]/65 dark:text-white/65 hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
@@ -976,7 +976,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                                             : screenshotCandidates[0];
                                           window.open(target, "_blank", "noopener,noreferrer");
                                         }}
-                                        className="w-full rounded-xl border border-black/8 dark:border-white/10 overflow-hidden bg-card hover:border-black/15 dark:hover:border-white/20 transition-colors group"
+                                        className="w-full rounded-xl border border-black/8 dark:border-white/10 overflow-hidden bg-card hover:border-black/15 dark:hover:border-white/20 transition-colors group cursor-pointer"
                                       >
                                         <ArtifactImage
                                           candidates={screenshotCandidates}
@@ -1204,7 +1204,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           if (index > 0) setActiveResultId(String(results[index - 1].id));
                         }}
                         disabled={results.findIndex((result) => String(result.id) === selectedResultId) <= 0}
-                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         Previous
@@ -1216,7 +1216,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                           if (index < results.length - 1) setActiveResultId(String(results[index + 1].id));
                         }}
                         disabled={results.findIndex((result) => String(result.id) === selectedResultId) >= results.length - 1}
-                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                        className="h-8 px-3.5 rounded-lg border border-black/8 dark:border-white/10 text-xs font-semibold inline-flex items-center gap-1.5 text-[#232323]/70 dark:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         Next
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -1259,7 +1259,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 type="button"
                 onClick={() => setRerunModalOpen(false)}
                 disabled={rerunning}
-                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60"
+                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60 cursor-pointer"
               >
                 {t("common.cancel")}
               </button>
@@ -1267,7 +1267,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 type="button"
                 onClick={runRerun}
                 disabled={rerunning}
-                className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+                className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {rerunning ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {t("common.run")}
@@ -1484,7 +1484,7 @@ export default function ExecutionRuns() {
             <button
               type="button"
               onClick={() => navigate(`/dashboard/${orgSlug}/execution/plans`)}
-              className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+              className="h-8 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Play className="h-3.5 w-3.5" />
               Run a Plan
@@ -1516,7 +1516,7 @@ export default function ExecutionRuns() {
                         key={project.id}
                         type="button"
                         onClick={() => { setProjectId(project.id); setProjectDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 h-8 px-2.5 rounded-lg text-left text-[13px] font-medium transition-colors ${
+                        className={`w-full flex items-center gap-2 h-8 px-2.5 rounded-lg text-left text-[13px] font-medium transition-colors cursor-pointer ${
                           projectId === project.id
                             ? "bg-[#FFAA00]/15 text-[#FFAA00]"
                             : "text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
@@ -1543,7 +1543,7 @@ export default function ExecutionRuns() {
           </div>
 
           <div className="relative">
-            <button type="button" onClick={() => setStatusDropdownOpen((v) => !v)} className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5">
+            <button type="button" onClick={() => setStatusDropdownOpen((v) => !v)} className="h-9 px-3 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-background/80 dark:hover:bg-background/80">
               <Filter className="h-3.5 w-3.5" />
               {status || "Status"}
             </button>
@@ -1565,7 +1565,7 @@ export default function ExecutionRuns() {
                       key={opt.value}
                       type="button"
                       onClick={() => { setStatus(opt.value); setStatusDropdownOpen(false); }}
-                      className={`w-full h-8 px-2.5 rounded-md text-left text-xs font-medium ${
+                      className={`w-full h-8 px-2.5 rounded-md text-left text-xs font-medium transition-colors cursor-pointer ${
                         status === opt.value
                           ? "bg-[#FFAA00]/15 text-[#FFAA00] dark:text-[#FFAA00]"
                           : "text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
@@ -1639,7 +1639,7 @@ export default function ExecutionRuns() {
                             handleCancelRun(runId);
                           }}
                           disabled={saving || !runId}
-                          className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60"
+                          className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                         >
                           <Square className="h-3.5 w-3.5" />
                           Stop
@@ -1652,13 +1652,13 @@ export default function ExecutionRuns() {
                           event.stopPropagation();
                           setOpenMenuId((prev) => (prev === runId ? "" : runId));
                         }}
-                        className="h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center"
+                        className="ui-dropdown-trigger h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center cursor-pointer transition-colors hover:bg-background/90 dark:hover:bg-background/90 "
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
 
                       {openMenuId === runId ? (
-                        <div className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
+                        <div className="ui-dropdown-panel absolute right-0 top-9 z-20 w-44 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -1667,7 +1667,7 @@ export default function ExecutionRuns() {
                               openRunDetail(runId);
                             }}
                             disabled={!runId}
-                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5"
+                            className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                             Open Popup
@@ -1680,7 +1680,7 @@ export default function ExecutionRuns() {
                               openRunPage(runId);
                             }}
                             disabled={!runId}
-                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5"
+                            className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <Eye className="h-3.5 w-3.5" />
                             Open Page
@@ -1693,7 +1693,7 @@ export default function ExecutionRuns() {
                               handleDeleteRun(runId);
                             }}
                             disabled={!runId}
-                            className="w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5"
+                            className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                             {t("common.delete")}

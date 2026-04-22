@@ -391,7 +391,7 @@ const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 bottom-[9px] transition-colors"
+                  className="absolute right-3 bottom-[9px] transition-colors cursor-pointer"
                   style={{ color: textSubtle }}
                   onMouseEnter={e => e.currentTarget.style.color = textMuted}
                   onMouseLeave={e => e.currentTarget.style.color = textSubtle}
@@ -433,7 +433,7 @@ const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)
                         type="button"
                         onClick={refreshCaptcha}
                         disabled={captchaLoading || loading}
-                        className="text-xs hover:underline disabled:opacity-50"
+                        className="text-xs hover:underline disabled:opacity-50 transition-colors cursor-pointer"
                         style={{ color: "#F29F05" }}
                       >
                         Refresh
@@ -475,7 +475,7 @@ const borderSm     = isDark ? "rgba(255,255,255,0.07)"       : "rgba(0,0,0,0.08)
 
               <motion.button
                 disabled={loading}
-                className="w-full font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-70"
+                className="w-full font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-70 cursor-pointer"
                 style={{ background: "#F29F05", color: "#000" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#d98e04"}
                 onMouseLeave={e => e.currentTarget.style.background = "#F29F05"}

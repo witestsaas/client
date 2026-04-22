@@ -147,7 +147,7 @@ export function ActivityPanel({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
           >
             <XIcon className="h-4 w-4" />
           </Button>
@@ -177,7 +177,7 @@ export function ActivityPanel({
             variant="ghost"
             size="sm"
             onClick={toggleSort}
-            className="text-xs text-muted-foreground hover:text-[#FFAA00] gap-1 h-6 px-2"
+            className="text-xs text-muted-foreground hover:text-[#FFAA00] gap-1 h-6 px-2 rounded-md transition-colors cursor-pointer"
           >
             {sortOrder === "newest" ? (
               <>
@@ -246,7 +246,7 @@ export function ActivityPanel({
                 "bg-[#FFAA00] hover:bg-[#F4A200]",
                 "text-black shadow-sm",
                 "disabled:opacity-50 disabled:shadow-none",
-                "transition-all duration-200"
+                "transition-all duration-200 cursor-pointer"
               )}
             >
               {submitting ? (
