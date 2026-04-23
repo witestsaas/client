@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { AlertCircle, AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, Eye, FileText, Filter, Folder, Globe2, Layers, ListChecks, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle, Zap } from "lucide-react";
+import { AlertCircle, AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Layers, ListChecks, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle, Zap } from "lucide-react";
 import { VideoPlayer } from "../components/artifacts";
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
