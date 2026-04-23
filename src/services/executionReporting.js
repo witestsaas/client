@@ -43,6 +43,39 @@ export async function getPlan(orgSlug, planId) {
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+export async function updatePlan(orgSlug, planId, payload = {}) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(res);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+export async function replacePlanTestCases(orgSlug, planId, payload = {}) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}/test-cases`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(res);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+export async function patchPlanTestCase(orgSlug, planId, payload = {}) {
+  const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}/test-cases`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  return parseJson(res);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 export async function deletePlan(orgSlug, planId) {
   const res = await apiFetch(`/${encodeURIComponent(orgSlug)}/plans/${encodeURIComponent(planId)}`, {
     method: 'DELETE',

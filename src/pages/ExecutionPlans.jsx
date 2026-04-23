@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Calendar, Filter, Loader2, MoreVertical, Play, Plus, Search, Trash2, X } from "lucide-react";
+import { Calendar, Filter, Loader2, MoreVertical, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import QuotaRequiredPopup from "../components/QuotaRequiredPopup";
 import { fetchOrgQuotaUsage } from "../services/organizations";
-import { fetchProjectSettings, fetchTestProjects } from "../services/testManagement";
-import { createPlan, deletePlan, listPlans, runPlan, getExecutionSlots } from "../services/executionReporting";
+import { fetchProjectSettings, fetchProjectTree, fetchTestProjects } from "../services/testManagement";
+import { createPlan, deletePlan, getPlan, listPlans, patchPlanTestCase, replacePlanTestCases, runPlan, updatePlan, getExecutionSlots } from "../services/executionReporting";
 import { isQuotaDeniedError } from "../utils/quota";
 import { useOrgSlots } from "../hooks/useSocket";
 import { useLanguage } from "../utils/language-context";
@@ -42,6 +42,50 @@ function normalizeEnvironmentOptions(configPayload) {
     seen.add(option.value);
     return true;
   });
+}
+
+const PLAN_BROWSER_OPTIONS = [
+  { id: "desktop-chrome", label: "Chrome (Desktop)" },
+  { id: "desktop-edge", label: "Edge (Desktop)" },
+  { id: "desktop-firefox", label: "Firefox (Desktop)" },
+  { id: "desktop-safari", label: "Safari (Desktop)" },
+  { id: "mobile-samsung-s24-ultra", label: "Samsung S24 Ultra" },
+  { id: "mobile-iphone-15-pro-max", label: "iPhone 15 Pro Max" },
+];
+
+function buildProjectTreeRows(treePayload) {
+  const folders = Array.isArray(treePayload?.folders) ? treePayload.folders : [];
+  const testCases = Array.isArray(treePayload?.testCases) ? treePayload.testCases : [];
+
+  const folderMap = new Map();
+  folders.forEach((folder) => {
+    folderMap.set(String(folder.id), folder);
+  });
+
+  const grouped = new Map();
+  testCases.forEach((item) => {
+    const folderId = item?.folderId ? String(item.folderId) : "__root__";
+    const folder = folderMap.get(folderId);
+    const folderName = folder?.path || folder?.name || "Root";
+    if (!grouped.has(folderId)) {
+      grouped.set(folderId, {
+        folderId,
+        folderName,
+        testCases: [],
+      });
+    }
+    grouped.get(folderId).testCases.push({
+      id: String(item.id),
+      title: String(item.title || "Untitled test case"),
+    });
+  });
+
+  return Array.from(grouped.values())
+    .map((row) => ({
+      ...row,
+      testCases: row.testCases.sort((a, b) => a.title.localeCompare(b.title)),
+    }))
+    .sort((a, b) => a.folderName.localeCompare(b.folderName));
 }
 
 function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, projectEnvironments, form, setForm, onCreate, saving }) {
@@ -133,6 +177,230 @@ function CreatePlanModal({ open, onClose, projects, projectId, setProjectId, pro
   );
 }
 
+function EditPlanModal({
+  open,
+  onClose,
+  form,
+  setForm,
+  environmentOptions,
+  rows,
+  selectedTestCaseIds,
+  setSelectedTestCaseIds,
+  browsersByTestCase,
+  setBrowsersByTestCase,
+  onSave,
+  saving,
+  error,
+}) {
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const selectedSet = new Set((selectedTestCaseIds || []).map((item) => String(item)));
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredRows = (rows || [])
+    .map((row) => ({
+      ...row,
+      testCases: row.testCases.filter((testCase) => {
+        if (!normalizedSearch) return true;
+        return (
+          row.folderName.toLowerCase().includes(normalizedSearch) ||
+          testCase.title.toLowerCase().includes(normalizedSearch)
+        );
+      }),
+    }))
+    .filter((row) => row.testCases.length > 0);
+
+  const toggleTestCase = (testCaseId, checked) => {
+    const normalizedId = String(testCaseId);
+    setSelectedTestCaseIds((prev) => {
+      const prevSet = new Set((prev || []).map((item) => String(item)));
+      if (checked) prevSet.add(normalizedId);
+      else prevSet.delete(normalizedId);
+      return Array.from(prevSet);
+    });
+
+    if (checked) {
+      setBrowsersByTestCase((prev) => {
+        if (Array.isArray(prev?.[normalizedId]) && prev[normalizedId].length > 0) return prev;
+        return {
+          ...(prev || {}),
+          [normalizedId]: ["desktop-chrome"],
+        };
+      });
+    }
+  };
+
+  const toggleBrowser = (testCaseId, browserId, checked) => {
+    const normalizedCaseId = String(testCaseId);
+    setBrowsersByTestCase((prev) => {
+      const current = Array.isArray(prev?.[normalizedCaseId]) ? prev[normalizedCaseId] : [];
+      const next = checked
+        ? Array.from(new Set([...current, browserId]))
+        : current.filter((item) => item !== browserId);
+
+      return {
+        ...(prev || {}),
+        [normalizedCaseId]: next,
+      };
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !saving && onClose()}>
+      <div className="w-full max-w-6xl h-[90vh] rounded-2xl border border-black/10 dark:border-white/10 bg-card shadow-2xl overflow-hidden flex flex-col" onClick={(event) => event.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-background/30 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-[#232323] dark:text-white truncate">Edit Test Plan</p>
+            <p className="text-xs text-[#232323]/55 dark:text-white/55 mt-0.5">Update plan details, environment, selected test cases, and browser coverage.</p>
+          </div>
+          <button type="button" onClick={onClose} className="h-8 w-8 rounded-md inline-flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0">
+          <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-black/10 dark:border-white/10 p-4 space-y-3 overflow-auto">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Name</label>
+              <input
+                value={form.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm"
+                placeholder="Plan name"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                rows={4}
+                className="w-full rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 py-2 text-sm resize-none"
+                placeholder="Description"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#232323]/70 dark:text-white/70">Environment</label>
+              <select
+                value={form.environment}
+                onChange={(event) => setForm((prev) => ({ ...prev, environment: event.target.value }))}
+                className="w-full h-10 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 px-3 text-sm"
+              >
+                {!environmentOptions.length ? <option value="">No environments</option> : null}
+                {environmentOptions.map((env) => (
+                  <option key={env.id || env.value} value={env.value}>{env.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-lg border border-black/10 dark:border-white/10 bg-background/60 p-3">
+              <p className="text-xs text-[#232323]/65 dark:text-white/65">
+                Selected test cases: <span className="font-semibold text-[#232323] dark:text-white">{selectedSet.size}</span>
+              </p>
+            </div>
+
+            {error ? (
+              <div className="rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+                {error}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="lg:col-span-8 p-4 flex flex-col min-h-0">
+            <div className="relative mb-3">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#232323]/40 dark:text-white/40" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search folders or test cases"
+                className="w-full h-9 rounded-lg border border-black/10 dark:border-white/15 bg-background/90 pl-9 pr-3 text-sm"
+              />
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-black/10 dark:border-white/10 divide-y divide-black/6 dark:divide-white/6">
+              {!filteredRows.length ? (
+                <div className="h-full min-h-[220px] flex items-center justify-center text-sm text-[#232323]/55 dark:text-white/55">
+                  No test cases found.
+                </div>
+              ) : (
+                filteredRows.map((row) => (
+                  <div key={row.folderId} className="p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#232323]/55 dark:text-white/55 mb-2">{row.folderName}</p>
+                    <div className="space-y-2">
+                      {row.testCases.map((testCase) => {
+                        const selected = selectedSet.has(String(testCase.id));
+                        const selectedBrowsers = Array.isArray(browsersByTestCase?.[String(testCase.id)])
+                          ? browsersByTestCase[String(testCase.id)]
+                          : [];
+
+                        return (
+                          <div key={testCase.id} className="rounded-lg border border-black/8 dark:border-white/10 bg-background/70 px-3 py-2.5">
+                            <div className="flex items-start gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(event) => toggleTestCase(testCase.id, event.target.checked)}
+                                className="mt-0.5 h-4 w-4 accent-[#FFAA00]"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-[#232323] dark:text-white truncate">{testCase.title}</p>
+                                {selected ? (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {PLAN_BROWSER_OPTIONS.map((browser) => {
+                                      const checked = selectedBrowsers.includes(browser.id);
+                                      return (
+                                        <label key={`${testCase.id}-${browser.id}`} className={`h-6 px-2 rounded-md border text-[11px] inline-flex items-center gap-1 cursor-pointer ${checked ? "border-[#FFAA00]/45 bg-[#FFAA00]/12 text-[#232323] dark:text-white" : "border-black/10 dark:border-white/15 text-[#232323]/70 dark:text-white/70"}`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={(event) => toggleBrowser(testCase.id, browser.id, event.target.checked)}
+                                            className="h-3 w-3 accent-[#FFAA00]"
+                                          />
+                                          {browser.label}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 bg-background/20 flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={saving} className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60 cursor-pointer">Cancel</button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || !form.name.trim() || !form.environment}
+            className="h-9 px-4 rounded-lg bg-[#FFAA00] hover:bg-[#F4A200] text-[#232323] text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatRelativeTime(dateString) {
   if (!dateString) return "just now";
   const date = new Date(dateString);
@@ -164,6 +432,20 @@ export default function ExecutionPlans() {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
+  const [deletePlanTarget, setDeletePlanTarget] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editEnvironmentOptions, setEditEnvironmentOptions] = useState([]);
+  const [editRows, setEditRows] = useState([]);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    environment: "",
+  });
+  const [editSelectedTestCaseIds, setEditSelectedTestCaseIds] = useState([]);
+  const [editBrowsersByTestCase, setEditBrowsersByTestCase] = useState({});
   const [runModalPlanId, setRunModalPlanId] = useState("");
   const [runModalParallel, setRunModalParallel] = useState(1);
   const [runModalRunning, setRunModalRunning] = useState(false);
@@ -385,6 +667,107 @@ export default function ExecutionPlans() {
     }
   };
 
+  const openEditModal = async (planId) => {
+    if (!orgSlug || !planId) return;
+    setEditSaving(true);
+    setEditError("");
+    setEditingPlanId(String(planId));
+
+    try {
+      const plan = await getPlan(orgSlug, planId);
+      const effectiveProjectId = String(plan?.projectId || plan?.project?.id || "");
+
+      if (!effectiveProjectId) {
+        throw new Error("Plan project could not be resolved.");
+      }
+
+      const [projectConfig, treePayload] = await Promise.all([
+        fetchProjectSettings(orgSlug, effectiveProjectId).catch(() => ({})),
+        fetchProjectTree(orgSlug, effectiveProjectId),
+      ]);
+
+      const environments = normalizeEnvironmentOptions(projectConfig);
+      const planCases = Array.isArray(plan?.testCases) ? plan.testCases : [];
+      const selectedIds = planCases
+        .map((item) => String(item?.testCase?.id || ""))
+        .filter(Boolean);
+      const browsersMap = planCases.reduce((acc, item) => {
+        const testCaseId = String(item?.testCase?.id || "");
+        if (!testCaseId) return acc;
+        const browsers = Array.isArray(item?.browsers) && item.browsers.length > 0
+          ? item.browsers
+          : ["desktop-chrome"];
+        acc[testCaseId] = browsers;
+        return acc;
+      }, {});
+
+      setEditEnvironmentOptions(environments);
+      setEditRows(buildProjectTreeRows(treePayload));
+      setEditForm({
+        name: String(plan?.name || ""),
+        description: String(plan?.description || ""),
+        environment: String(plan?.environment || environments[0]?.value || ""),
+      });
+      setEditSelectedTestCaseIds(selectedIds);
+      setEditBrowsersByTestCase(browsersMap);
+      setEditModalOpen(true);
+    } catch (err) {
+      setEditError(err?.message || "Failed to load plan for editing");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleSaveEditedPlan = async () => {
+    if (!orgSlug || !editingPlanId) return;
+    if (!editForm.name.trim()) {
+      setEditError("Plan name is required.");
+      return;
+    }
+    if (!editForm.environment) {
+      setEditError("Environment is required.");
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError("");
+
+    try {
+      await updatePlan(orgSlug, editingPlanId, {
+        name: editForm.name.trim(),
+        description: editForm.description.trim(),
+        environment: editForm.environment,
+      });
+
+      const selectedIds = Array.from(new Set((editSelectedTestCaseIds || []).map((item) => String(item)).filter(Boolean)));
+      const replaceResult = await replacePlanTestCases(orgSlug, editingPlanId, {
+        testCaseIds: selectedIds,
+      });
+
+      const updatedPlanCases = Array.isArray(replaceResult?.testCases) ? replaceResult.testCases : [];
+      const patchTasks = updatedPlanCases.map((planCase) => {
+        const testCaseId = String(planCase?.testCase?.id || "");
+        const browsers = Array.isArray(editBrowsersByTestCase?.[testCaseId])
+          ? editBrowsersByTestCase[testCaseId]
+          : [];
+        const normalizedBrowsers = browsers.length > 0 ? Array.from(new Set(browsers)) : ["desktop-chrome"];
+        return patchPlanTestCase(orgSlug, editingPlanId, {
+          testPlanCaseId: planCase.id,
+          browsers: normalizedBrowsers,
+        });
+      });
+
+      await Promise.all(patchTasks);
+      setPlans(await listPlans(orgSlug, { projectId: projectId || undefined }));
+      setEditModalOpen(false);
+      setEditingPlanId("");
+    } catch (err) {
+      setEditError(err?.message || "Failed to save plan changes");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
@@ -473,12 +856,26 @@ export default function ExecutionPlans() {
                     </button>
 
                     {openMenuId === plan.id ? (
-                      <div className="ui-dropdown-panel absolute right-0 top-9 z-20 w-32 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
+                      <div className="ui-dropdown-panel absolute right-0 top-9 z-20 w-40 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
                         <button
                           type="button"
                           onClick={() => {
                             setOpenMenuId("");
-                            handleDeletePlan(plan.id);
+                            openEditModal(plan.id);
+                          }}
+                          className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId("");
+                            setDeletePlanTarget({
+                              id: plan.id,
+                              name: plan.name || "Test Plan",
+                            });
                           }}
                           className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5 cursor-pointer"
                         >
@@ -532,6 +929,62 @@ export default function ExecutionPlans() {
           onCreate={handleCreatePlan}
           saving={saving}
         />
+
+        <EditPlanModal
+          open={editModalOpen}
+          onClose={() => {
+            if (!editSaving) {
+              setEditModalOpen(false);
+              setEditingPlanId("");
+              setEditError("");
+            }
+          }}
+          form={editForm}
+          setForm={setEditForm}
+          environmentOptions={editEnvironmentOptions}
+          rows={editRows}
+          selectedTestCaseIds={editSelectedTestCaseIds}
+          setSelectedTestCaseIds={setEditSelectedTestCaseIds}
+          browsersByTestCase={editBrowsersByTestCase}
+          setBrowsersByTestCase={setEditBrowsersByTestCase}
+          onSave={handleSaveEditedPlan}
+          saving={editSaving}
+          error={editError}
+        />
+
+        {deletePlanTarget ? (
+          <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !saving && setDeletePlanTarget(null)}>
+            <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+              <p className="text-lg font-semibold text-[#232323] dark:text-white">Delete Test Plan</p>
+              <p className="text-sm text-[#232323]/65 dark:text-white/65 mt-2 leading-relaxed">
+                Delete "{deletePlanTarget.name}" permanently? This action cannot be undone.
+              </p>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletePlanTarget(null)}
+                  disabled={saving}
+                  className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60 cursor-pointer"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleDeletePlan(deletePlanTarget.id);
+                    setDeletePlanTarget(null);
+                  }}
+                  disabled={saving}
+                  className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {t("common.delete")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {runModalPlanId ? (
           <RunPlanQuickModal

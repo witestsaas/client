@@ -449,7 +449,7 @@ export default function Settings() {
                 <select
                   value={newKeyExpiry}
                   onChange={(e) => setNewKeyExpiry(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-border px-3 bg-background text-sm"
+                  className="ui-select w-full h-10 rounded-lg border border-border px-3 bg-background text-sm"
                 >
                   <option value="never">Never expires</option>
                   <option value="30">30 days</option>
@@ -991,7 +991,7 @@ jobs:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4">
           <p className="font-medium text-[#232323] dark:text-white">{t("settings.team.defaultRole")}</p>
-          <select className="mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
+          <select className="ui-select mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
             <option>{t("settings.team.role.viewer")}</option>
             <option>{t("settings.team.role.tester")}</option>
             <option>{t("settings.team.role.admin")}</option>
@@ -999,7 +999,7 @@ jobs:
         </div>
         <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4">
           <p className="font-medium text-[#232323] dark:text-white">{t("settings.team.invitePolicy")}</p>
-          <select className="mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
+          <select className="ui-select mt-3 w-full h-10 rounded-lg border border-black/15 dark:border-white/15 bg-background/80 px-3 text-sm">
             <option>{t("settings.team.policy.ownersOnly")}</option>
             <option>{t("settings.team.policy.ownersAdmins")}</option>
           </select>

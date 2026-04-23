@@ -1297,6 +1297,7 @@ export default function ExecutionRuns() {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
+  const [deleteRunTarget, setDeleteRunTarget] = useState(null);
 
   const refreshRuns = async () => {
     if (!orgSlug) return;
@@ -1644,12 +1645,28 @@ export default function ExecutionRuns() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          setDeleteRunTarget({
+                            id: runId,
+                            name: run.testPlan?.name || "Run",
+                          });
+                        }}
+                        disabled={saving || !runId}
+                        className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-500/10 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+
+                      {/*<button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setOpenMenuId((prev) => (prev === runId ? "" : runId));
                         }}
                         className="ui-dropdown-trigger h-8 w-8 rounded-lg border border-black/10 dark:border-white/15 bg-background/70 inline-flex items-center justify-center cursor-pointer transition-colors hover:bg-background/90 dark:hover:bg-background/90 "
                       >
                         <MoreVertical className="h-4 w-4" />
-                      </button>
+                      </button>*/}
 
                       {openMenuId === runId ? (
                         <div className="ui-dropdown-panel absolute right-0 top-9 z-20 w-44 rounded-lg border border-black/10 dark:border-white/10 bg-card shadow-lg p-1">
@@ -1665,19 +1682,6 @@ export default function ExecutionRuns() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                             Open Run
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuId("");
-                              handleDeleteRun(runId);
-                            }}
-                            disabled={!runId}
-                            className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {t("common.delete")}
                           </button>
                         </div>
                       ) : null}
@@ -1713,6 +1717,40 @@ export default function ExecutionRuns() {
           )}
         </div>
       </div>
+
+      {deleteRunTarget ? (
+        <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !saving && setDeleteRunTarget(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-card p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <p className="text-lg font-semibold text-[#232323] dark:text-white">Delete Test Run</p>
+            <p className="text-sm text-[#232323]/65 dark:text-white/65 mt-2 leading-relaxed">
+              Delete "{deleteRunTarget.name}" permanently? This action cannot be undone.
+            </p>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteRunTarget(null)}
+                disabled={saving}
+                className="h-9 px-4 rounded-lg border border-black/10 dark:border-white/15 text-sm font-semibold disabled:opacity-60 cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleDeleteRun(deleteRunTarget.id);
+                  setDeleteRunTarget(null);
+                }}
+                disabled={saving}
+                className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </DashboardLayout>
   );

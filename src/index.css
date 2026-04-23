@@ -180,15 +180,29 @@ h1, h2, h3, h4, h5, h6 {
 :root {
   --ui-dropdown-border: rgba(17, 24, 39, 0.14);
   --ui-dropdown-bg: rgba(255, 255, 255, 0.93);
+  --ui-dropdown-bg-solid: rgba(255, 255, 255, 0.98);
+  --ui-dropdown-bg-soft: rgba(248, 250, 252, 0.92);
   --ui-dropdown-bg-hover: rgba(255, 170, 0, 0.07);
+  --ui-dropdown-bg-active: rgba(255, 170, 0, 0.15);
+  --ui-dropdown-text: rgba(24, 28, 38, 0.92);
+  --ui-dropdown-muted: rgba(24, 28, 38, 0.55);
   --ui-dropdown-shadow: 0 18px 42px rgba(9, 12, 20, 0.16);
+  --ui-dropdown-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --ui-dropdown-ring: rgba(255, 170, 0, 0.22);
 }
 
 .dark {
   --ui-dropdown-border: rgba(255, 255, 255, 0.18);
   --ui-dropdown-bg: rgba(19, 22, 35, 0.92);
+  --ui-dropdown-bg-solid: rgba(18, 22, 34, 0.98);
+  --ui-dropdown-bg-soft: rgba(22, 27, 42, 0.94);
   --ui-dropdown-bg-hover: rgba(255, 170, 0, 0.14);
+  --ui-dropdown-bg-active: rgba(255, 170, 0, 0.22);
+  --ui-dropdown-text: rgba(245, 247, 252, 0.94);
+  --ui-dropdown-muted: rgba(245, 247, 252, 0.58);
   --ui-dropdown-shadow: 0 18px 42px rgba(0, 0, 0, 0.44);
+  --ui-dropdown-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.24);
+  --ui-dropdown-ring: rgba(255, 170, 0, 0.28);
 }
 
 select,
@@ -198,14 +212,16 @@ select,
   -moz-appearance: none;
   border: 1px solid var(--ui-dropdown-border);
   border-radius: 10px;
-  background-color: color-mix(in srgb, var(--ui-dropdown-bg) 96%, transparent);
+  background-color: color-mix(in srgb, var(--ui-dropdown-bg) 97%, transparent);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23F29F05' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: right 0.85rem center;
   background-size: 0.9rem;
   background-repeat: no-repeat;
   padding-right: 2.35rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 10px 24px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
+  color: var(--ui-dropdown-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), var(--ui-dropdown-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, transform 0.16s ease, color 0.18s ease, filter 0.18s ease;
+  will-change: transform, box-shadow;
 }
 
 select::-ms-expand,
@@ -216,20 +232,39 @@ select::-ms-expand,
 select:hover,
 .ui-select:hover {
   border-color: rgba(255, 170, 0, 0.5);
-  background-color: rgba(255, 170, 0, 0.06);
+  background-color: color-mix(in srgb, var(--ui-dropdown-bg) 93%, rgba(255, 170, 0, 0.09));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 14px 30px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
 }
 
 select:focus,
 .ui-select:focus {
   outline: none;
   border-color: rgba(255, 170, 0, 0.62);
-  box-shadow: 0 0 0 3px rgba(255, 170, 0, 0.2), 0 14px 28px rgba(0, 0, 0, 0.1);
+  background-color: color-mix(in srgb, var(--ui-dropdown-bg) 96%, transparent);
+  box-shadow: 0 0 0 3px var(--ui-dropdown-ring), 0 16px 34px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+select:disabled,
+.ui-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  filter: saturate(0.9);
+}
+
+select option:disabled,
+.ui-select option:disabled {
+  color: var(--ui-dropdown-muted);
 }
 
 select option,
 .ui-select option {
   color: #1f2430;
-  background: #f4f6fb;
+  background: #f8fafc;
+  padding: 0.55rem 0.75rem;
+  line-height: 1.45;
 }
 
 .dark select option,
@@ -238,11 +273,25 @@ select option,
   background: #141b2a;
 }
 
+select option:checked,
+.ui-select option:checked {
+  background: linear-gradient(180deg, rgba(255, 170, 0, 0.18) 0%, rgba(255, 170, 0, 0.1) 100%);
+  color: #111827;
+  font-weight: 600;
+}
+
+.dark select option:checked,
+.dark .ui-select option:checked {
+  color: #fff8eb;
+  background: linear-gradient(180deg, rgba(255, 170, 0, 0.28) 0%, rgba(255, 170, 0, 0.18) 100%);
+}
+
 select optgroup,
 .ui-select optgroup {
   color: #232323;
   font-weight: 700;
   background: #eef1f8;
+  letter-spacing: 0.02em;
 }
 
 .dark select optgroup,
@@ -254,31 +303,51 @@ select optgroup,
 .ui-dropdown-trigger {
   border: 1px solid var(--ui-dropdown-border);
   background: var(--ui-dropdown-bg);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(10px);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease, background-color 0.16s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.14s ease, background-color 0.2s ease;
+  will-change: transform, box-shadow;
 }
 
 .ui-dropdown-trigger:hover {
   border-color: rgba(255, 170, 0, 0.45);
   background: var(--ui-dropdown-bg-hover);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
 }
 
 .ui-dropdown-trigger:focus-visible {
   outline: none;
   border-color: rgba(255, 170, 0, 0.6);
-  box-shadow: 0 0 0 3px rgba(255, 170, 0, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 170, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.14);
 }
 
 .ui-dropdown-panel {
   border: 1px solid var(--ui-dropdown-border);
-  background: var(--ui-dropdown-bg);
+  background: var(--ui-dropdown-bg-solid);
   box-shadow: var(--ui-dropdown-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px) saturate(140%);
   border-radius: 14px;
   overflow: hidden;
-  animation: dropdown-in 0.14s ease;
+  transform-origin: top right;
+  animation: dropdown-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+
+.ui-dropdown-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 22%, transparent 48%);
+}
+
+.dark .ui-dropdown-panel::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.015) 22%, transparent 48%);
+}
+
+.ui-dropdown-panel,
+.ui-dropdown-panel * {
+  scrollbar-width: thin;
 }
 
 .ui-dropdown-panel::-webkit-scrollbar {
@@ -300,16 +369,32 @@ select optgroup,
 
 .ui-dropdown-item {
   border-radius: 10px;
-  transition: background-color 0.14s ease, color 0.14s ease, transform 0.12s ease, box-shadow 0.14s ease;
+  color: var(--ui-dropdown-text);
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.12s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  position: relative;
+  border: 1px solid transparent;
 }
 
 .ui-dropdown-item:hover {
   background: var(--ui-dropdown-bg-hover);
-  box-shadow: inset 0 0 0 1px rgba(255, 170, 0, 0.15);
+  border-color: rgba(255, 170, 0, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 170, 0, 0.08);
+  transform: translateX(1px);
+}
+
+.ui-dropdown-item:focus-visible {
+  outline: none;
+  background: var(--ui-dropdown-bg-active);
+  border-color: rgba(255, 170, 0, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(255, 170, 0, 0.2), 0 0 0 3px var(--ui-dropdown-ring);
 }
 
 .ui-dropdown-item:active {
   transform: translateY(1px);
+}
+
+.ui-dropdown-item + .ui-dropdown-item {
+  margin-top: 0.2rem;
 }
 
 @keyframes dropdown-in {

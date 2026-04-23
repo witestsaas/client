@@ -3784,7 +3784,7 @@ export default function ExecutionProjectTests() {
             <select
               value={folderForm.parentId || ""}
               onChange={(event) => setFolderForm((prev) => ({ ...prev, parentId: event.target.value }))}
-              className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+              className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
             >
               <option value="">Root</option>
               {Array.from(folderMap.values()).map((folder) => (
@@ -4205,7 +4205,7 @@ export default function ExecutionProjectTests() {
                   <select
                     value={testCaseForm.priority}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, priority: event.target.value }))}
-                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                    className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
                   >
                     <option>Low</option>
                     <option>Medium</option>
@@ -4218,7 +4218,7 @@ export default function ExecutionProjectTests() {
                   <select
                     value={testCaseForm.testCaseType}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, testCaseType: event.target.value }))}
-                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                    className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
                   >
                     <option>Functional</option>
                     <option>Regression</option>
@@ -4232,7 +4232,7 @@ export default function ExecutionProjectTests() {
                   <select
                     value={testCaseForm.automationStatus}
                     onChange={(event) => setTestCaseForm((prev) => ({ ...prev, automationStatus: event.target.value }))}
-                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                    className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
                   >
                     <option>Not Automated</option>
                     <option>Automated</option>
@@ -4375,7 +4375,7 @@ export default function ExecutionProjectTests() {
                   <button
                     type="button"
                     onClick={() => insertVariableIntoStep(item.name)}
-                    className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold "
+                    className="h-7 px-2.5 rounded-md bg-[#FFAA00]/15 text-xs font-semibold cursor-pointer hover:bg-[#FFAA00]/25 transition-colors"
                   >
                     Insert
                   </button>
@@ -4653,7 +4653,7 @@ export default function ExecutionProjectTests() {
               <select
                 value={editingTestCase?.status || "Active"}
                 onChange={(event) => setEditingTestCase((prev) => ({ ...(prev || {}), status: event.target.value }))}
-                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
               >
                 <option>Active</option>
                 <option>Draft</option>
@@ -4669,7 +4669,7 @@ export default function ExecutionProjectTests() {
                 onChange={(event) =>
                   setEditingTestCase((prev) => ({ ...(prev || {}), priority: Number(event.target.value) }))
                 }
-                className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm "
+                className="ui-select w-full h-9 rounded-md border border-border bg-background px-3 text-sm "
               >
                 <option value="0">Low</option>
                 <option value="1">Medium</option>
