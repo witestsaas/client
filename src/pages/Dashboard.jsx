@@ -109,6 +109,21 @@ export default function DashboardPage() {
   const [projectCounts, setProjectCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [projectsMenuOpen, setProjectsMenuOpen] = useState(false);
+
+  const handleAddProject = () => {
+    setProjectsMenuOpen(false);
+    const target = `/dashboard/${orgSlug}/execution/tests`;
+    if (location.pathname === target) {
+      window.dispatchEvent(new CustomEvent("openCreateProjectModal"));
+      return;
+    }
+
+    navigate(target);
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("openCreateProjectModal"));
+    }, 120);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -422,7 +437,7 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-foreground max-w-md text-center mb-6">{t("dashboard.noProjectsDesc")}</p>
             <button
               type="button"
-              onClick={() => navigate(`/dashboard/${orgSlug}/execution/tests`)}
+              onClick={handleAddProject}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-600 text-white text-sm font-medium transition-colors shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
             >
               <Plus className="w-4 h-4" />

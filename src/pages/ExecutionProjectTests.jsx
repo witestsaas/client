@@ -519,18 +519,30 @@ function FolderNode({
   );
 }
 
-function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerLeading = null, headerActions = null, zIndex = "z-50" }) {
+function Popup({
+  open,
+  title,
+  onClose,
+  children,
+  headerLeading = null,
+  headerActions = null,
+  zIndex = "z-50",
+}) {
   if (!open) return null;
+
   return (
-    <div className={`fixed inset-0 ${zIndex} bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3 lg:p-4 animate-in fade-in duration-150`}>
-      <div
-        className={`w-full ${maxWidth} max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-black/8 dark:border-white/10 bg-card shadow-[0_25px_65px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_65px_rgba(0,0,0,0.55)] transition-all duration-200`}
-      >
+    <div
+      className={`fixed inset-0 ${zIndex} bg-black/60 backdrop-blur-sm animate-in fade-in duration-150`}
+    >
+      <div className="w-screen h-dvh overflow-hidden bg-card">
         <div className="sticky top-0 z-10 border-b border-black/8 dark:border-white/8 px-5 sm:px-6 py-3.5 bg-card flex items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2.5 min-w-0">
             {headerLeading}
-            <p className="text-base font-semibold text-[#232323] dark:text-white truncate tracking-tight">{title}</p>
+            <p className="text-base font-semibold text-[#232323] dark:text-white truncate tracking-tight">
+              {title}
+            </p>
           </div>
+
           <div className="inline-flex items-center gap-2">
             {headerActions}
             <button
@@ -542,7 +554,10 @@ function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerL
             </button>
           </div>
         </div>
-        <div className="overflow-y-auto max-h-[calc(100dvh-6.25rem)] sm:max-h-[calc(100dvh-6.75rem)] lg:max-h-[calc(100dvh-7rem)] p-4 sm:p-5 lg:p-6 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#232323]/70 dark:[&_label]:text-white/60 [&_input]:rounded-lg [&_input]:border-black/12 dark:[&_input]:border-white/12 [&_input]:bg-background/80 [&_input]:shadow-sm [&_input]:transition-all [&_input]:duration-150 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/30 [&_input:focus]:border-[#FFAA00]/50 [&_select]:rounded-lg [&_select]:border-black/12 dark:[&_select]:border-white/12 [&_select]:bg-background/80 [&_select]:shadow-sm [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/30 [&_select:focus]:border-[#FFAA00]/50 [&_textarea]:rounded-lg [&_textarea]:border-black/12 dark:[&_textarea]:border-white/12 [&_textarea]:bg-background/80 [&_textarea]:shadow-sm [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/30 [&_textarea:focus]:border-[#FFAA00]/50">{children}</div>
+
+        <div className="h-[calc(100dvh-65px)] overflow-y-auto p-4 sm:p-5 lg:p-6 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#232323]/70 dark:[&_label]:text-white/60 [&_input]:rounded-lg [&_input]:border-black/12 dark:[&_input]:border-white/12 [&_input]:bg-background/80 [&_input]:shadow-sm [&_input]:transition-all [&_input]:duration-150 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/30 [&_input:focus]:border-[#FFAA00]/50 [&_select]:rounded-lg [&_select]:border-black/12 dark:[&_select]:border-white/12 [&_select]:bg-background/80 [&_select]:shadow-sm [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/30 [&_select:focus]:border-[#FFAA00]/50 [&_textarea]:rounded-lg [&_textarea]:border-black/12 dark:[&_textarea]:border-white/12 [&_textarea]:bg-background/80 [&_textarea]:shadow-sm [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/30 [&_textarea:focus]:border-[#FFAA00]/50">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -3573,7 +3588,7 @@ export default function ExecutionProjectTests() {
                   </div>
                   <p className="text-xl font-semibold text-[#232323] dark:text-white">Functional Test Case Generator</p>
                   <p className="mt-2 text-sm text-[#232323]/50 dark:text-white/50 max-w-lg leading-relaxed">
-                    Describe what you want to test and AI will generate comprehensive test cases for you. Start a new generation or select one from the left.
+                    Describe what you want to test and your Agent will generate comprehensive test cases for you. Start a new generation or select one from the left.
                   </p>
                 </div>
               ) : (
