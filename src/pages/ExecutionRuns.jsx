@@ -1639,7 +1639,7 @@ export default function ExecutionRuns() {
                             handleCancelRun(runId);
                           }}
                           disabled={saving || !runId}
-                          className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                          className="h-8 px-3 rounded-lg border border-red-300/70 text-red-600 text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer hover:bg-red-500/10 dark:hover:bg-red-500/10 transition-colors"
                         >
                           <Square className="h-3.5 w-3.5" />
                           Stop

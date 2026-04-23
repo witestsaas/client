@@ -11,8 +11,9 @@ import {
   LogOut,
   Monitor,
   Moon,
+  MoveHorizontal,
   PanelLeftClose,
-  PanelLeftOpen,
+  PanelRightClose,
   Plus,
   Search,
   Settings,
@@ -243,41 +244,42 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   return (
     <aside
-      className={`h-[100dvh] bg-[#1c1a2e] dark:bg-[#1c1a2e] text-[#F6F6F6] border-r border-white/10 shadow-sm flex flex-col ${
+      className={`relative overflow-visible h-[100dvh] bg-[#1c1a2e] dark:bg-[#1c1a2e] text-[#F6F6F6] border-r border-white/10 shadow-sm flex flex-col ${
         collapsed ? "w-16" : "w-[260px]"
       }`}
       style={{ transition: "width 200ms ease" }}
     >
       {/* ═══════════ Logo + Collapse ═══════════ */}
-      <div className={`h-13 shrink-0 flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3"}`}>
-        {collapsed ? (
+      <div className={`h-13 shrink-0 flex items-center relative ${collapsed ? "justify-center px-2" : "justify-between px-3"}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 shrink-0 flex items-center justify-center rounded-lg">
+            <img src={logo} alt="Qalion" className="h-5 w-5 object-contain" />
+          </div>
+          {!collapsed && <span className="text-base font-bold tracking-tight text-white select-none">QALION</span>}
+        </div>
+        {!collapsed && (
           <button
             type="button"
             onClick={onToggle}
-            className="h-9 w-9 rounded-lg hover:bg-white/10 inline-flex items-center justify-center transition-colors cursor-pointer"
-            title="Expand sidebar"
+            className="group absolute right-0 top-2.5 translate-x-1/2 h-8 w-6 rounded-none inline-flex items-center justify-center transition-all duration-200 cursor-pointer z-50 opacity-90 hover:opacity-100"
+            title="Collapse sidebar"
           >
-            <PanelLeftOpen className="h-[18px] w-[18px] text-[#FFAA00]" />
+            <PanelLeftClose className="h-3.5 w-3.5 text-[#A7A0A1] transition-all duration-200 group-hover:text-[#FFD166] group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,186,59,0.95)] " />
           </button>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 shrink-0 flex items-center justify-center rounded-lg">
-                <img src={logo} alt="Qalion" className="h-5 w-5 object-contain" />
-              </div>
-              <span className="text-base font-bold tracking-tight text-white select-none">QALION</span>
-            </div>
-            <button
-              type="button"
-              onClick={onToggle}
-              className="h-7 w-7 rounded-md hover:bg-white/10 inline-flex items-center justify-center transition-colors cursor-pointer"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose className="h-4 w-4 text-white/50" />
-            </button>
-          </>
         )}
       </div>
+
+      {collapsed && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="group absolute right-0 top-2.5 translate-x-1/2 h-8 w-6 rounded-none inline-flex items-center justify-center transition-all duration-200 cursor-pointer z-50 opacity-90 hover:opacity-100"
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+        >
+          <PanelRightClose className="h-3.5 w-3.5 text-[#A7A0A1] transition-all duration-200 group-hover:text-[#FFD166] group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,186,59,0.95)]" />
+        </button>
+      )}
 
       {/* ═══════════ Organization Switcher ═══════════ */}
       <div className="px-2 pt-0.5 pb-0.5 shrink-0" ref={switcherRef}>

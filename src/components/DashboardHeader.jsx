@@ -609,66 +609,55 @@ export default function DashboardHeader() {
       <div className="flex flex-1 justify-center items-center" />
 
       <div className="flex items-center gap-2">
-        {/* Coupon Balance – compact badge with bar + percentage */}
+        {/* Credits badge with SVG progress and remaining credits */}
         {!isNoOrg ? (() => {
           const remaining = Number(couponBalance?.totalRemainingUsd || 0);
           const total = Number(couponBalance?.totalAmountUsd || 0);
           const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
-          const barColor = pct > 50 ? "bg-emerald-400" : pct > 20 ? "bg-[#FFAA00]" : "bg-red-400";
           const textColor = total > 0
             ? (pct > 50 ? "text-emerald-400" : pct > 20 ? "text-[#FFAA00]" : "text-red-400")
             : "text-white/60";
           return (
             <button
-  type="button"
-  onClick={() => navigate(`/dashboard/${orgSlug}/settings?tab=credits`)}
-  className="h-8 px-3 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2.5 transition-colors cursor-pointer"
->
-  <div className="flex items-center gap-1.5">
-    {/* Mini circular progress */}
-    <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0">
- {/* background */}
-<circle
-   cx="9"
-   cy="9"
-   r="7"
-   stroke="currentColor"
-   strokeWidth="2"
-   fill="none"
-   className="text-white/10"
- />
- {/* progress */}
-<circle
-   cx="9"
-   cy="9"
-   r="7"
-   stroke="currentColor"
-   strokeWidth="2"
-   fill="none"
-   strokeDasharray={`${
-     (Math.min(100, total > 0 ? pct : 0) / 100) * (2 * Math.PI * 7)
-   } ${2 * Math.PI * 7}`}
-   strokeLinecap="round"
-   transform="rotate(-90 9 9)"
-   className={`transition-all duration-700 ${
-     pct > 50
-       ? "text-emerald-400"
-       : pct > 20
-       ? "text-[#FFAA00]"
-       : "text-red-400"
-   }`}
- />
-</svg>
-    <span className={`text-xs font-bold tabular-nums ${textColor}`}>{total > 0 ? pct : "--"}</span>
-  </div>
-  
-  {/*<div className="w-14 h-1.5 rounded-full bg-white/10 overflow-hidden">
-    <div
-      className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-      style={{ width: `${Math.min(100, total > 0 ? pct : 0)}%` }}
-    />
-  </div>*/}
-</button>
+              type="button"
+              onClick={() => navigate(`/dashboard/${orgSlug}/settings?tab=credits`)}
+              className="h-8 px-3 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2 transition-colors cursor-pointer"
+              title="Open credits"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0">
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  className="text-white/10"
+                />
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeDasharray={`${
+                    (Math.min(100, total > 0 ? pct : 0) / 100) * (2 * Math.PI * 7)
+                  } ${2 * Math.PI * 7}`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 9 9)"
+                  className={`transition-all duration-700 ${
+                    pct > 50
+                      ? "text-emerald-400"
+                      : pct > 20
+                      ? "text-[#FFAA00]"
+                      : "text-red-400"
+                  }`}
+                />
+              </svg>
+              <span className={`text-xs font-bold tabular-nums ${textColor}`}>{remaining.toFixed(2)}</span>
+              <span className="text-[10px] text-white/35 font-medium">Credits</span>
+            </button>
           );
         })() : null}
 
@@ -931,8 +920,19 @@ export default function DashboardHeader() {
         <button
           type="button"
           onClick={() => {
+            if (isNoOrg || !orgSlug) {
+              setAlertText("Create or join an organization first.");
+              return;
+            }
             if (!selectedProjectId || !selectedProject) {
-              navigate(`/dashboard/${orgSlug}/execution/tests`);
+              setAlertText("Create or select a project before using Qalion Agent.");
+              const target = `/dashboard/${orgSlug}/execution/tests`;
+              if (location.pathname !== target) {
+                navigate(target);
+              }
+              window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("openCreateProjectModal"));
+              }, 120);
               return;
             }
             const target = `/dashboard/${orgSlug}/execution/tests/${selectedProjectId}`;

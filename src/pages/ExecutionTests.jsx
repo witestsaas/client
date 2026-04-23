@@ -44,10 +44,12 @@ export default function ExecutionTests() {
   const [cloning, setCloning] = useState(false);
   const modalStorageKey = useMemo(() => `execution-tests:modal:${orgSlug || "no-org"}`, [orgSlug]);
 
-  async function loadProjects() {
+  async function loadProjects({ background = false } = {}) {
     if (!orgSlug) return;
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
       setError("");
       const data = await fetchTestProjects(orgSlug);
       const normalized = Array.isArray(data) ? data : [];
@@ -58,7 +60,9 @@ export default function ExecutionTests() {
       setLocalProjects([]);
       setError(toDisplayErrorMessage(err?.message, "Failed to load projects"));
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   }
 
@@ -73,12 +77,12 @@ export default function ExecutionTests() {
     if (modalMode || projectToDelete) return;
 
     const intervalId = setInterval(() => {
-      loadProjects();
+      loadProjects({ background: true });
     }, 5000);
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        loadProjects();
+        loadProjects({ background: true });
       }
     };
 
