@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { AlertCircle, AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Eye, FileText, Filter, Folder, Globe2, Layers, ListChecks, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle, Zap } from "lucide-react";
+import { AlertCircle, AlertTriangle, Bot, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, Eye, FileText, Filter, Folder, Globe2, Layers, ListChecks, Loader2, MoreVertical, Play, Search, Square, TerminalSquare, Trash2, Video, X, XCircle, Zap } from "lucide-react";
 import { VideoPlayer } from "../components/artifacts";
 import DashboardLayout from "../components/DashboardLayout";
 import { fetchTestProjects } from "../services/testManagement";
@@ -227,7 +227,7 @@ function ArtifactImage({ candidates, alt, className, onResolved }) {
   );
 }
 
-export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId = "" }) {
+export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId = "", showResultList = true }) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -772,6 +772,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
         ) : (
           <div className="flex-1 min-h-0 flex flex-col sm:flex-row">
             {/* ── Left sidebar: test case list ── */}
+            {showResultList ? (
             <div className="w-full sm:w-80 lg:w-96 sm:border-r border-b sm:border-b-0 border-black/8 dark:border-white/8 min-h-0 flex flex-col shrink-0">
               <div className="px-4 py-3 border-b border-black/6 dark:border-white/6 bg-black/[0.02] dark:bg-white/[0.02]">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#232323]/50 dark:text-white/50">Test case results ({results.length})</span>
@@ -802,6 +803,7 @@ export function RunDetailsModal({ open, orgSlug, runId, onClose, initialResultId
                 })}
               </div>
             </div>
+            ) : null}
 
             {/* ── Right panel: detail view ── */}
             <div className="flex-1 min-h-0 min-w-0 flex flex-col">
@@ -1295,8 +1297,6 @@ export default function ExecutionRuns() {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState("");
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [selectedRunId, setSelectedRunId] = useState("");
 
   const refreshRuns = async () => {
     if (!orgSlug) return;
@@ -1455,12 +1455,6 @@ export default function ExecutionRuns() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const openRunDetail = (runId) => {
-    if (!orgSlug || !runId) return;
-    setSelectedRunId(runId);
-    setDetailsModalOpen(true);
   };
 
   const openRunPage = (runId) => {
@@ -1664,26 +1658,13 @@ export default function ExecutionRuns() {
                             onClick={(event) => {
                               event.stopPropagation();
                               setOpenMenuId("");
-                              openRunDetail(runId);
-                            }}
-                            disabled={!runId}
-                            className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Open Popup
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuId("");
                               openRunPage(runId);
                             }}
                             disabled={!runId}
                             className="ui-dropdown-item w-full h-8 px-2 rounded-md text-left text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            Open Page
+                            Open Run
                           </button>
                           <button
                             type="button"
@@ -1733,15 +1714,6 @@ export default function ExecutionRuns() {
         </div>
       </div>
 
-      <RunDetailsModal
-        open={detailsModalOpen}
-        orgSlug={orgSlug}
-        runId={selectedRunId}
-        onClose={() => {
-          setDetailsModalOpen(false);
-          setSelectedRunId("");
-        }}
-      />
     </DashboardLayout>
   );
 }

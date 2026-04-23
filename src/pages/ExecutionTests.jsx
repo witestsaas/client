@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, Copy, Edit, Filter, Folder, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  Copy,
+  Edit,
+  Filter,
+  Folder,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import DashboardLayout from "../components/DashboardLayout";
 import {
@@ -15,11 +25,15 @@ import { toDisplayErrorMessage } from "../utils/api-error";
 
 const STATUS_OPTIONS = ["Draft", "Ready", "Passed", "Failed"];
 
+const createDefaultEnvironment = () => ({
+  name: "",
+  baseUrl: "",
+});
+
 const INITIAL_FORM = {
   name: "",
   description: "",
-  environmentName: "",
-  environmentBaseUrl: "",
+  environments: [createDefaultEnvironment()],
 };
 
 export default function ExecutionTests() {
@@ -41,15 +55,15 @@ export default function ExecutionTests() {
   const [modalError, setModalError] = useState("");
   const [importSourceId, setImportSourceId] = useState("");
   const [importMode, setImportMode] = useState(false);
-  const [cloning, setCloning] = useState(false);
-  const modalStorageKey = useMemo(() => `execution-tests:modal:${orgSlug || "no-org"}`, [orgSlug]);
+  const modalStorageKey = useMemo(
+    () => `execution-tests:modal:${orgSlug || "no-org"}`,
+    [orgSlug],
+  );
 
   async function loadProjects({ background = false } = {}) {
     if (!orgSlug) return;
     try {
-      if (!background) {
-        setLoading(true);
-      }
+      if (!background) setLoading(true);
       setError("");
       const data = await fetchTestProjects(orgSlug);
       const normalized = Array.isArray(data) ? data : [];
@@ -60,9 +74,7 @@ export default function ExecutionTests() {
       setLocalProjects([]);
       setError(toDisplayErrorMessage(err?.message, "Failed to load projects"));
     } finally {
-      if (!background) {
-        setLoading(false);
-      }
+      if (!background) setLoading(false);
     }
   }
 
@@ -72,8 +84,6 @@ export default function ExecutionTests() {
 
   useEffect(() => {
     if (!orgSlug) return;
-
-    // Skip polling while a modal is open to avoid re-renders that steal input focus
     if (modalMode || projectToDelete) return;
 
     const intervalId = setInterval(() => {
@@ -96,23 +106,13 @@ export default function ExecutionTests() {
 
   useEffect(() => {
     if (!showStatusMenu) return;
-
     const onDocumentClick = () => setShowStatusMenu(false);
     document.addEventListener("click", onDocumentClick);
-
-    return () => {
-      document.removeEventListener("click", onDocumentClick);
-    };
+    return () => document.removeEventListener("click", onDocumentClick);
   }, [showStatusMenu]);
 
   useEffect(() => {
-    const onOpenCreate = () => {
-      setEditingProjectId(null);
-      setForm(INITIAL_FORM);
-      setModalError("");
-      setModalMode("create");
-    };
-
+    const onOpenCreate = () => openCreateModal();
     window.addEventListener("openCreateProjectModal", onOpenCreate);
     return () => window.removeEventListener("openCreateProjectModal", onOpenCreate);
   }, []);
@@ -120,12 +120,6 @@ export default function ExecutionTests() {
   useEffect(() => {
     setLocalProjects(projects);
   }, [projects]);
-
-  useEffect(() => {
-    const openCreate = () => openCreateModal();
-    window.addEventListener("openCreateProjectModal", openCreate);
-    return () => window.removeEventListener("openCreateProjectModal", openCreate);
-  }, []);
 
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -141,7 +135,9 @@ export default function ExecutionTests() {
 
   const toggleStatus = (status) => {
     setSelectedStatuses((prev) =>
-      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status],
+      prev.includes(status)
+        ? prev.filter((item) => item !== status)
+        : [...prev, status],
     );
   };
 
@@ -159,8 +155,12 @@ export default function ExecutionTests() {
     setForm({
       name: project.name || "",
       description: project.description || "",
-      environmentName: "",
-      environmentBaseUrl: "",
+      environments: Array.isArray(project.environments) && project.environments.length
+        ? project.environments.map((env) => ({
+            name: env.name || "",
+            baseUrl: env.baseUrl || "",
+          }))
+        : [createDefaultEnvironment()],
     });
     setModalError("");
     setModalMode("edit");
@@ -183,7 +183,14 @@ export default function ExecutionTests() {
       if (!raw) return;
       const saved = JSON.parse(raw);
       if (saved?.form && typeof saved.form === "object") {
-        setForm((prev) => ({ ...prev, ...saved.form }));
+        setForm((prev) => ({
+          ...prev,
+          ...saved.form,
+          environments:
+            Array.isArray(saved.form.environments) && saved.form.environments.length
+              ? saved.form.environments
+              : [createDefaultEnvironment()],
+        }));
       }
       if (saved?.modalMode === "create" || saved?.modalMode === "edit") {
         setModalMode(saved.modalMode);
@@ -214,11 +221,44 @@ export default function ExecutionTests() {
     window.sessionStorage.setItem(modalStorageKey, JSON.stringify(payload));
   }, [modalStorageKey, modalMode, editingProjectId, projectToDelete, form]);
 
+  const updateEnvironment = (index, key, value) => {
+    setForm((prev) => {
+      const next = [...prev.environments];
+      next[index] = { ...next[index], [key]: value };
+      return { ...prev, environments: next };
+    });
+  };
+
+  const addEnvironment = () => {
+    setForm((prev) => ({
+      ...prev,
+      environments: [...prev.environments, createDefaultEnvironment()],
+    }));
+  };
+
+  const removeEnvironment = (index) => {
+    setForm((prev) => {
+      if (prev.environments.length === 1) return prev;
+      return {
+        ...prev,
+        environments: prev.environments.filter((_, i) => i !== index),
+      };
+    });
+  };
+
   async function handleSubmit() {
     if (!orgSlug || !form.name.trim()) return;
+
+    const cleanedEnvironments = (form.environments || [])
+      .map((env) => ({
+        name: env.name.trim(),
+        baseUrl: env.baseUrl.trim(),
+      }))
+      .filter((env) => env.name && env.baseUrl);
+
     if (modalMode === "create") {
-      if (!form.environmentName.trim() || !form.environmentBaseUrl.trim()) {
-        setModalError("Environment name and Base URL are required.");
+      if (!cleanedEnvironments.length) {
+        setModalError("Add at least one environment with name and Base URL.");
         return;
       }
     }
@@ -226,30 +266,40 @@ export default function ExecutionTests() {
     try {
       setSubmitting(true);
       setModalError("");
+
       let createdProject = null;
+
       if (modalMode === "create" && importMode && importSourceId) {
-        createdProject = await cloneProject(orgSlug, importSourceId, { name: form.name.trim() });
+        createdProject = await cloneProject(orgSlug, importSourceId, {
+          name: form.name.trim(),
+        });
       } else if (modalMode === "create") {
         createdProject = await createTestProject(orgSlug, {
-          name: form.name,
-          description: form.description,
+          name: form.name.trim(),
+          description: form.description.trim(),
         });
 
         const newProjectId = createdProject?.id;
         if (newProjectId) {
-          await createProjectEnvironment(orgSlug, newProjectId, {
-            name: form.environmentName.trim(),
-            baseUrl: form.environmentBaseUrl.trim(),
-            slug: form.environmentName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-            isDefault: true,
-          });
+          for (const env of cleanedEnvironments) {
+            await createProjectEnvironment(orgSlug, newProjectId, {
+              name: env.name,
+              baseUrl: env.baseUrl,
+              slug: env.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, ""),
+              isDefault: false,
+            });
+          }
         }
       } else if (modalMode === "edit" && editingProjectId) {
         await updateTestProject(orgSlug, editingProjectId, {
-          name: form.name,
-          description: form.description,
+          name: form.name.trim(),
+          description: form.description.trim(),
         });
       }
+
       closeModal();
       await loadProjects();
     } catch (err) {
@@ -300,8 +350,8 @@ export default function ExecutionTests() {
           <p className="text-base font-semibold text-red-900 dark:text-red-400">{error}</p>
           <button
             type="button"
-            onClick={loadProjects}
-            className="h-8 px-4 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] text-xs font-medium text-[#232323] "
+            onClick={() => loadProjects()}
+            className="h-8 px-4 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] text-xs font-medium text-[#232323]"
           >
             Retry
           </button>
@@ -346,37 +396,6 @@ export default function ExecutionTests() {
                   className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-card text-card-foreground text-sm"
                 />
               </div>
-
-              {/*<div className="relative" onClick={(event) => event.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={() => setShowStatusMenu((prev) => !prev)}
-                  className="h-9 px-3 rounded-lg border border-black/15 dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.04)] inline-flex items-center gap-1 text-xs text-[#232323]/75 dark:text-white/75 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  Status
-                </button>
-                {showStatusMenu ? (
-                  <div className="absolute right-0 mt-2 w-44 rounded-lg border border-black/15 dark:border-white/15 bg-card shadow-xl ring-1 ring-black/5 dark:ring-white/10 z-20 p-1">
-                    {STATUS_OPTIONS.map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => toggleStatus(status)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-[#232323]/5 dark:hover:bg-white/10 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedStatuses.includes(status)}
-                          readOnly
-                          className="w-3.5 h-3.5 rounded"
-                        />
-                        <span>{status}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>/* For future status filtering implementation */}
             </div>
           </div>
         </div>
@@ -388,6 +407,7 @@ export default function ExecutionTests() {
               <span>{error}</span>
             </div>
           ) : null}
+
           {filtered.length === 0 ? (
             <div className="text-center py-16 space-y-3 border-t dark:border-slate-800">
               <Folder className="w-12 h-12 mx-auto text-gray-300 dark:text-slate-700" />
@@ -457,158 +477,211 @@ export default function ExecutionTests() {
             </div>
           )}
         </div>
+
+        {modalMode ? (
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.28)] w-full max-w-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-gradient-to-r from-card via-card to-card/95">
+                <h3 className="text-sm font-semibold text-[#232323] dark:text-slate-50">
+                  {modalMode === "create" ? "Create project" : "Edit project"}
+                </h3>
+              </div>
+
+              <div className="px-5 py-4 space-y-4 [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Name</label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder="Project name"
+                    className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Description</label>
+                  <input
+                    value={form.description}
+                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Project description"
+                    className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+                  />
+                </div>
+
+                {modalMode === "create" ? (
+                  <div className="space-y-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.015] dark:bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                          Environments
+                        </label>
+                        <p className="text-[11px] text-[#232323]/50 dark:text-white/50">
+                          Add at least one environment before saving.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={addEnvironment}
+                        className="h-8 px-3 rounded-lg border border-black/10 dark:border-white/10 bg-card text-xs font-medium text-[#232323] dark:text-white hover:bg-black/5 dark:hover:bg-white/8 transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        + Add environment
+                      </button>
+                    </div>
+
+                    <div
+  className={`space-y-3 pr-1 ${
+    form.environments.length > 4
+      ? "max-h-[22rem] overflow-y-auto"
+      : ""
+  }`}
+>
+  {form.environments.map((env, index) => (
+    <div
+      key={index}
+      className="grid gap-3 md:grid-cols-[1fr_1.2fr_auto] items-end rounded-lg border border-black/10 dark:border-white/10 bg-background/70 p-3"
+    >
+      <div className="space-y-1">
+        <label className="text-[11px] font-medium text-gray-700 dark:text-slate-300">
+          Environment name
+        </label>
+        <input
+          value={env.name}
+          onChange={(e) => updateEnvironment(index, "name", e.target.value)}
+          placeholder="Staging"
+          className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+        />
       </div>
 
-      {modalMode ? (
-        <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl border border-black/10 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.28)] w-full max-w-md overflow-hidden">
-            <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-gradient-to-r from-card via-card to-card/95">
-              <h3 className="text-sm font-semibold text-[#232323] dark:text-slate-50">
-                {modalMode === "create" ? "Create project" : "Edit project"}
-              </h3>
-            </div>
-            <div className="px-5 py-4 space-y-4 [&_input]:rounded-lg [&_input]:border-black/15 dark:[&_input]:border-white/15 [&_input]:bg-background/80 [&_input]:shadow-[0_1px_2px_rgba(0,0,0,0.04)] [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/35 [&_input:focus]:border-[#FFAA00]/55">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Name</label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Project name"
-                  className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Description</label>
-                <input
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Project description"
-                  className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
-                />
-              </div>
-              {modalMode === "create" ? (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Environment Name</label>
-                    <input
-                      value={form.environmentName}
-                      onChange={(e) => setForm((prev) => ({ ...prev, environmentName: e.target.value }))}
-                      placeholder="Staging"
-                      className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Environment Base URL</label>
-                    <input
-                      value={form.environmentBaseUrl}
-                      onChange={(e) => setForm((prev) => ({ ...prev, environmentBaseUrl: e.target.value }))}
-                      placeholder="https://staging.example.com"
-                      className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
-                    />
-                  </div>
-                </>
-              ) : null}
-              {modalMode === "create" ? (
-                <div className="space-y-2">
-                  {/*<label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importMode}
-                      onChange={(e) => { setImportMode(e.target.checked); if (!e.target.checked) setImportSourceId(""); }}
-                      className="h-3.5 w-3.5 rounded"
-                    />
-                    <span className="text-xs font-medium text-gray-700 dark:text-slate-300 flex items-center gap-1">
-                      <Copy className="h-3 w-3" />
-                      Import from existing project
-                    </span>
-                  </label>*/}
-                  {importMode ? (
-                    <select
-                      value={importSourceId}
-                      onChange={(e) => setImportSourceId(e.target.value)}
-                      className="w-full h-9 text-sm px-3 rounded-lg border border-black/15 dark:border-white/15 bg-background/80"
-                    >
-                      <option value="">Select source project...</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  ) : null}
-                  {importMode ? (
-                    <p className="text-[11px] text-[#232323]/50 dark:text-white/50">
-                      All folders, test cases, steps, variables, environments and shared steps will be cloned from the source project.
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              {modalError ? (
-                <div className="rounded-lg border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
-                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>{modalError}</span>
-                </div>
-              ) : null}
-            </div>
-            <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={submitting || !form.name.trim()}
-                onClick={handleSubmit}
-                className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] disabled:opacity-60 text-xs font-semibold text-[#232323] cursor-pointer"
-              >
-                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                {submitting ? " Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <div className="space-y-1">
+        <label className="text-[11px] font-medium text-gray-700 dark:text-slate-300">
+          Base URL
+        </label>
+        <input
+          value={env.baseUrl}
+          onChange={(e) => updateEnvironment(index, "baseUrl", e.target.value)}
+          placeholder="https://staging.example.com"
+          className="w-full h-9 text-sm px-3 border border-black/25 dark:border-white/25 bg-background/90"
+        />
+      </div>
 
-      {projectToDelete ? (
-        <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl border border-red-200/70 dark:border-red-700/40 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.28)] w-full max-w-md overflow-hidden">
-            <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-gradient-to-r from-red-50/50 to-card dark:from-red-950/20 dark:to-card">
-              <h3 className="text-sm font-semibold text-red-600 dark:text-red-300 inline-flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                Delete Project
-              </h3>
-            </div>
-            <div className="px-5 py-4 space-y-2">
-              <p className="text-sm text-[#232323] dark:text-slate-100">
-                Are you sure you want to delete <span className="font-semibold">{projectToDelete.name || "this project"}</span>?
-              </p>
-              <p className="text-xs text-[#232323]/65 dark:text-white/65">
-                This will permanently remove the project and all related folders and test cases.
-              </p>
-            </div>
-            <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
-              <button
-                type="button"
-                onClick={() => setProjectToDelete(null)}
-                disabled={deletingId === projectToDelete.id}
-                className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-60 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deletingId === projectToDelete.id}
-                onClick={confirmDeleteProject}
-                className="h-8 px-3 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-semibold text-white inline-flex items-center gap-1 cursor-pointer"
-              >
-                {deletingId === projectToDelete.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                {deletingId === projectToDelete.id ? "Deleting..." : "Delete Project"}
-              </button>
+      <button
+        type="button"
+        onClick={() => removeEnvironment(index)}
+        disabled={form.environments.length === 1}
+        className="h-9 px-3 rounded-lg border border-red-300/60 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Remove
+      </button>
+    </div>
+  ))}
+</div>
+                  </div>
+                ) : null}
+
+                {modalMode === "create" ? (
+                  <div className="space-y-2">
+                    {importMode ? (
+                      <select
+                        value={importSourceId}
+                        onChange={(e) => setImportSourceId(e.target.value)}
+                        className="w-full h-9 text-sm px-3 rounded-lg border border-black/15 dark:border-white/15 bg-background/80"
+                      >
+                        <option value="">Select source project...</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    {importMode ? (
+                      <p className="text-[11px] text-[#232323]/50 dark:text-white/50">
+                        All folders, test cases, steps, variables, environments and shared steps will be cloned from the source project.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {modalError ? (
+                  <div className="rounded-lg border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
+                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>{modalError}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    submitting ||
+                    !form.name.trim() ||
+                    (modalMode === "create" &&
+                      (!form.environments.length ||
+                        form.environments.some((e) => !e.name.trim() || !e.baseUrl.trim())))
+                  }
+                  onClick={handleSubmit}
+                  className="h-8 px-3 rounded-md bg-[#FFAA00] hover:bg-[#F4A200] disabled:opacity-60 text-xs font-semibold text-[#232323] cursor-pointer inline-flex items-center gap-1"
+                >
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  {submitting ? "Saving..." : "Save"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {projectToDelete ? (
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-2xl border border-red-200/70 dark:border-red-700/40 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.28)] w-full max-w-md overflow-hidden">
+              <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 bg-gradient-to-r from-red-50/50 to-card dark:from-red-950/20 dark:to-card">
+                <h3 className="text-sm font-semibold text-red-600 dark:text-red-300 inline-flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Delete Project
+                </h3>
+              </div>
+              <div className="px-5 py-4 space-y-2">
+                <p className="text-sm text-[#232323] dark:text-slate-100">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold">{projectToDelete.name || "this project"}</span>?
+                </p>
+                <p className="text-xs text-[#232323]/65 dark:text-white/65">
+                  This will permanently remove the project and all related folders and test cases.
+                </p>
+              </div>
+              <div className="px-5 py-3 border-t border-black/10 dark:border-white/10 flex justify-end gap-2 bg-muted/70">
+                <button
+                  type="button"
+                  onClick={() => setProjectToDelete(null)}
+                  disabled={deletingId === projectToDelete.id}
+                  className="h-8 px-3 rounded-lg border border-black/15 dark:border-white/15 text-xs text-[#232323]/70 dark:text-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] disabled:opacity-60 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deletingId === projectToDelete.id}
+                  onClick={confirmDeleteProject}
+                  className="h-8 px-3 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-semibold text-white inline-flex items-center gap-1 cursor-pointer"
+                >
+                  {deletingId === projectToDelete.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : null}
+                  {deletingId === projectToDelete.id ? "Deleting..." : "Delete Project"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </DashboardLayout>
   );
 }

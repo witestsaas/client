@@ -75,6 +75,36 @@ export default function Sidebar({ collapsed, onToggle }) {
   const [languageOpen, setLanguageOpen] = useState(false);
   const profileRef = useRef(null);
   const switcherRef = useRef(null);
+  const appearanceCloseTimerRef = useRef(null);
+  const languageCloseTimerRef = useRef(null);
+
+  const clearAppearanceCloseTimer = () => {
+    if (appearanceCloseTimerRef.current) {
+      window.clearTimeout(appearanceCloseTimerRef.current);
+      appearanceCloseTimerRef.current = null;
+    }
+  };
+
+  const clearLanguageCloseTimer = () => {
+    if (languageCloseTimerRef.current) {
+      window.clearTimeout(languageCloseTimerRef.current);
+      languageCloseTimerRef.current = null;
+    }
+  };
+
+  const scheduleAppearanceClose = () => {
+    clearAppearanceCloseTimer();
+    appearanceCloseTimerRef.current = window.setTimeout(() => {
+      setAppearanceOpen(false);
+    }, 160);
+  };
+
+  const scheduleLanguageClose = () => {
+    clearLanguageCloseTimer();
+    languageCloseTimerRef.current = window.setTimeout(() => {
+      setLanguageOpen(false);
+    }, 160);
+  };
 
   useEffect(() => {
     if (!orgSlug || orgSlug === "no-org") return;
@@ -172,6 +202,13 @@ export default function Sidebar({ collapsed, onToggle }) {
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [profileMenuOpen, switcherOpen]);
+
+  useEffect(() => {
+    return () => {
+      clearAppearanceCloseTimer();
+      clearLanguageCloseTimer();
+    };
+  }, []);
 
   const allowedSections = useMemo(() => {
     const map = {
@@ -582,8 +619,13 @@ export default function Sidebar({ collapsed, onToggle }) {
                 {/* Appearance — right-side flyout */}
                 <div
                   className="relative"
-                  onMouseEnter={() => { setAppearanceOpen(true); setLanguageOpen(false); }}
-                  onMouseLeave={() => setAppearanceOpen(false)}
+                  onMouseEnter={() => {
+                    clearAppearanceCloseTimer();
+                    clearLanguageCloseTimer();
+                    setAppearanceOpen(true);
+                    setLanguageOpen(false);
+                  }}
+                  onMouseLeave={scheduleAppearanceClose}
                 >
                   <button
                     type="button"
@@ -602,7 +644,11 @@ export default function Sidebar({ collapsed, onToggle }) {
                     </span>
                   </button>
                   {appearanceOpen && (
-                    <div className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
+                    <div
+                      className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50"
+                      onMouseEnter={clearAppearanceCloseTimer}
+                      onMouseLeave={scheduleAppearanceClose}
+                    >
                       {[
                         { key: "light", label: t("appearance.light"), icon: Sun },
                         { key: "dark", label: t("appearance.dark"), icon: Moon },
@@ -628,8 +674,13 @@ export default function Sidebar({ collapsed, onToggle }) {
                 {/* Language — right-side flyout */}
                 <div
                   className="relative"
-                  onMouseEnter={() => { setLanguageOpen(true); setAppearanceOpen(false); }}
-                  onMouseLeave={() => setLanguageOpen(false)}
+                  onMouseEnter={() => {
+                    clearLanguageCloseTimer();
+                    clearAppearanceCloseTimer();
+                    setLanguageOpen(true);
+                    setAppearanceOpen(false);
+                  }}
+                  onMouseLeave={scheduleLanguageClose}
                 >
                   <button
                     type="button"
@@ -646,7 +697,11 @@ export default function Sidebar({ collapsed, onToggle }) {
                     </span>
                   </button>
                   {languageOpen && (
-                    <div className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50">
+                    <div
+                      className="ui-dropdown-panel absolute left-full top-0 ml-2 w-44 rounded-xl border border-white/10 bg-[#252340] shadow-2xl p-1 z-50"
+                      onMouseEnter={clearLanguageCloseTimer}
+                      onMouseLeave={scheduleLanguageClose}
+                    >
                       {[
                         { key: "en", label: "English", flag: "🇬🇧" },
                         { key: "fr", label: "Français", flag: "🇫🇷" },

@@ -519,30 +519,18 @@ function FolderNode({
   );
 }
 
-function Popup({
-  open,
-  title,
-  onClose,
-  children,
-  headerLeading = null,
-  headerActions = null,
-  zIndex = "z-50",
-}) {
+function Popup({ open, title, onClose, children, maxWidth = "max-w-3xl", headerLeading = null, headerActions = null, zIndex = "z-50" }) {
   if (!open) return null;
-
   return (
-    <div
-      className={`fixed inset-0 ${zIndex} bg-black/60 backdrop-blur-sm animate-in fade-in duration-150`}
-    >
-      <div className="w-screen h-dvh overflow-hidden bg-card">
+    <div className={`fixed inset-0 ${zIndex} bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3 lg:p-4 animate-in fade-in duration-150`}>
+      <div
+        className={`w-full ${maxWidth} max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] lg:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-black/8 dark:border-white/10 bg-card shadow-[0_25px_65px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_65px_rgba(0,0,0,0.55)] transition-all duration-200`}
+      >
         <div className="sticky top-0 z-10 border-b border-black/8 dark:border-white/8 px-5 sm:px-6 py-3.5 bg-card flex items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2.5 min-w-0">
             {headerLeading}
-            <p className="text-base font-semibold text-[#232323] dark:text-white truncate tracking-tight">
-              {title}
-            </p>
+            <p className="text-base font-semibold text-[#232323] dark:text-white truncate tracking-tight">{title}</p>
           </div>
-
           <div className="inline-flex items-center gap-2">
             {headerActions}
             <button
@@ -554,10 +542,7 @@ function Popup({
             </button>
           </div>
         </div>
-
-        <div className="h-[calc(100dvh-65px)] overflow-y-auto p-4 sm:p-5 lg:p-6 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#232323]/70 dark:[&_label]:text-white/60 [&_input]:rounded-lg [&_input]:border-black/12 dark:[&_input]:border-white/12 [&_input]:bg-background/80 [&_input]:shadow-sm [&_input]:transition-all [&_input]:duration-150 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/30 [&_input:focus]:border-[#FFAA00]/50 [&_select]:rounded-lg [&_select]:border-black/12 dark:[&_select]:border-white/12 [&_select]:bg-background/80 [&_select]:shadow-sm [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/30 [&_select:focus]:border-[#FFAA00]/50 [&_textarea]:rounded-lg [&_textarea]:border-black/12 dark:[&_textarea]:border-white/12 [&_textarea]:bg-background/80 [&_textarea]:shadow-sm [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/30 [&_textarea:focus]:border-[#FFAA00]/50">
-          {children}
-        </div>
+        <div className="overflow-y-auto max-h-[calc(100dvh-6.25rem)] sm:max-h-[calc(100dvh-6.75rem)] lg:max-h-[calc(100dvh-7rem)] p-4 sm:p-5 lg:p-6 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#232323]/70 dark:[&_label]:text-white/60 [&_input]:rounded-lg [&_input]:border-black/12 dark:[&_input]:border-white/12 [&_input]:bg-background/80 [&_input]:shadow-sm [&_input]:transition-all [&_input]:duration-150 [&_input:focus]:ring-2 [&_input:focus]:ring-[#FFAA00]/30 [&_input:focus]:border-[#FFAA00]/50 [&_select]:rounded-lg [&_select]:border-black/12 dark:[&_select]:border-white/12 [&_select]:bg-background/80 [&_select]:shadow-sm [&_select]:transition-all [&_select:focus]:ring-2 [&_select:focus]:ring-[#FFAA00]/30 [&_select:focus]:border-[#FFAA00]/50 [&_textarea]:rounded-lg [&_textarea]:border-black/12 dark:[&_textarea]:border-white/12 [&_textarea]:bg-background/80 [&_textarea]:shadow-sm [&_textarea]:transition-all [&_textarea:focus]:ring-2 [&_textarea:focus]:ring-[#FFAA00]/30 [&_textarea:focus]:border-[#FFAA00]/50">{children}</div>
       </div>
     </div>
   );
@@ -581,6 +566,8 @@ export default function ExecutionProjectTests() {
   const [error, setError] = useState("");
   const [envModalError, setEnvModalError] = useState("");
   const [folderModalError, setFolderModalError] = useState("");
+  const [variableModalError, setVariableModalError] = useState("");
+  const [sharedStepModalError, setSharedStepModalError] = useState("");
 
   const [documentation, setDocumentation] = useState("");
   const [documentationForm, setDocumentationForm] = useState(() => createInitialDocumentationForm());
@@ -2414,16 +2401,22 @@ export default function ExecutionProjectTests() {
   };
 
   const handleCreateVariable = async () => {
-    if (!variableForm.name.trim()) return;
+    if (!variableForm.name.trim() || !variableForm.value.trim()) {
+      setVariableModalError("Variable name and value are required.");
+      return;
+    }
+
     setSaving(true);
+    setVariableModalError("");
     setError("");
     try {
       await createProjectVariable(orgSlug, projectId, variableForm);
       setVariableForm(INITIAL_VARIABLE_FORM);
+      setVariableModalError("");
       setIsVariableModalOpen(false);
       setVariables(await fetchProjectVariables(orgSlug, projectId));
     } catch (err) {
-      setError(err?.message || "Failed to create variable");
+      setVariableModalError(toDisplayErrorMessage(err?.message, "Failed to create variable"));
     } finally {
       setSaving(false);
     }
@@ -2444,17 +2437,21 @@ export default function ExecutionProjectTests() {
 
   const handleCreateSharedStep = async () => {
     if (!sharedStepForm.name.trim() || !sharedStepForm.action.trim() || !sharedStepForm.expectedResult.trim()) {
+      setSharedStepModalError("Name, action and expected result are required.");
       return;
     }
+
     setSaving(true);
+    setSharedStepModalError("");
     setError("");
     try {
       await createProjectSharedStep(orgSlug, projectId, sharedStepForm);
       setSharedStepForm(INITIAL_SHARED_STEP_FORM);
+      setSharedStepModalError("");
       setIsSharedStepModalOpen(false);
       setSharedSteps(await fetchProjectSharedSteps(orgSlug, projectId));
     } catch (err) {
-      setError(err?.message || "Failed to create shared step");
+      setSharedStepModalError(toDisplayErrorMessage(err?.message, "Failed to create shared step"));
     } finally {
       setSaving(false);
     }
@@ -3004,7 +3001,7 @@ export default function ExecutionProjectTests() {
                 <select
                   value={testCaseSort}
                   onChange={(event) => setTestCaseSort(event.target.value)}
-                  className="ui-select h-8 rounded-md border border-border bg-background px-2 text-xs cursor-pointer"
+                  className="ui-select h-8 rounded-md border border-border bg-background px-2 text-xs cursor-pointer "
                 >
                   <option value="updated">{t("tc.sortLastUpdated")}</option>
                   <option value="title">{t("tc.sortTitle")}</option>
@@ -3142,7 +3139,11 @@ export default function ExecutionProjectTests() {
         <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.projectVariables")}</p>
         <button
           type="button"
-          onClick={() => setIsVariableModalOpen(true)}
+          onClick={() => {
+            setVariableModalError("");
+            setVariableForm(INITIAL_VARIABLE_FORM);
+            setIsVariableModalOpen(true);
+          }}
           className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold cursor-pointer"
         >
           {t("tc.addVariable")}
@@ -3181,7 +3182,11 @@ export default function ExecutionProjectTests() {
         <p className="text-sm font-semibold text-[#232323] dark:text-white">{t("tc.tabs.sharedSteps")}</p>
         <button
           type="button"
-          onClick={() => setIsSharedStepModalOpen(true)}
+          onClick={() => {
+            setSharedStepModalError("");
+            setSharedStepForm(INITIAL_SHARED_STEP_FORM);
+            setIsSharedStepModalOpen(true);
+          }}
           className="h-8 px-3 rounded-md bg-[#FFAA00] text-[#232323] text-xs font-semibold cursor-pointer"
         >
           {t("tc.addSharedStep")}
@@ -4759,26 +4764,49 @@ export default function ExecutionProjectTests() {
         </div>
       </Popup>
 
-      <Popup open={isVariableModalOpen} title={t("tc.addVariable")} onClose={() => setIsVariableModalOpen(false)} maxWidth="max-w-lg">
+      <Popup
+        open={isVariableModalOpen}
+        title={t("tc.addVariable")}
+        onClose={() => {
+          setVariableModalError("");
+          setIsVariableModalOpen(false);
+        }}
+        maxWidth="max-w-lg"
+      >
         <div className="space-y-3">
           <input
             value={variableForm.name}
-            onChange={(event) => setVariableForm((prev) => ({ ...prev, name: event.target.value }))}
+            onChange={(event) => {
+              if (variableModalError) setVariableModalError("");
+              setVariableForm((prev) => ({ ...prev, name: event.target.value }));
+            }}
             placeholder="Name"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
           <input
             value={variableForm.value}
-            onChange={(event) => setVariableForm((prev) => ({ ...prev, value: event.target.value }))}
+            onChange={(event) => {
+              if (variableModalError) setVariableModalError("");
+              setVariableForm((prev) => ({ ...prev, value: event.target.value }));
+            }}
             placeholder="Value"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
           <input
             value={variableForm.description}
-            onChange={(event) => setVariableForm((prev) => ({ ...prev, description: event.target.value }))}
+            onChange={(event) => {
+              if (variableModalError) setVariableModalError("");
+              setVariableForm((prev) => ({ ...prev, description: event.target.value }));
+            }}
             placeholder="Description"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
+          {variableModalError ? (
+            <div className="rounded-md border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{variableModalError}</span>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={handleCreateVariable}
@@ -4790,34 +4818,60 @@ export default function ExecutionProjectTests() {
         </div>
       </Popup>
 
-      <Popup open={isSharedStepModalOpen} title="Add Shared Step" onClose={() => setIsSharedStepModalOpen(false)} maxWidth="max-w-2xl">
+      <Popup
+        open={isSharedStepModalOpen}
+        title="Add Shared Step"
+        onClose={() => {
+          setSharedStepModalError("");
+          setIsSharedStepModalOpen(false);
+        }}
+        maxWidth="max-w-2xl"
+      >
         <div className="space-y-3">
           <input
             value={sharedStepForm.name}
-            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, name: event.target.value }))}
+            onChange={(event) => {
+              if (sharedStepModalError) setSharedStepModalError("");
+              setSharedStepForm((prev) => ({ ...prev, name: event.target.value }));
+            }}
             placeholder="Name"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
           <textarea
             value={sharedStepForm.action}
-            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, action: event.target.value }))}
+            onChange={(event) => {
+              if (sharedStepModalError) setSharedStepModalError("");
+              setSharedStepForm((prev) => ({ ...prev, action: event.target.value }));
+            }}
             rows={3}
             placeholder="Action"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
           <textarea
             value={sharedStepForm.expectedResult}
-            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, expectedResult: event.target.value }))}
+            onChange={(event) => {
+              if (sharedStepModalError) setSharedStepModalError("");
+              setSharedStepForm((prev) => ({ ...prev, expectedResult: event.target.value }));
+            }}
             rows={3}
             placeholder="Expected result"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
           <input
             value={sharedStepForm.description}
-            onChange={(event) => setSharedStepForm((prev) => ({ ...prev, description: event.target.value }))}
+            onChange={(event) => {
+              if (sharedStepModalError) setSharedStepModalError("");
+              setSharedStepForm((prev) => ({ ...prev, description: event.target.value }));
+            }}
             placeholder="Description"
             className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
           />
+          {sharedStepModalError ? (
+            <div className="rounded-md border border-red-300/50 bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300 inline-flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{sharedStepModalError}</span>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={handleCreateSharedStep}

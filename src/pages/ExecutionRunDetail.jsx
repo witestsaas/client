@@ -513,6 +513,7 @@ export default function ExecutionRunDetail() {
           orgSlug={orgSlug}
           runId={runId}
           initialResultId={selectedResultId}
+          showResultList={false}
           onClose={() => {
             setDetailsModalOpen(false);
             setSelectedResultId("");

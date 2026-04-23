@@ -29,7 +29,7 @@ const statusColors = {
   Queued: "bg-blue-50 text-blue-600",
   Pending: "bg-gray-100 text-gray-700",
   Draft: "bg-gray-100 text-gray-700",
-  InReview: "bg-yellow-100 text-yellow-700",
+  InReview: "bg-[#FFAA00] text-black/80",
   Outdated: "bg-orange-100 text-orange-700",
   Rejected: "bg-red-100 text-red-700",
   Failed: "bg-red-500 text-white",
@@ -808,16 +808,17 @@ export default function ExecutionPlanDetail() {
 
         {error ? <div className="mx-6 mt-4 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</div> : null}
 
-        {loading ? (
-          <div className="p-4">
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Loading plan details...</p>
-          </div>
-        ) : !plan ? (
-          <div className="p-4">
-            <p className="text-sm text-[#232323]/60 dark:text-white/60">Plan not found.</p>
-          </div>
-        ) : (
-          <div className="p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6">
+          {loading ? (
+            <div>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">Loading plan details...</p>
+            </div>
+          ) : !plan ? (
+            <div>
+              <p className="text-sm text-[#232323]/60 dark:text-white/60">Plan not found.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
             <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                 <div>
@@ -921,8 +922,9 @@ export default function ExecutionPlanDetail() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         <AddTestCasesModal
           open={addModalOpen}
