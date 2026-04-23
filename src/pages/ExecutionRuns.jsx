@@ -1619,7 +1619,7 @@ export default function ExecutionRuns() {
                 <div
                   key={runId || `${run.testPlan?.name || "run"}-${run.createdAt || "now"}`}
                   className="rounded-2xl border border-black/10 dark:border-white/10 bg-card/95 shadow-sm hover:shadow-md hover:border-black/20 dark:hover:border-white/20 transition-all p-4 cursor-pointer"
-                  onClick={() => openRunDetail(runId)}
+                  onClick={() => openRunPage(runId)}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0 flex-1">

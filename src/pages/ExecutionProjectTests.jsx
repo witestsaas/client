@@ -2874,14 +2874,15 @@ export default function ExecutionProjectTests() {
             <p className="mt-2 text-sm text-[#232323]/45 dark:text-white/45 max-w-xl">
               {t("tc.selectFolderDesc")}
             </p>
+            <br></br>
             <button
               type="button"
               onClick={openGenerateModal}
-              className="mt-5 h-9 px-4 rounded-md border border-[#FFAA00]/40 bg-[#FFAA00]/10 hover:bg-[#FFAA00]/15 text-[#232323] dark:text-white text-sm font-semibold cursor-pointer"
+              className="group relative bg-gradient-to-r from-[#FFAA00] to-[#ff8c00] hover:from-[#FFB833] hover:to-[#FFAA00] text-[#232323] text-xs font-bold h-8 px-4 rounded-lg inline-flex items-center gap-2 shadow-[0_2px_8px_rgba(255,170,0,0.3)] hover:shadow-[0_4px_16px_rgba(255,170,0,0.4)] transition-all cursor-pointer"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" />
-                Functional Agent
+                Functional Test Generator
               </span>
             </button>
             {/*<p className="mt-2 text-xs text-[#232323]/55 dark:text-white/55">
@@ -3482,7 +3483,7 @@ export default function ExecutionProjectTests() {
             <div className="p-3 border-b border-black/6 dark:border-white/6 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-[#232323]/60 dark:text-white/60 uppercase tracking-wider inline-flex items-center gap-1.5">
                 <MessageSquare className="h-3.5 w-3.5" />
-                Generations
+                Chat
               </p>
               <div className="inline-flex items-center gap-1">
                 {aiConversations.length > 0 ? (
@@ -3503,7 +3504,7 @@ export default function ExecutionProjectTests() {
                 <button
                   type="button"
                   onClick={createNewGenerationDraft}
-                  className="h-7 px-2.5 rounded-lg bg-[#FFAA00]/15 text-xs font-semibold text-[#232323] dark:text-white hover:bg-[#FFAA00]/25 transition-colors cursor-pointer"
+                  className="h-7 px-2.5 rounded-lg bg-[#FFAA00] text-xs font-semibold text-[#232323] dark:text-black hover:bg-[#FFAA00] transition-colors cursor-pointer"
                 >
                   + New
                 </button>
@@ -3570,7 +3571,7 @@ export default function ExecutionProjectTests() {
                   <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FFAA00]/20 to-[#ff8c00]/10 inline-flex items-center justify-center mb-4">
                     <Sparkles className="h-8 w-8 text-[#FFAA00]" />
                   </div>
-                  <p className="text-xl font-semibold text-[#232323] dark:text-white">AI Test Case Generator</p>
+                  <p className="text-xl font-semibold text-[#232323] dark:text-white">Functional Test Case Generator</p>
                   <p className="mt-2 text-sm text-[#232323]/50 dark:text-white/50 max-w-lg leading-relaxed">
                     Describe what you want to test and AI will generate comprehensive test cases for you. Start a new generation or select one from the left.
                   </p>
